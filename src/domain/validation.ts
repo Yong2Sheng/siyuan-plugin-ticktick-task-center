@@ -1,10 +1,14 @@
 import { isTickTickTaskStatus } from "./status";
+import type { TickTickTaskStatus } from "./status";
+
 const ALLOWED_TICKTICK_HOSTS = new Set(["dida365.com", "ticktick.com"]);
 
 export type TaskValidationError =
     | "title-required"
     | "url-required"
     | "url-invalid"
+    | "url-https-required"
+    | "url-host-invalid"
     | "status-invalid";
 
 export type TaskDataCandidate = {
@@ -12,6 +16,16 @@ export type TaskDataCandidate = {
     url: unknown;
     status: unknown;
 };
+
+export type NormalizedTaskData = {
+    title: string;
+    url: string;
+    status: TickTickTaskStatus;
+};
+
+export type TaskNormalizationResult =
+    | { valid: true; data: NormalizedTaskData }
+    | { valid: false; errors: TaskValidationError[] };
 
 export function isAllowedTickTickUrl(value: string): boolean {
     try {
@@ -23,21 +37,51 @@ export function isAllowedTickTickUrl(value: string): boolean {
 }
 
 export function validateTaskData(data: TaskDataCandidate): TaskValidationError[] {
-    const errors: TaskValidationError[] = [];
+    const result = normalizeTaskData(data);
+    return result.valid ? [] : result.errors;
+}
 
-    if (typeof data.title !== "string" || data.title.trim().length === 0) {
+export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationResult {
+    const errors: TaskValidationError[] = [];
+    const title = typeof data.title === "string" ? data.title.trim() : "";
+    const rawUrl = typeof data.url === "string" ? data.url.trim() : "";
+    let normalizedUrl = "";
+
+    if (title.length === 0) {
         errors.push("title-required");
     }
 
-    if (typeof data.url !== "string" || data.url.trim().length === 0) {
+    if (rawUrl.length === 0) {
         errors.push("url-required");
-    } else if (!isAllowedTickTickUrl(data.url)) {
-        errors.push("url-invalid");
+    } else {
+        try {
+            const url = new URL(rawUrl);
+            if (url.protocol !== "https:") {
+                errors.push("url-https-required");
+            } else if (!ALLOWED_TICKTICK_HOSTS.has(url.hostname)) {
+                errors.push("url-host-invalid");
+            } else {
+                normalizedUrl = url.toString();
+            }
+        } catch {
+            errors.push("url-invalid");
+        }
     }
 
     if (!isTickTickTaskStatus(data.status)) {
         errors.push("status-invalid");
     }
 
-    return errors;
+    if (errors.length > 0 || !isTickTickTaskStatus(data.status)) {
+        return { valid: false, errors };
+    }
+
+    return {
+        valid: true,
+        data: {
+            title,
+            url: normalizedUrl,
+            status: data.status,
+        },
+    };
 }

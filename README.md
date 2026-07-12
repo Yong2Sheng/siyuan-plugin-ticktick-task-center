@@ -10,7 +10,15 @@ The planned MVP will provide task-card enhancement, seven local task statuses, a
 
 ## Current status
 
-The repository is in its project-initialization stage. Task insertion, card rendering, editing, and the task center are not implemented yet.
+The plugin currently supports:
+
+- Creating TickTick tasks from the Protyle slash menu.
+- Keeping readable Markdown fallback blocks in source documents.
+- Persisting task data in seven structured block attributes.
+- Validating task input and rolling back inserted blocks when attribute persistence fails.
+- Automated tests for validation, Markdown escaping, attribute generation, submission control, and rollback behavior.
+
+Task-card enhancement rendering, task editing, and the task center are not implemented yet.
 
 ## MVP boundaries
 
@@ -29,6 +37,7 @@ Requirements: Node.js 20 and pnpm.
 ```bash
 pnpm install
 pnpm typecheck
+pnpm test
 pnpm build
 ```
 

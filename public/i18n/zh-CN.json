@@ -22,7 +22,27 @@
   "validation": {
     "titleRequired": "请输入任务名称。",
     "urlRequired": "请输入 TickTick 任务链接。",
-    "urlInvalid": "仅支持 dida365.com 或 ticktick.com 的 HTTPS 链接。",
+    "urlInvalid": "请输入合法的 URL。",
+    "urlHttpsRequired": "仅支持 HTTPS 链接。",
+    "urlHostInvalid": "仅支持 dida365.com 或 ticktick.com 的 TickTick 链接。",
     "statusInvalid": "任务状态无效。"
+  },
+  "taskCreate": {
+    "slashName": "滴答任务卡片",
+    "dialogTitle": "创建滴答任务",
+    "titleLabel": "任务标题",
+    "urlLabel": "TickTick 链接",
+    "statusLabel": "任务状态",
+    "create": "创建",
+    "creating": "创建中…",
+    "created": "滴答任务已创建",
+    "errors": {
+      "createFailed": "滴答任务创建失败。",
+      "documentUnavailable": "无法确定当前文档，请在普通可编辑文档中重试。",
+      "titleUnavailable": "无法获取文档标题，请手动输入任务标题。",
+      "insertFailed": "插入任务块失败。",
+      "attributeWriteFailed": "写入任务属性失败，已回滚插入的任务块。",
+      "rollbackFailed": "写入任务属性失败，且回滚失败。请手动检查块 ${blockId}。"
+    }
   }
 }

@@ -22,7 +22,27 @@
   "validation": {
     "titleRequired": "Task title is required.",
     "urlRequired": "TickTick URL is required.",
-    "urlInvalid": "Only HTTPS links from dida365.com or ticktick.com are supported.",
+    "urlInvalid": "Enter a valid URL.",
+    "urlHttpsRequired": "Only HTTPS links are supported.",
+    "urlHostInvalid": "Only TickTick links from dida365.com or ticktick.com are supported.",
     "statusInvalid": "The task status is invalid."
+  },
+  "taskCreate": {
+    "slashName": "TickTick task card",
+    "dialogTitle": "Create TickTick task",
+    "titleLabel": "Task title",
+    "urlLabel": "TickTick URL",
+    "statusLabel": "Task status",
+    "create": "Create",
+    "creating": "Creating…",
+    "created": "TickTick task created",
+    "errors": {
+      "createFailed": "Failed to create the TickTick task.",
+      "documentUnavailable": "The current document cannot be determined. Try again in a regular editable document.",
+      "titleUnavailable": "The document title could not be loaded. Enter a task title manually.",
+      "insertFailed": "Failed to insert the task block.",
+      "attributeWriteFailed": "Failed to write task attributes. The inserted block was rolled back.",
+      "rollbackFailed": "Failed to write task attributes and rollback failed. Manually inspect block ${blockId}."
+    }
   }
 }
