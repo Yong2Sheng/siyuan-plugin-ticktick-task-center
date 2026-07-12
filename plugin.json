@@ -1,43 +1,26 @@
 {
-  "name": "plugin-sample-vite-svelte",
-  "author": "frostime",
-  "url": "https://github.com/siyuan-note/plugin-sample-vite-svelte",
-  "version": "0.4.1",
+  "name": "siyuan-plugin-ticktick-task-center",
+  "author": "Yong2Sheng",
+  "url": "https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center",
+  "version": "0.1.0",
   "minAppVersion": "3.7.0",
-  "kernels": [
-    "windows",
-    "linux",
-    "darwin",
-    "ios",
-    "android",
-    "harmony",
-    "docker",
-    "all"
-  ],
   "disabledInPublish": true,
   "backends": [
     "windows",
     "linux",
-    "darwin",
-    "ios",
-    "android",
-    "harmony",
-    "docker"
+    "darwin"
   ],
   "frontends": [
     "desktop",
-    "mobile",
-    "browser-desktop",
-    "browser-mobile",
     "desktop-window"
   ],
   "displayName": {
-    "default": "Plugin sample with vite and svelte",
-    "zh-CN": "插件样例 vite + svelte 版"
+    "default": "TickTick Task Center",
+    "zh-CN": "滴答任务中心"
   },
   "description": {
-    "default": "SiYuan plugin sample with vite and svelte",
-    "zh-CN": "使用 vite 和 svelte 开发的思源插件样例"
+    "default": "Manage TickTick task cards and a dynamic task center in SiYuan.",
+    "zh-CN": "在思源中管理滴答清单任务卡片与动态任务中心。"
   },
   "readme": {
     "default": "README.md",
@@ -47,12 +30,13 @@
     "openCollective": "",
     "patreon": "",
     "github": "",
-    "custom": [
-      "https://ld246.com/sponsor"
-    ]
+    "custom": []
   },
   "keywords": [
-    "sample",
-    "示例"
+    "ticktick",
+    "task",
+    "task-center",
+    "滴答清单",
+    "任务中心"
   ]
 }

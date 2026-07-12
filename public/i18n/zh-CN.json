@@ -1,20 +1,28 @@
 {
-    "addTopBarIcon": "使用插件添加一个顶栏按钮",
+  "pluginName": "滴答任务中心",
+  "taskCard": "滴答任务",
+  "taskCenter": "任务中心",
+  "openTaskCenter": "打开任务中心",
+  "common": {
     "cancel": "取消",
+    "confirm": "确认",
     "save": "保存",
-    "byeMenu": "再见，菜单！",
-    "helloPlugin": "你好，插件！",
-    "byePlugin": "再见，插件！",
-    "showDialog": "弹出一个对话框",
-    "removedData": "数据已删除",
-    "confirmRemove": "确认删除 ${name} 中的数据？",
-    "insertEmoji": "插入表情",
-    "removeSpace": "移除空格",
-    "getTab": "在日志中打印出已打开的所有自定义页签",
-    "name": "思源",
-    "hello": {
-        "makesure": "使用这个模板之前，请阅读<a href=\"https://github.com/siyuan-note/plugin-sample\">官方教程</a>, 确保自己已经理解了插件的基本开发流程。"
-    },
-    "hintTitle": "关于",
-    "hintDesc": "<a href='https://github.com/siyuan-note/plugin-sample-vite-svelte'>🔗 plugin-sample-vite-svelte</a><br>💻 @frostime<br>💻 @88250<br>💻 @zxkmm"
+    "delete": "删除",
+    "refresh": "刷新"
+  },
+  "status": {
+    "todo": "待开始",
+    "inProgress": "进行中",
+    "waiting": "等待回复",
+    "blocked": "已阻塞",
+    "completed": "已完成",
+    "failed": "已失败",
+    "cancelled": "已取消"
+  },
+  "validation": {
+    "titleRequired": "请输入任务名称。",
+    "urlRequired": "请输入 TickTick 任务链接。",
+    "urlInvalid": "仅支持 dida365.com 或 ticktick.com 的 HTTPS 链接。",
+    "statusInvalid": "任务状态无效。"
+  }
 }
