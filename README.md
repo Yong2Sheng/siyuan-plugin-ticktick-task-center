@@ -1,67 +1,191 @@
-# TickTick Task Center for SiYuan
+[English](README.en.md) | 简体中文
 
-TickTick Task Center is a SiYuan plugin for associating ordinary document blocks with TickTick tasks. Task data is stored in structured block attributes, while each source block keeps readable fallback Markdown:
+# 思源笔记滴答任务中心
 
-```markdown
-TickTick task: [Task name](https://ticktick.com/...)
+> [!IMPORTANT]
+> **本项目的代码、测试和文档均完全通过 OpenAI GPT 与 Codex 完成。**
+>
+> 项目需求定义、功能取舍、真实思源环境测试、结果验收与发布决策由 Yong Sheng 负责。
+
+思源笔记滴答任务中心是一个思源笔记插件，用于把普通思源文档块关联到 TickTick / 滴答清单任务。原文档中的任务块是唯一持久化数据源；插件在其上提供任务卡片增强、七种本地状态和全工作空间任务中心，不会维护第二套任务数据库。
+
+当前版本不使用 TickTick API、OAuth 或后台同步。任务与 TickTick / 滴答清单的关联仅依靠用户提供的 HTTPS 任务链接。
+
+**本项目是社区开发的非官方插件，与 TickTick、滴答清单及思源笔记官方无隶属关系。**
+
+## 核心功能
+
+- 在可编辑的思源文档中，通过斜杠菜单创建 TickTick 任务块；默认状态为 `in-progress`，新块插入当前根文档顶部。
+- 在一个普通思源块中保存任务标题、经过校验的 TickTick URL，以及七项 `custom-ticktick-*` 结构化属性。
+- 在原始块中保留包含标题和链接的普通 Markdown；插件关闭时仍可阅读和打开链接。
+- 在文档内非破坏性地增强显示任务卡片，包括任务链接和带语义颜色的状态徽章。
+- 点击状态徽章打开完整编辑窗口，可修改标题、URL 和状态。
+- 编辑时保持 `created-at` 不变，只在数据真实变化时更新 `updated-at`。
+- 保存前检查 `updated-at` 冲突，避免覆盖其他位置产生的更新；标题或 URL 双写失败时尝试回滚 Markdown。
+- 从思源顶栏打开单例任务中心页签，动态汇总整个工作空间中的有效任务。
+- 支持活跃、已结束和全部任务筛选，以及任务标题、来源文档、来源路径和本地化状态搜索。
+- 显示全部、活跃和已结束任务统计，并按任务属性中的 `updated-at` 降序稳定排列。
+- 支持定位原始思源任务块，并安全地在新标签页打开对应 TickTick 任务链接。
+- 在任务中心内编辑任务后立即更新当前列表、筛选结果、排序和统计。
+- 普通文档或其他客户端产生的变化由用户通过任务中心的“刷新”按钮读取。
+
+## 七种任务状态
+
+状态 ID 是持久化与查询使用的稳定值；Emoji 和显示文字只用于界面展示。
+
+| Key | 中文 | English | 类型 |
+| --- | --- | --- | --- |
+| `todo` | ⚪ 待开始 | To do | 活跃 |
+| `in-progress` | ▶️ 进行中 | In progress | 活跃 |
+| `waiting` | ⏳ 等待回复 | Waiting for response | 活跃 |
+| `blocked` | ⛔ 已阻塞 | Blocked | 活跃 |
+| `completed` | ✅ 已完成 | Completed | 已结束 |
+| `failed` | ❌ 已失败 | Failed | 已结束 |
+| `cancelled` | ⏹️ 已取消 | Cancelled | 已结束 |
+
+## 安装
+
+### 普通用户安装
+
+本插件目前尚未上架思源集市，GitHub 仓库也尚未发布可供普通用户下载的 Release。
+
+发布版本将通过 [GitHub Releases](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases) 提供；在首个 Release 发布前，可使用下面的开发安装方式。请不要把 GitHub 自动生成的 Source code 压缩包当作思源插件包。
+
+### 开发安装
+
+开发环境以项目的 CI 配置为准：Node.js 20、pnpm 11.7.0，以及思源桌面版 3.7.0 或更高版本。当前主要在 macOS 桌面版思源中开发和验收，暂不承诺其他平台的兼容性支持。
+
+确保思源正在运行，然后执行：
+
+```bash
+git clone https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center.git
+cd siyuan-plugin-ticktick-task-center
+corepack enable
+pnpm install
+pnpm make-link
+pnpm dev
 ```
 
-The plugin provides task-card enhancement, seven local task statuses, and a dynamic task-center tab. The original document block remains the only source of truth; the task center does not maintain a second task database.
+`pnpm make-link` 会尝试读取当前思源工作空间，并把开发输出目录链接到该工作空间的插件目录；无法自动发现时，可通过 `SIYUAN_PLUGIN_DIR` 指向目标工作空间的 `data/plugins` 目录。
 
-## Current status
+`pnpm dev` 是持续运行的监听构建进程。源码变化后 watcher 会重新生成开发 bundle；如思源没有自动载入最新 bundle，请关闭并重新启用插件。
 
-The plugin currently supports:
+## 使用方法
 
-- Creating TickTick tasks from the Protyle slash menu.
-- Keeping readable Markdown fallback blocks in source documents.
-- Persisting task data in seven structured block attributes.
-- Validating task input and rolling back inserted blocks when attribute persistence fails.
-- Task-card enhancement with an identity label, task link, and interactive localized status badge.
-- Non-destructive rendering that keeps the original Markdown and block attributes underneath and restores Markdown when the plugin is disabled.
-- Opening the complete task editor from the status badge to edit task titles, TickTick URLs, and statuses.
-- Synchronizing successful edits to all seven structured attributes and, when the title or URL changes, to fallback Markdown while preserving `created-at` and updating `updated-at` only for real changes.
-- Optimistic conflict detection and Markdown rollback when attribute persistence fails.
-- Opening a singleton TickTick Task Center tab from the top bar and dynamically aggregating validated tasks across the whole workspace.
-- Reading the seven task attributes with a conditional SQL aggregate so each task occupies one deterministic grouped result row.
-- Active, closed, and all-task filters, local search across tasks and source documents, and stable sorting by task `updated-at` descending.
-- Workspace-wide task statistics, source-block navigation, safe TickTick links, and explicit refresh for changes made in source documents or other clients.
-- Reusing the existing complete editor from each task-center status badge and applying successful edits immediately to the current in-memory list without waiting for the SiYuan SQL index.
-- Keeping a tab-scoped recent-edit overlay so an immediately requested manual refresh cannot visually revert a newer task-center edit when the SQL index is temporarily stale.
-- Querying SQL only when the task-center tab first opens, when the user refreshes, or when the user retries a failed query; the task center does not poll or refresh in the background.
-- Distinguishing temporarily incomplete SQL attribute rows from task blocks whose complete structured data is genuinely invalid.
-- Automated tests for validation, Markdown escaping, attribute generation, creation and editing workflows, task-card lifecycle, task-center aggregation, filtering, refresh control, tab lifecycle, and UI behavior.
+### 1. 创建任务
 
-Batch operations, task deletion, task context menus, and TickTick API synchronization are not implemented yet.
+1. 打开一个普通、可编辑的思源文档。
+2. 输入 `/` 打开 Protyle 斜杠菜单。
+3. 搜索并选择“滴答任务卡片”（英文界面为 “TickTick task card”）。
+4. 确认或修改任务标题。插件会尝试以当前根文档标题作为默认值。
+5. 粘贴合法的 TickTick / 滴答清单 HTTPS URL。当前只接受主机名精确为 `ticktick.com` 或 `dida365.com` 的链接。
+6. 选择任务状态；默认状态为 `in-progress`（▶️ 进行中）。
+7. 点击“创建”。
+8. 新任务会作为当前根文档的第一个子块插入，也就是位于文档标题下方、其他正文之前，并立即增强显示为任务卡片。
 
-After creating or editing a task in a normal document, use the task center's **Refresh** button to synchronize that external change. The recent-edit overlay is temporary view state only: it is cleared with the tab and never replaces the seven task-block attributes as the source of truth.
+### 2. 在文档中编辑任务
 
-## MVP boundaries
+- 点击任务卡片右侧的状态徽章，打开完整编辑窗口。
+- 修改任务标题、TickTick URL 或任务状态，然后保存。
+- 保存成功后，当前文档中的卡片立即更新。
+- 标题或 URL 变化时，底层 Markdown 降级内容同步更新。
+- 状态不会写入 Markdown，而是以稳定状态 ID 保存在结构化属性中。
+- `created-at` 保持不变；只有实际发生修改时才生成新的 `updated-at`。
 
-- Accept HTTPS task links from `dida365.com` and `ticktick.com`.
-- Use official SiYuan APIs for block data.
-- Do not integrate TickTick API, OAuth, or two-way synchronization.
-- Do not use tags or full-text search as the primary status index.
-- Build only a SiYuan frontend plugin; no kernel plugin is included.
+### 3. 打开任务中心
 
-Development and testing currently focus on SiYuan Desktop for macOS. Compatibility support for other platforms is not yet guaranteed.
+- 点击思源顶栏中的滴答任务中心按钮。
+- 任务中心以独立自定义页签打开。
+- 同一时间只存在一个任务中心页签；再次点击顶栏按钮只会聚焦已有页签。
+- 页签首次打开时会查询一次当前工作空间中的任务。
 
-## Development
+### 4. 使用任务中心
 
-Requirements: Node.js 20 and pnpm.
+- 查看全部、活跃和已结束任务数量。
+- 在“活跃任务”“已结束”和“全部任务”之间切换。
+- 搜索任务标题、来源文档标题、来源路径或本地化状态名称。
+- 点击任务标题或“定位原块”，打开并定位对应的思源任务块。
+- 点击“打开滴答任务”，在新标签页打开经过校验的外部任务链接。
+- 点击任务条目的状态徽章，复用同一个完整任务编辑窗口。
+- 从任务中心保存编辑后，当前列表、筛选结果、排序和统计立即更新，无需刷新。
+
+## 刷新与同步规则
+
+> [!WARNING]
+> **在任务中心之外创建或修改任务后，必须回到任务中心点击“刷新”，任务中心才会显示最新结果。**
+>
+> 任务中心不会轮询，也不会在后台自动查询普通文档中的变化。
+
+| 操作位置 | 任务中心行为 |
+| --- | --- |
+| 在任务中心编辑任务 | 保存后立即更新当前任务中心列表，无需刷新 |
+| 在普通文档创建任务 | 不会自动出现在任务中心；需要点击“刷新” |
+| 在普通文档编辑任务 | 任务中心不会自动变化；需要点击“刷新” |
+| 直接修改任务块属性 | 需要点击“刷新” |
+| 在其他客户端或设备修改 | 需要点击“刷新” |
+| 首次打开任务中心 | 自动查询一次 |
+| 搜索或切换筛选 | 只处理当前列表，不执行 SQL |
+| 任务中心空闲放置 | 不进行后台查询 |
+
+“刷新”按钮不是故障恢复按钮，而是同步任务中心外部变化的明确入口。
+
+在任务中心编辑后立即点击刷新时，思源 SQL 索引可能暂时仍返回旧值。插件会在当前任务中心页签内保留最近编辑结果，避免界面退回旧标题、URL 或状态；当 SQL 返回相同或更新的数据，或该任务不再是有效任务时，这个临时覆盖会被清除。它不会替代任务块属性，不会跨页签持久化，也不是第二套任务数据库。
+
+## 数据模型与隐私
+
+- 一个普通思源块对应一个 TickTick 任务。
+- 原始思源任务块是唯一持久化数据源。
+- 任务中心是动态视图，不持久化第二份任务列表。
+- 普通 Markdown 保留任务标题和链接，作为插件关闭或不可用时的降级内容。
+- 插件不要求登录 TickTick，不使用 OAuth，也不调用 TickTick API。
+- 插件不会在后台向 TickTick 上传或同步任务数据；外部链接只在用户点击时打开。
+
+七项结构化属性为：
+
+```text
+custom-ticktick-card
+custom-ticktick-version
+custom-ticktick-title
+custom-ticktick-url
+custom-ticktick-status
+custom-ticktick-created-at
+custom-ticktick-updated-at
+```
+
+## 任务中心查询
+
+任务中心每次加载或手动刷新时执行一次全局 SQL 查询。七项任务属性通过条件聚合转换为每个任务一行，避免旧式“一项属性一行”的结果在思源 SQL 查询数量上限处产生属性不完整的半个任务。
+
+查询仍受思源全局 SQL 结果数量上限约束，当前没有分页。搜索和分类只处理已经加载并通过验证的内存结果，不会额外执行 SQL。
+
+## 已知限制
+
+- 普通文档、其他页签或其他客户端中的变化不会自动推送到任务中心，需要手动刷新。
+- 不支持 TickTick API、OAuth 或双向同步。
+- 不支持从插件删除任务。
+- 不支持批量操作或批量状态修改。
+- 不提供任务右键菜单。
+- 任务中心没有分页和虚拟滚动，并受思源 SQL 结果数量上限约束。
+- 没有设置页面。
+- 当前主要针对 macOS 桌面版思源进行开发和真实环境验收，其他平台未承诺兼容性支持。
+
+## 开发与验证
 
 ```bash
 pnpm install
+pnpm dev
 pnpm test
 pnpm run check
 pnpm build
 ```
 
-The production build creates `dist/` and `package.zip`.
+- `pnpm dev`：启动开发监听构建，需要持续运行。
+- `pnpm test`：运行 Vitest 自动测试。
+- `pnpm run check`：运行 Svelte / TypeScript 静态检查。
+- `pnpm build`：生成生产 bundle、`dist/` 和根目录下的 `package.zip`。
 
-## Assets
+当前验证规模为 18 个测试文件、136 项测试。
 
-`icon.png` and `preview.png` are retained temporarily to keep marketplace packaging complete. They must be replaced with project-specific artwork before release.
+## 许可证
 
-## License
-
-[MIT](./LICENSE)
+本项目采用 [MIT License](LICENSE) 开源。
