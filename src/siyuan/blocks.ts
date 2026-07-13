@@ -1,4 +1,5 @@
 import { requestSiYuan } from "./api";
+import { isSiYuanId } from "../domain/siyuan-id";
 
 export type BlockAttributes = Record<string, string>;
 
@@ -6,10 +7,6 @@ type UnknownRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is UnknownRecord {
     return typeof value === "object" && value !== null;
-}
-
-export function isSiYuanId(value: unknown): value is string {
-    return typeof value === "string" && /^\d{14}-[a-z0-9]{7}$/.test(value);
 }
 
 function readInsertedBlockId(response: unknown): string | null {
@@ -53,6 +50,18 @@ export async function getRootDocumentInfo(documentId: string): Promise<RootDocum
     };
 }
 
+export async function getBlockAttributes(blockId: string): Promise<Record<string, unknown>> {
+    const response = await requestSiYuan<unknown>("/api/attr/getBlockAttrs", {
+        id: blockId,
+    });
+
+    if (!isRecord(response)) {
+        throw new Error("SiYuan getBlockAttrs response was not an object");
+    }
+
+    return response;
+}
+
 export async function prependMarkdownBlock(parentId: string, markdown: string): Promise<string> {
     const response = await requestSiYuan<unknown>("/api/block/prependBlock", {
         dataType: "markdown",
@@ -72,6 +81,14 @@ export async function setBlockAttributes(blockId: string, attrs: BlockAttributes
     await requestSiYuan<null>("/api/attr/setBlockAttrs", {
         id: blockId,
         attrs,
+    });
+}
+
+export async function updateMarkdownBlock(blockId: string, markdown: string): Promise<void> {
+    await requestSiYuan<unknown>("/api/block/updateBlock", {
+        dataType: "markdown",
+        data: markdown,
+        id: blockId,
     });
 }
 

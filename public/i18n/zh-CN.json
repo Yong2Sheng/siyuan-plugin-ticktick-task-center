@@ -44,5 +44,28 @@
       "attributeWriteFailed": "写入任务属性失败，已回滚插入的任务块。",
       "rollbackFailed": "写入任务属性失败，且回滚失败。请手动检查块 ${blockId}。"
     }
+  },
+  "taskCardView": {
+    "identity": "✅ 滴答清单任务",
+    "openTask": "打开任务",
+    "status": "状态"
+  },
+  "taskEdit": {
+    "dialogTitle": "编辑滴答任务",
+    "save": "保存",
+    "saving": "保存中…",
+    "updated": "滴答任务已更新",
+    "statusButtonTitle": "点击编辑任务",
+    "statusButtonAriaLabel": "编辑任务，当前状态：${status}",
+    "noChanges": "没有需要保存的更改。",
+    "errors": {
+      "updateFailed": "滴答任务更新失败。",
+      "blockUnavailable": "无法读取当前任务。",
+      "currentDataInvalid": "当前任务数据无效，无法编辑。",
+      "conflict": "任务已在其他位置更新，请关闭编辑窗口后重新打开。",
+      "contentUpdateFailed": "更新任务内容失败。",
+      "attributeWriteFailed": "更新任务属性失败，任务未发生更改。",
+      "rollbackFailed": "任务更新失败，且原内容恢复失败。请手动检查块 ${blockId}。"
+    }
   }
 }

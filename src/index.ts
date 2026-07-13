@@ -1,17 +1,51 @@
 import { Dialog, Plugin, showMessage, type Protyle } from "siyuan";
 
 import { createTranslator, escapeHtml } from "./i18n";
-import { deleteBlock, getRootDocumentInfo, prependMarkdownBlock, setBlockAttributes } from "./siyuan/blocks";
+import {
+    deleteBlock,
+    getBlockAttributes,
+    getRootDocumentInfo,
+    prependMarkdownBlock,
+    setBlockAttributes,
+    updateMarkdownBlock,
+} from "./siyuan/blocks";
 import { createTaskBlock } from "./task-card/create-task";
 import { getEditableRootDocumentId } from "./task-card/context";
+import { TaskEditController } from "./task-card/edit-controller";
+import { TaskCardLifecycle } from "./task-card/lifecycle";
 import { showCreateTaskDialog } from "./task-card/task-form";
 import "./index.scss";
 
 export default class TickTickTaskCenterPlugin extends Plugin {
     private readonly activeDialogs = new Set<Dialog>();
+    private taskCardLifecycle?: TaskCardLifecycle;
+    private taskEditController?: TaskEditController;
 
     onload(): void {
         const translate = createTranslator(this.i18n);
+        this.taskCardLifecycle = new TaskCardLifecycle(this.eventBus, {
+            translate,
+            loadAttributes: getBlockAttributes,
+            actions: {
+                onEditTask: (blockId, { focus }) => {
+                    if (focus === "status") {
+                        void this.taskEditController?.open(blockId);
+                    }
+                },
+            },
+        });
+        this.taskEditController = new TaskEditController({
+            translate,
+            taskLabel: translate("taskCard"),
+            api: {
+                loadAttributes: getBlockAttributes,
+                updateMarkdownBlock,
+                setBlockAttributes,
+            },
+            refreshBlock: (blockId) => this.taskCardLifecycle?.refreshBlockById(blockId)
+                ?? Promise.resolve(false),
+        });
+
         this.protyleSlash = [{
             id: "insertTickTickTaskCard",
             filter: ["滴答", "任务", "TickTick", "task"],
@@ -22,7 +56,15 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         }];
     }
 
+    onLayoutReady(): void {
+        this.taskCardLifecycle?.start();
+    }
+
     onunload(): void {
+        this.taskEditController?.stop();
+        this.taskEditController = undefined;
+        this.taskCardLifecycle?.stop();
+        this.taskCardLifecycle = undefined;
         for (const dialog of this.activeDialogs) {
             dialog.destroy();
         }
@@ -55,7 +97,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             translate,
             initialTitle,
             onCreate: async (task) => {
-                await createTaskBlock(
+                const blockId = await createTaskBlock(
                     { prependMarkdownBlock, setBlockAttributes, deleteBlock },
                     {
                         rootDocumentId,
@@ -63,6 +105,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                         task,
                     },
                 );
+                this.taskCardLifecycle?.refreshBlock(protyle.protyle, blockId);
             },
             onDestroy: () => {
                 this.activeDialogs.delete(dialog);

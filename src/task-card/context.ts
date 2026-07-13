@@ -1,6 +1,6 @@
 import type { Protyle } from "siyuan";
 
-import { isSiYuanId } from "../siyuan/blocks";
+import { isSiYuanId } from "../domain/siyuan-id";
 
 export function getEditableRootDocumentId(protyle: Protyle): string | null {
     const context = protyle.protyle;

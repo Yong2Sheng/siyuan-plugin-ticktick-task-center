@@ -16,9 +16,14 @@ The plugin currently supports:
 - Keeping readable Markdown fallback blocks in source documents.
 - Persisting task data in seven structured block attributes.
 - Validating task input and rolling back inserted blocks when attribute persistence fails.
-- Automated tests for validation, Markdown escaping, attribute generation, submission control, and rollback behavior.
+- Task-card enhancement with an identity label, task link, and interactive localized status badge.
+- Non-destructive rendering that keeps the original Markdown and block attributes underneath and restores Markdown when the plugin is disabled.
+- Opening the complete task editor from the status badge to edit task titles, TickTick URLs, and statuses.
+- Synchronizing successful edits to all seven structured attributes and, when the title or URL changes, to fallback Markdown while preserving `created-at` and updating `updated-at` only for real changes.
+- Optimistic conflict detection and Markdown rollback when attribute persistence fails.
+- Automated tests for validation, Markdown escaping, attribute generation, creation and editing workflows, submission control, conflict handling, rendering, and rollback behavior.
 
-Task-card enhancement rendering, task editing, and the task center are not implemented yet.
+The task-center Summary page, task deletion, task context menus, and TickTick API synchronization are not implemented yet.
 
 ## MVP boundaries
 

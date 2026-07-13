@@ -44,5 +44,28 @@
       "attributeWriteFailed": "Failed to write task attributes. The inserted block was rolled back.",
       "rollbackFailed": "Failed to write task attributes and rollback failed. Manually inspect block ${blockId}."
     }
+  },
+  "taskCardView": {
+    "identity": "✅ TickTick task",
+    "openTask": "Open task",
+    "status": "Status"
+  },
+  "taskEdit": {
+    "dialogTitle": "Edit TickTick task",
+    "save": "Save",
+    "saving": "Saving…",
+    "updated": "TickTick task updated",
+    "statusButtonTitle": "Click to edit task",
+    "statusButtonAriaLabel": "Edit task, current status: ${status}",
+    "noChanges": "There are no changes to save.",
+    "errors": {
+      "updateFailed": "Failed to update the TickTick task.",
+      "blockUnavailable": "The current task could not be loaded.",
+      "currentDataInvalid": "The current task data is invalid and cannot be edited.",
+      "conflict": "This task was updated elsewhere. Close and reopen the editor before saving.",
+      "contentUpdateFailed": "Failed to update the task content.",
+      "attributeWriteFailed": "Failed to update task attributes. The task was left unchanged.",
+      "rollbackFailed": "The task update failed and the original content could not be restored. Manually inspect block ${blockId}."
+    }
   }
 }

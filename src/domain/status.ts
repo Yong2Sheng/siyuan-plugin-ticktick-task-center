@@ -10,20 +10,30 @@ export const TASK_STATUS_IDS = [
 
 export type TickTickTaskStatus = (typeof TASK_STATUS_IDS)[number];
 
+export type TaskStatusTone =
+    | "neutral"
+    | "primary"
+    | "waiting"
+    | "blocked"
+    | "success"
+    | "danger"
+    | "disabled";
+
 export type TaskStatusConfig = {
     icon: string;
     labelKey: `status.${string}`;
     terminal: boolean;
+    tone: TaskStatusTone;
 };
 
 export const TASK_STATUS_CONFIG = {
-    todo: { icon: "⚪", labelKey: "status.todo", terminal: false },
-    "in-progress": { icon: "▶️", labelKey: "status.inProgress", terminal: false },
-    waiting: { icon: "⏳", labelKey: "status.waiting", terminal: false },
-    blocked: { icon: "⛔", labelKey: "status.blocked", terminal: false },
-    completed: { icon: "✅", labelKey: "status.completed", terminal: true },
-    failed: { icon: "❌", labelKey: "status.failed", terminal: true },
-    cancelled: { icon: "⏹️", labelKey: "status.cancelled", terminal: true },
+    todo: { icon: "⚪", labelKey: "status.todo", terminal: false, tone: "neutral" },
+    "in-progress": { icon: "▶️", labelKey: "status.inProgress", terminal: false, tone: "primary" },
+    waiting: { icon: "⏳", labelKey: "status.waiting", terminal: false, tone: "waiting" },
+    blocked: { icon: "⛔", labelKey: "status.blocked", terminal: false, tone: "blocked" },
+    completed: { icon: "✅", labelKey: "status.completed", terminal: true, tone: "success" },
+    failed: { icon: "❌", labelKey: "status.failed", terminal: true, tone: "danger" },
+    cancelled: { icon: "⏹️", labelKey: "status.cancelled", terminal: true, tone: "disabled" },
 } as const satisfies Record<TickTickTaskStatus, TaskStatusConfig>;
 
 export const NON_TERMINAL_STATUSES = [
