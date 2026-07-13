@@ -67,5 +67,33 @@
       "attributeWriteFailed": "Failed to update task attributes. The task was left unchanged.",
       "rollbackFailed": "The task update failed and the original content could not be restored. Manually inspect block ${blockId}."
     }
+  },
+  "taskCenterView": {
+    "title": "TickTick Task Center",
+    "openTooltip": "Open TickTick Task Center",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "filterActive": "Active",
+    "filterClosed": "Closed",
+    "filterAll": "All tasks",
+    "searchPlaceholder": "Search tasks or source documents…",
+    "summaryAll": "All tasks",
+    "summaryActive": "Active",
+    "summaryClosed": "Closed",
+    "source": "Source",
+    "updated": "Updated",
+    "locate": "Locate source block",
+    "openTickTick": "Open TickTick task",
+    "loading": "Loading tasks…",
+    "loadFailed": "Tasks could not be loaded. Try again.",
+    "retry": "Retry",
+    "emptyActive": "There are no active tasks.",
+    "emptyClosed": "There are no closed tasks.",
+    "emptyAll": "No TickTick tasks yet. Create one from a document using the slash menu.",
+    "emptySearch": "No tasks match the current search.",
+    "incompleteRead": "${count} task blocks could not be read completely. Refresh again later.",
+    "invalidSkipped": "${count} task blocks with invalid attributes were skipped.",
+    "localUpdateUnavailable": "The task was saved. Refresh the task center manually.",
+    "locateFailed": "The source task block could not be located."
   }
 }

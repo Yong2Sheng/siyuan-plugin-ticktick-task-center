@@ -17,6 +17,11 @@ export type CreateTaskRequest = {
     task: NormalizedTaskData;
 };
 
+export type TaskCreationResult = {
+    blockId: string;
+    updatedAt: string;
+};
+
 export type TaskCreationErrorCode =
     | "insert-failed"
     | "attribute-write-failed"
@@ -38,7 +43,7 @@ export async function createTaskBlock(
     api: TaskCreationApi,
     request: CreateTaskRequest,
     now: () => Date = () => new Date(),
-): Promise<string> {
+): Promise<TaskCreationResult> {
     const markdown = createTaskFallbackMarkdown(
         request.taskLabel,
         request.task.title,
@@ -52,8 +57,9 @@ export async function createTaskBlock(
         throw new TaskCreationError("insert-failed", undefined, error);
     }
 
+    let timestamp: string;
     try {
-        const timestamp = now().toISOString();
+        timestamp = now().toISOString();
         const attributes = createTaskBlockAttributes({
             version: TASK_DATA_VERSION,
             title: request.task.title,
@@ -72,5 +78,5 @@ export async function createTaskBlock(
         throw new TaskCreationError("attribute-write-failed", blockId, error);
     }
 
-    return blockId;
+    return { blockId, updatedAt: timestamp };
 }

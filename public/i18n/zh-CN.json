@@ -67,5 +67,33 @@
       "attributeWriteFailed": "更新任务属性失败，任务未发生更改。",
       "rollbackFailed": "任务更新失败，且原内容恢复失败。请手动检查块 ${blockId}。"
     }
+  },
+  "taskCenterView": {
+    "title": "滴答任务中心",
+    "openTooltip": "打开滴答任务中心",
+    "refresh": "刷新",
+    "refreshing": "正在刷新……",
+    "filterActive": "活跃任务",
+    "filterClosed": "已结束",
+    "filterAll": "全部任务",
+    "searchPlaceholder": "搜索任务或来源文档……",
+    "summaryAll": "所有任务",
+    "summaryActive": "活跃任务",
+    "summaryClosed": "已结束",
+    "source": "来源",
+    "updated": "更新于",
+    "locate": "定位原块",
+    "openTickTick": "打开滴答任务",
+    "loading": "正在加载任务……",
+    "loadFailed": "无法加载任务，请重试。",
+    "retry": "重试",
+    "emptyActive": "目前没有活跃任务。",
+    "emptyClosed": "目前没有已结束任务。",
+    "emptyAll": "还没有滴答任务。请在文档中使用斜杠菜单创建任务。",
+    "emptySearch": "没有匹配当前搜索条件的任务。",
+    "incompleteRead": "有 ${count} 个任务块暂时无法完整读取，请稍后刷新。",
+    "invalidSkipped": "已跳过 ${count} 个属性无效的任务块。",
+    "localUpdateUnavailable": "任务已保存，请手动刷新任务中心。",
+    "locateFailed": "无法定位原任务块。"
   }
 }

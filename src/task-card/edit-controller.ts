@@ -1,7 +1,7 @@
 import { showMessage } from "siyuan";
 
 import type { Translate } from "../i18n";
-import { editTask, type TaskEditApi } from "./edit-task";
+import { editTask, type EditTaskResult, type TaskEditApi } from "./edit-task";
 import {
     EditDialogManager,
 } from "./edit-dialog-manager";
@@ -16,15 +16,30 @@ export type TaskEditControllerOptions = {
     warn?: (message: string, detail?: unknown) => void;
 };
 
+export type SuccessfulTaskEditResult = {
+    blockId: string;
+    result: Extract<EditTaskResult, { changed: true }>;
+};
+
+export type OpenTaskEditOptions = {
+    onSaved?(result: SuccessfulTaskEditResult): void;
+};
+
 export class TaskEditController {
     private readonly dialogs = new EditDialogManager<EditTaskDialog>();
+    private readonly onSaved = new Map<string, NonNullable<OpenTaskEditOptions["onSaved"]>>();
     private readonly warn: (message: string, detail?: unknown) => void;
 
     constructor(private readonly options: TaskEditControllerOptions) {
         this.warn = options.warn ?? ((message, detail) => console.error(message, detail));
     }
 
-    async open(blockId: string): Promise<void> {
+    async open(blockId: string, options: OpenTaskEditOptions = {}): Promise<void> {
+        if (options.onSaved) {
+            this.onSaved.set(blockId, options.onSaved);
+        } else {
+            this.onSaved.delete(blockId);
+        }
         try {
             await this.dialogs.open(blockId, async (removeDialog) => {
                 let attributes: Record<string, unknown>;
@@ -54,6 +69,13 @@ export class TaskEditController {
                             next,
                         });
                         if (result.changed) {
+                            const onSaved = this.onSaved.get(blockId);
+                            this.onSaved.delete(blockId);
+                            try {
+                                onSaved?.({ blockId, result });
+                            } catch (error) {
+                                this.warn(`TickTick task ${blockId} was saved but its caller could not apply the result`, error);
+                            }
                             try {
                                 const refreshed = await this.options.refreshBlock(blockId);
                                 if (!refreshed) {
@@ -65,15 +87,20 @@ export class TaskEditController {
                         }
                         return result;
                     },
-                    onDestroy: removeDialog,
+                    onDestroy: () => {
+                        this.onSaved.delete(blockId);
+                        removeDialog();
+                    },
                 });
             });
         } catch (error) {
+            this.onSaved.delete(blockId);
             this.warn(`TickTick task editor could not be opened for ${blockId}`, error);
         }
     }
 
     stop(): void {
+        this.onSaved.clear();
         this.dialogs.destroyAll();
     }
 }

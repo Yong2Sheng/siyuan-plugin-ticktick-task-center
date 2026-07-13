@@ -1,4 +1,4 @@
-import { Dialog, Plugin, showMessage, type Protyle } from "siyuan";
+import { Dialog, openTab, Plugin, showMessage, type Protyle } from "siyuan";
 
 import { createTranslator, escapeHtml } from "./i18n";
 import {
@@ -9,6 +9,17 @@ import {
     setBlockAttributes,
     updateMarkdownBlock,
 } from "./siyuan/blocks";
+import { locateSiYuanBlock } from "./siyuan/navigation";
+import {
+    createTaskCenterEditSession,
+    TaskCenterController,
+} from "./task-center/task-center-controller";
+import { loadTaskCenterData } from "./task-center/task-center-query";
+import {
+    TaskCenterTabService,
+    type TaskCenterTabInstance,
+} from "./task-center/task-center-tab";
+import { TaskCenterView } from "./task-center/task-center-view";
 import { createTaskBlock } from "./task-card/create-task";
 import { getEditableRootDocumentId } from "./task-card/context";
 import { TaskEditController } from "./task-card/edit-controller";
@@ -20,6 +31,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
     private readonly activeDialogs = new Set<Dialog>();
     private taskCardLifecycle?: TaskCardLifecycle;
     private taskEditController?: TaskEditController;
+    private taskCenterTab?: TaskCenterTabService;
 
     onload(): void {
         const translate = createTranslator(this.i18n);
@@ -45,6 +57,15 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             refreshBlock: (blockId) => this.taskCardLifecycle?.refreshBlockById(blockId)
                 ?? Promise.resolve(false),
         });
+        this.taskCenterTab = new TaskCenterTabService(this, {
+            translate,
+            openTab,
+            createInstance: (target) => this.createTaskCenterInstance(
+                target,
+                translate,
+            ),
+        });
+        this.taskCenterTab.registerTab();
 
         this.protyleSlash = [{
             id: "insertTickTickTaskCard",
@@ -58,9 +79,12 @@ export default class TickTickTaskCenterPlugin extends Plugin {
 
     onLayoutReady(): void {
         this.taskCardLifecycle?.start();
+        this.taskCenterTab?.mountTopBar();
     }
 
     onunload(): void {
+        this.taskCenterTab?.stop();
+        this.taskCenterTab = undefined;
         this.taskEditController?.stop();
         this.taskEditController = undefined;
         this.taskCardLifecycle?.stop();
@@ -97,7 +121,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             translate,
             initialTitle,
             onCreate: async (task) => {
-                const blockId = await createTaskBlock(
+                const { blockId } = await createTaskBlock(
                     { prependMarkdownBlock, setBlockAttributes, deleteBlock },
                     {
                         rootDocumentId,
@@ -112,5 +136,71 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             },
         });
         this.activeDialogs.add(dialog);
+    }
+
+    private createTaskCenterInstance(
+        target: HTMLElement,
+        translate: ReturnType<typeof createTranslator>,
+    ): TaskCenterTabInstance {
+        const controller = new TaskCenterController({
+            load: async () => {
+                const result = await loadTaskCenterData();
+                for (const invalid of result.invalidBlocks) {
+                    console.warn(
+                        `Skipped invalid TickTick task block ${invalid.blockId}: ${invalid.reason}`,
+                    );
+                }
+                for (const incomplete of result.incompleteBlocks) {
+                    console.warn(
+                        `TickTick task block ${incomplete.blockId} is temporarily incomplete in the SQL index`,
+                        { missingAttributes: incomplete.missingAttributes },
+                    );
+                }
+                return result;
+            },
+            onError: (error) => console.error("Failed to load TickTick task center", error),
+            onWarning: (message, detail) => console.warn(message, detail),
+        });
+        const editSession = createTaskCenterEditSession(controller, () => {
+            showMessage(translate("taskCenterView.localUpdateUnavailable"), 5000, "info");
+        });
+        const view = new TaskCenterView(target, {
+            controller,
+            translate,
+            locale: document.documentElement.lang || navigator.language,
+            onEditTask: (blockId) => void this.taskEditController?.open(blockId, {
+                onSaved: ({ result }) => {
+                    editSession.apply(blockId, result.data);
+                },
+            }),
+            onLocateTask: (blockId) => void this.locateTask(blockId, translate),
+        });
+        let started = false;
+        return {
+            start: async () => {
+                if (started) {
+                    return;
+                }
+                started = true;
+                await controller.start();
+            },
+            destroy: () => {
+                editSession.dispose();
+                view.destroy();
+                controller.destroy();
+            },
+        };
+    }
+
+    private async locateTask(
+        blockId: string,
+        translate: ReturnType<typeof createTranslator>,
+    ): Promise<void> {
+        try {
+            await locateSiYuanBlock(this.app, blockId);
+        } catch (error) {
+            console.error(`Failed to locate TickTick task block ${blockId}`, error);
+            showMessage(translate("taskCenterView.locateFailed"), 5000, "error");
+        }
     }
 }

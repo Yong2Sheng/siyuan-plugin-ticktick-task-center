@@ -16,6 +16,8 @@ type ObserverState = {
     scheduled: boolean;
 };
 
+export type TaskCardLifecycleOptions = TaskCardEnhancerOptions;
+
 export class TaskCardLifecycle {
     private readonly enhancer: TaskCardEnhancer;
     private readonly observers = new Map<HTMLElement, ObserverState>();
@@ -24,7 +26,7 @@ export class TaskCardLifecycle {
 
     constructor(
         private readonly eventBus: EventBus,
-        options: TaskCardEnhancerOptions,
+        options: TaskCardLifecycleOptions,
     ) {
         this.enhancer = new TaskCardEnhancer(options);
     }
@@ -170,7 +172,8 @@ export class TaskCardLifecycle {
                 if (!(mutation.target instanceof HTMLElement)) {
                     continue;
                 }
-                if (mutation.target.getAttribute(TASK_BLOCK_ATTRIBUTES.card) !== "true") {
+                const markedAsTask = mutation.target.getAttribute(TASK_BLOCK_ATTRIBUTES.card) === "true";
+                if (!markedAsTask) {
                     state.forcedBlocks.delete(mutation.target);
                     restoreTaskBlock(mutation.target);
                 } else {

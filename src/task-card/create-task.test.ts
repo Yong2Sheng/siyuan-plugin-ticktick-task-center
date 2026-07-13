@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { loadTaskCenterData } from "../task-center/task-center-query";
 import { createTaskBlock, TaskCreationError, type TaskCreationApi } from "./create-task";
 
 const REQUEST = {
@@ -35,9 +36,12 @@ describe("createTaskBlock", () => {
 
     it("writes attributes after inserting and does not roll back on success", async () => {
         const api = createApi();
-        const blockId = await createTaskBlock(api, REQUEST, () => new Date("2026-07-12T08:30:00.000Z"));
+        const result = await createTaskBlock(api, REQUEST, () => new Date("2026-07-12T08:30:00.000Z"));
 
-        expect(blockId).toBe("20260712120100-hijklmn");
+        expect(result).toEqual({
+            blockId: "20260712120100-hijklmn",
+            updatedAt: "2026-07-12T08:30:00.000Z",
+        });
         expect(api.prependMarkdownBlock).toHaveBeenCalledWith(
             REQUEST.rootDocumentId,
             "TickTick task：[Task](https://ticktick.com/t/1)",
@@ -49,6 +53,39 @@ describe("createTaskBlock", () => {
         expect(attributes[TASK_BLOCK_ATTRIBUTES.createdAt]).toBe("2026-07-12T08:30:00.000Z");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.updatedAt])
             .toBe(attributes[TASK_BLOCK_ATTRIBUTES.createdAt]);
+    });
+
+    it("creates attributes that remain a valid task through the task-center SQL row shape", async () => {
+        const api = createApi();
+        const created = await createTaskBlock(
+            api,
+            REQUEST,
+            () => new Date("2026-07-12T08:30:00.000Z"),
+        );
+        const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
+        const query = vi.fn().mockResolvedValue([{
+            block_id: created.blockId,
+            root_id: REQUEST.rootDocumentId,
+            notebook_id: "20260712110000-opqrstu",
+            document_title: "Created document",
+            document_path: "/Created document",
+            ...attributes,
+        }]);
+
+        const result = await loadTaskCenterData(query);
+
+        expect(query).toHaveBeenCalledOnce();
+        expect(result.incompleteBlocks).toEqual([]);
+        expect(result.invalidBlocks).toEqual([]);
+        expect(result.items).toEqual([expect.objectContaining({
+            blockId: created.blockId,
+            rootId: REQUEST.rootDocumentId,
+            title: REQUEST.task.title,
+            url: REQUEST.task.url,
+            status: REQUEST.task.status,
+            createdAt: created.updatedAt,
+            updatedAt: created.updatedAt,
+        })]);
     });
 
     it("rolls back the inserted block when attribute writing fails", async () => {
