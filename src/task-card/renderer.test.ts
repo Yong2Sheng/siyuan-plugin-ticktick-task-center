@@ -6,7 +6,7 @@ import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
 import { TaskCardEnhancer } from "./enhancer";
 import {
     enhanceTaskBlock,
-    HIDDEN_ORIGINAL_CLASS,
+    getTaskCardDecoration,
     restoreTaskBlock,
     TASK_CARD_CONTAINER_ATTRIBUTE,
 } from "./renderer";
@@ -41,6 +41,7 @@ function createBlock(id = "20260712120000-abcdefg", task = true): HTMLElement {
 
     const original = document.createElement("div");
     original.setAttribute("contenteditable", "true");
+    original.setAttribute("spellcheck", "false");
     original.textContent = "TickTick task: DS9 Adaptor";
     const attrs = document.createElement("div");
     attrs.className = "protyle-attr";
@@ -53,20 +54,55 @@ describe("task card renderer", () => {
         document.body.replaceChildren();
     });
 
-    it("inserts one safe card while preserving and visually hiding original content", () => {
+    it("inserts one safe card before the block while preserving original content", () => {
         const block = createBlock();
         document.body.append(block);
         const original = block.firstElementChild as HTMLElement;
 
         expect(enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL)).toBe(true);
-        expect(block.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
+        const card = getTaskCardDecoration(block);
+        expect(card).not.toBeNull();
+        expect(card?.nextElementSibling).toBe(block);
         expect(original.isConnected).toBe(true);
-        expect(original.classList.contains(HIDDEN_ORIGINAL_CLASS)).toBe(true);
+        expect(original.getAttribute("class")).toBeNull();
 
-        const link = block.querySelector<HTMLAnchorElement>(".ticktick-task-card__link");
+        const link = card?.querySelector<HTMLAnchorElement>(".ticktick-task-card__link");
         expect(link?.textContent).toBe(VIEW_MODEL.linkText);
         expect(link?.target).toBe("_blank");
         expect(link?.rel).toBe("noopener noreferrer");
+    });
+
+    it("keeps the visual card completely outside the persisted block DOM", () => {
+        const block = createBlock();
+        document.body.append(block);
+        const persistedDomBeforeEnhancement = block.outerHTML;
+
+        expect(enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL)).toBe(true);
+
+        expect(block.outerHTML).toBe(persistedDomBeforeEnhancement);
+        for (const pluginMarker of [
+            "ticktick-task-card",
+            TASK_CARD_CONTAINER_ATTRIBUTE,
+            "ticktick-task-card__identity",
+            "ticktick-task-card__status",
+        ]) {
+            expect(block.outerHTML).not.toContain(pluginMarker);
+        }
+        expect(document.body.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
+    });
+
+    it("enhances a readonly SiYuan block without changing its persisted DOM", () => {
+        const block = createBlock();
+        const original = block.firstElementChild as HTMLElement;
+        original.setAttribute("contenteditable", "false");
+        original.setAttribute("spellcheck", "false");
+        document.body.append(block);
+        const persistedDomBeforeEnhancement = block.outerHTML;
+
+        expect(enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL)).toBe(true);
+
+        expect(getTaskCardDecoration(block)).not.toBeNull();
+        expect(block.outerHTML).toBe(persistedDomBeforeEnhancement);
     });
 
     it("is idempotent when the same block is enhanced repeatedly", () => {
@@ -75,7 +111,7 @@ describe("task card renderer", () => {
 
         enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL);
         enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL);
-        expect(block.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
+        expect(document.body.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
     });
 
     it("removes the card and restores original content", () => {
@@ -85,8 +121,7 @@ describe("task card renderer", () => {
         enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL);
 
         restoreTaskBlock(block);
-        expect(block.querySelector(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toBeNull();
-        expect(original.classList.contains(HIDDEN_ORIGINAL_CLASS)).toBe(false);
+        expect(getTaskCardDecoration(block)).toBeNull();
         expect(original.textContent).toBe("TickTick task: DS9 Adaptor");
     });
 
@@ -96,11 +131,12 @@ describe("task card renderer", () => {
         const onEditTask = vi.fn();
 
         enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL, { onEditTask });
-        const statusButtons = block.querySelectorAll<HTMLButtonElement>(".ticktick-task-card__status");
+        const card = getTaskCardDecoration(block)!;
+        const statusButtons = card.querySelectorAll<HTMLButtonElement>(".ticktick-task-card__status");
         const status = statusButtons[0];
 
-        expect(block.querySelector(".ticktick-task-card__edit")).toBeNull();
-        expect(Array.from(block.querySelectorAll("button"), (button) => button.textContent))
+        expect(card.querySelector(".ticktick-task-card__edit")).toBeNull();
+        expect(Array.from(card.querySelectorAll("button"), (button) => button.textContent))
             .not.toContain("✏️ Edit");
         expect(statusButtons).toHaveLength(1);
         expect(status.tagName).toBe("BUTTON");
@@ -137,20 +173,20 @@ describe("task card renderer", () => {
         await enhancer.enhanceKnownBlock(block);
         await enhancer.enhanceKnownBlock(block, true);
 
-        expect(block.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
-        expect(block.querySelectorAll(".ticktick-task-card__status")).toHaveLength(1);
-        expect(block.querySelector<HTMLAnchorElement>(".ticktick-task-card__link")?.href)
+        const card = getTaskCardDecoration(block)!;
+        expect(document.body.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
+        expect(card.querySelectorAll(".ticktick-task-card__status")).toHaveLength(1);
+        expect(card.querySelector<HTMLAnchorElement>(".ticktick-task-card__link")?.href)
             .toBe("https://ticktick.com/task/updated");
-        expect(block.querySelector(".ticktick-task-card__link")?.textContent).toContain("Updated task");
-        expect(block.querySelector(".ticktick-task-card__status")?.textContent).toContain("Completed");
-        expect(block.querySelector(".ticktick-task-card")?.getAttribute("data-status-tone"))
+        expect(card.querySelector(".ticktick-task-card__link")?.textContent).toContain("Updated task");
+        expect(card.querySelector(".ticktick-task-card__status")?.textContent).toContain("Completed");
+        expect(card.getAttribute("data-status-tone"))
             .toBe("success");
     });
 
     it("restores Markdown when forced refresh reads invalid attributes", async () => {
         const block = createBlock();
         document.body.append(block);
-        const original = block.firstElementChild as HTMLElement;
         const loadAttributes = vi.fn()
             .mockResolvedValueOnce(VALID_ATTRIBUTES)
             .mockResolvedValueOnce({
@@ -166,14 +202,12 @@ describe("task card renderer", () => {
         await enhancer.enhanceKnownBlock(block);
         await enhancer.enhanceKnownBlock(block, true);
 
-        expect(block.querySelector(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toBeNull();
-        expect(original.classList.contains(HIDDEN_ORIGINAL_CLASS)).toBe(false);
+        expect(getTaskCardDecoration(block)).toBeNull();
     });
 
     it("restores Markdown when forced attribute loading fails", async () => {
         const block = createBlock();
         document.body.append(block);
-        const original = block.firstElementChild as HTMLElement;
         const loadAttributes = vi.fn()
             .mockResolvedValueOnce(VALID_ATTRIBUTES)
             .mockRejectedValueOnce(new Error("load failed"));
@@ -186,8 +220,7 @@ describe("task card renderer", () => {
         await enhancer.enhanceKnownBlock(block);
         await enhancer.enhanceKnownBlock(block, true);
 
-        expect(block.querySelector(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toBeNull();
-        expect(original.classList.contains(HIDDEN_ORIGINAL_CLASS)).toBe(false);
+        expect(getTaskCardDecoration(block)).toBeNull();
     });
 
     it("runs a queued forced refresh after an ordinary enhancement finishes", async () => {
@@ -212,13 +245,93 @@ describe("task card renderer", () => {
         });
 
         const ordinaryEnhancement = enhancer.enhanceKnownBlock(block);
-        await enhancer.enhanceKnownBlock(block, true);
+        const forcedRefresh = enhancer.enhanceKnownBlock(block, true);
         resolveInitial(VALID_ATTRIBUTES);
-        await ordinaryEnhancement;
+        await Promise.all([ordinaryEnhancement, forcedRefresh]);
 
         expect(loadAttributes).toHaveBeenCalledTimes(2);
-        expect(block.querySelector(".ticktick-task-card__status")?.textContent).toContain("Completed");
-        expect(block.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
+        expect(getTaskCardDecoration(block)?.querySelector(".ticktick-task-card__status")?.textContent)
+            .toContain("Completed");
+        expect(document.body.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
+    });
+
+    it("allows only one in-flight enhancement for concurrent requests to the same block", async () => {
+        const block = createBlock();
+        document.body.append(block);
+        let resolveAttributes!: (attributes: Record<string, unknown>) => void;
+        const attributes = new Promise<Record<string, unknown>>((resolve) => {
+            resolveAttributes = resolve;
+        });
+        const loadAttributes = vi.fn(() => attributes);
+        const onEditTask = vi.fn();
+        const enhancer = new TaskCardEnhancer({
+            translate: (key) => key,
+            loadAttributes,
+            actions: { onEditTask },
+        });
+
+        const first = enhancer.enhanceKnownBlock(block);
+        const second = enhancer.enhanceKnownBlock(block);
+        await Promise.resolve();
+        expect(loadAttributes).toHaveBeenCalledOnce();
+
+        resolveAttributes(VALID_ATTRIBUTES);
+        await Promise.all([first, second]);
+
+        expect(loadAttributes).toHaveBeenCalledOnce();
+        expect(document.body.querySelectorAll(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toHaveLength(1);
+        getTaskCardDecoration(block)
+            ?.querySelector<HTMLButtonElement>(".ticktick-task-card__status")?.click();
+        expect(onEditTask).toHaveBeenCalledOnce();
+    });
+
+    it("shares one forced data refresh across two DOM instances and renders both", async () => {
+        const first = createBlock();
+        const second = createBlock();
+        document.body.append(first, second);
+        let resolveAttributes!: (attributes: Record<string, unknown>) => void;
+        const attributes = new Promise<Record<string, unknown>>((resolve) => {
+            resolveAttributes = resolve;
+        });
+        const loadAttributes = vi.fn(() => attributes);
+        const enhancer = new TaskCardEnhancer({
+            translate: (key) => key,
+            loadAttributes,
+        });
+
+        const firstRefresh = enhancer.enhanceKnownBlock(first, true);
+        const secondRefresh = enhancer.enhanceKnownBlock(second, true);
+        await Promise.resolve();
+        expect(loadAttributes).toHaveBeenCalledOnce();
+        resolveAttributes(VALID_ATTRIBUTES);
+        await Promise.all([firstRefresh, secondRefresh]);
+
+        expect(loadAttributes).toHaveBeenCalledOnce();
+        expect(getTaskCardDecoration(first)).not.toBeNull();
+        expect(getTaskCardDecoration(second)).not.toBeNull();
+    });
+
+    it("does not render or repair when stopped during an in-flight attribute load", async () => {
+        const block = createBlock();
+        document.body.append(block);
+        let resolveAttributes!: (attributes: Record<string, unknown>) => void;
+        const attributes = new Promise<Record<string, unknown>>((resolve) => {
+            resolveAttributes = resolve;
+        });
+        const repairMarkdown = vi.fn(async () => undefined);
+        const enhancer = new TaskCardEnhancer({
+            translate: (key) => key,
+            loadAttributes: vi.fn(() => attributes),
+            repairMarkdown,
+        });
+
+        const enhancement = enhancer.enhanceKnownBlock(block);
+        enhancer.stop();
+        resolveAttributes(VALID_ATTRIBUTES);
+        await enhancement;
+
+        expect(getTaskCardDecoration(block)).toBeNull();
+        expect(repairMarkdown).not.toHaveBeenCalled();
     });
 
     it("leaves a bad task visible while enhancing another valid task", async () => {
@@ -235,9 +348,8 @@ describe("task card renderer", () => {
         });
 
         await enhancer.scan(document.body);
-        expect(bad.querySelector(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).toBeNull();
-        expect((bad.firstElementChild as HTMLElement).classList.contains(HIDDEN_ORIGINAL_CLASS)).toBe(false);
-        expect(valid.querySelector(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).not.toBeNull();
+        expect(getTaskCardDecoration(bad)).toBeNull();
+        expect(getTaskCardDecoration(valid)).not.toBeNull();
     });
 
     it("does not request attributes for ordinary paragraphs", async () => {
@@ -264,6 +376,6 @@ describe("task card renderer", () => {
 
         await enhancer.enhanceKnownBlock(block);
         expect(loadAttributes).toHaveBeenCalledWith("20260712120000-newtask");
-        expect(block.querySelector(`[${TASK_CARD_CONTAINER_ATTRIBUTE}]`)).not.toBeNull();
+        expect(getTaskCardDecoration(block)).not.toBeNull();
     });
 });

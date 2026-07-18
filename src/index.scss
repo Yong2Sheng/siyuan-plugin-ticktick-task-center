@@ -18,7 +18,7 @@
     }
 }
 
-.ticktick-task-block__original--hidden {
+.ticktick-task-card[data-ticktick-task-block-id] + [data-node-id] > [contenteditable][spellcheck] {
     display: none !important;
 }
 

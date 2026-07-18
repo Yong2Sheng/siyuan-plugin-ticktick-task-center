@@ -38,6 +38,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         this.taskCardLifecycle = new TaskCardLifecycle(this.eventBus, {
             translate,
             loadAttributes: getBlockAttributes,
+            repairMarkdown: updateMarkdownBlock,
             actions: {
                 onEditTask: (blockId, { focus }) => {
                     if (focus === "status") {
