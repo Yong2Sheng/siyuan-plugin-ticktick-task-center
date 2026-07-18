@@ -5,24 +5,27 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       # Checkout
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Install Node.js
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           registry-url: "https://registry.npmjs.org"
 
         # Install pnpm
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         id: pnpm-install
         with:
           version: 11.7.0
@@ -37,7 +40,7 @@ jobs:
 
       # Setup pnpm cache
       - name: Setup pnpm cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -46,17 +49,53 @@ jobs:
 
       # Install dependencies
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: CI=true pnpm install --frozen-lockfile
 
-      - name: Type check
-        run: pnpm typecheck
+      - name: Verify tag and package versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          plugin_version="$(node -p "require('./plugin.json').version")"
+          package_version="$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF_NAME" != v* || "$tag_version" != "$plugin_version" || "$tag_version" != "$package_version" ]]; then
+            echo "Version mismatch: tag=$GITHUB_REF_NAME plugin.json=$plugin_version package.json=$package_version" >&2
+            exit 1
+          fi
+
+      - name: Check
+        run: CI=true pnpm run check
 
       - name: Test
-        run: pnpm test
+        run: CI=true pnpm test
 
-      # Build for production, 这一步会生成一个 package.zip
       - name: Build for production
-        run: pnpm build
+        run: CI=true pnpm build
+
+      - name: Verify release package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f package.zip
+          unzip -tq package.zip
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "$tmp_dir"' EXIT
+          unzip -q package.zip -d "$tmp_dir"
+          for file in LICENSE README.md README.en.md plugin.json icon.png preview.png index.js index.css i18n/en.json i18n/zh-CN.json; do
+            test -f "$tmp_dir/$file"
+          done
+          cmp plugin.json "$tmp_dir/plugin.json"
+          cmp LICENSE "$tmp_dir/LICENSE"
+          cmp README.md "$tmp_dir/README.md"
+          cmp README.en.md "$tmp_dir/README.en.md"
+          cmp icon.png "$tmp_dir/icon.png"
+          cmp preview.png "$tmp_dir/preview.png"
+          cmp public/i18n/en.json "$tmp_dir/i18n/en.json"
+          cmp public/i18n/zh-CN.json "$tmp_dir/i18n/zh-CN.json"
+          if unzip -Z1 package.zip | grep -Eq '(^|/)(src|test|tests|node_modules|\.git|docs|patches)(/|$)|(^|/)package\.zip$|\.map$'; then
+            echo "Unexpected development file found in package.zip" >&2
+            exit 1
+          fi
 
       - name: Release
         uses: ncipollo/release-action@v1
@@ -64,5 +103,6 @@ jobs:
           allowUpdates: true
           artifactErrorsFailBuild: true
           artifacts: "package.zip"
+          draft: false
           token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: false

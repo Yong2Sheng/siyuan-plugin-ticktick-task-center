@@ -19,12 +19,12 @@
     "zh-CN": "滴答任务中心"
   },
   "description": {
-    "default": "Manage TickTick task cards and a dynamic task center in SiYuan.",
-    "zh-CN": "在思源中管理滴答清单任务卡片与动态任务中心。"
+    "default": "Manage TickTick task cards and a workspace-wide task center in SiYuan.",
+    "zh-CN": "在思源中管理滴答清单任务卡片，并通过全工作空间任务中心集中查看任务。"
   },
   "readme": {
-    "default": "README.md",
-    "zh-CN": "README.zh-CN.md"
+    "default": "README.en.md",
+    "zh-CN": "README.md"
   },
   "funding": {
     "openCollective": "",
@@ -34,9 +34,11 @@
   },
   "keywords": [
     "ticktick",
-    "task",
-    "task-center",
+    "tasks",
+    "task center",
+    "productivity",
     "滴答清单",
+    "任务管理",
     "任务中心"
   ]
 }

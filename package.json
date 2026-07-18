@@ -2,12 +2,15 @@
   "name": "siyuan-plugin-ticktick-task-center",
   "version": "0.1.0",
   "type": "module",
-  "description": "TickTick task cards and a dynamic task center for SiYuan",
+  "description": "Manage TickTick task cards and a workspace-wide task center in SiYuan",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center.git"
   },
   "homepage": "https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center",
+  "bugs": {
+    "url": "https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/issues"
+  },
   "author": "Yong2Sheng",
   "license": "MIT",
   "packageManager": "pnpm@11.7.0",
