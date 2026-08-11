@@ -25,7 +25,8 @@ The current version does not use the TickTick API, OAuth, or background synchron
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
 - Filter Active, Closed, or All tasks and search task titles, source documents, source paths, and localized status names.
 - Display All, Active, Closed, and today's progress statistics and apply a stable descending sort using the task attribute `updated-at`.
-- Group active tasks into **🌤️ To progress today** and **✨ Progressed today**. To do, In progress, Waiting for response, and Blocked tasks all participate in daily progress.
+- Show **🌤️ To progress today** and **✨ Today's progress** in the Active view. Today's progress is further divided into **🚀 Advanced** and **🏆 Completed today**.
+- To do, In progress, Waiting for response, and Blocked tasks all participate in daily progress. Moving a task to Completed automatically records it as progress for the day.
 - Use **🚀 Progress today** and **✨ Progressed today** to mark or undo today's record without changing the task status or its existing `updated-at`.
 - Determine “today” from the system's local timezone and regroup automatically after local midnight without a background attribute-reset job.
 - Locate the original SiYuan task block and safely open the corresponding TickTick task URL in a new tab.
@@ -112,7 +113,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 
 ### 4. Use the Task Center
 
-- View counts for All, Active, Closed, and today's progressed tasks.
+- View counts for All, Active, Closed, and today's progress.
 - Switch between the Active, Closed, and All tasks filters.
 - Search task titles, source document titles, source paths, or localized status names.
 - Select a task title or **Locate source block** to open and locate the original SiYuan block.
@@ -122,10 +123,14 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 
 ### 5. Track today's progress
 
-- The Active view is automatically divided into **🌤️ To progress today** and **✨ Progressed today**.
+- The Active view is automatically divided into **🌤️ To progress today** and **✨ Today's progress**.
+- Today's progress is further divided into **🚀 Advanced** and **🏆 Completed today**, keeping ongoing progress and completed work visible together.
 - Every non-terminal status participates, including To do, In progress, Waiting for response, and Blocked. Checking whether a blocker has been resolved can itself count as progress for the day.
-- Select **🚀 Progress today** to move a task into Progressed today and update the top progress count.
+- Select **🚀 Progress today** to move a task into the Advanced subsection and update the top progress count.
 - Select **✨ Progressed today** to undo an accidental mark and move the task back to To progress today.
+- Moving a task from a non-completed status to **✅ Completed** automatically records the local date and retains the card under **🏆 Completed today**. It remains a Closed task and is not counted as Active.
+- Failed and Cancelled tasks are not included in Completed today.
+- The top numerator combines Advanced and Completed today. Its denominator combines pending tasks with today's progress, so completing every task still produces a motivating `10 / 10`.
 - Daily progress stores only the latest progressed date. It does not complete the task or change its `updated-at` and existing sort order.
 - “Today” follows the computer's current system timezone. The view automatically treats yesterday's marks as pending after local midnight and rechecks the date when the SiYuan window regains focus.
 
@@ -215,7 +220,7 @@ pnpm build
 - `pnpm run check`: runs Svelte / TypeScript static checks.
 - `pnpm build`: creates the production bundle, `dist/`, and `package.zip` in the repository root.
 
-The current verification suite contains 20 test files and 193 tests.
+The current verification suite contains 20 test files and 196 tests.
 
 ## License
 

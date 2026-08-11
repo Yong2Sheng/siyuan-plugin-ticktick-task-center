@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import type { NormalizedTaskData } from "../domain/validation";
+import { getLocalDate } from "../task-center/daily-progress";
 import { editTask, TaskEditError, type TaskEditApi } from "./edit-task";
 
 const BLOCK_ID = "20260712120000-abcdefg";
@@ -55,19 +56,20 @@ describe("editTask", () => {
         expect(api.setBlockAttributes).not.toHaveBeenCalled();
     });
 
-    it("updates only complete attributes for a status-only change", async () => {
+    it("marks today as progressed when changing the status to completed", async () => {
         const api = createApi();
+        const changedAt = new Date("2026-07-12T10:30:00.000Z");
         const result = await editTask(api, request({
             title: ORIGINAL.title,
             url: ORIGINAL.url,
             status: "completed",
-        }), () => new Date("2026-07-12T10:30:00.000Z"));
+        }), () => changedAt);
 
         expect(result).toMatchObject({ changed: true });
         expect(api.updateMarkdownBlock).not.toHaveBeenCalled();
         expect(api.setBlockAttributes).toHaveBeenCalledOnce();
         const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
-        expect(Object.keys(attributes)).toHaveLength(7);
+        expect(Object.keys(attributes)).toHaveLength(8);
         expect(attributes[TASK_BLOCK_ATTRIBUTES.card]).toBe("true");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.version]).toBe("1");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.title]).toBe(ORIGINAL.title);
@@ -75,6 +77,39 @@ describe("editTask", () => {
         expect(attributes[TASK_BLOCK_ATTRIBUTES.createdAt]).toBe(ORIGINAL.createdAt);
         expect(attributes[TASK_BLOCK_ATTRIBUTES.updatedAt]).toBe("2026-07-12T10:30:00.000Z");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.status]).toBe("completed");
+        expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate])
+            .toBe(getLocalDate(changedAt));
+    });
+
+    it("does not replace daily progress when editing a task that was already completed", async () => {
+        const api = createApi();
+        const completedUpdatedAt = "2026-07-12T11:30:00.000Z";
+        vi.mocked(api.loadAttributes).mockResolvedValue({
+            ...CURRENT,
+            [TASK_BLOCK_ATTRIBUTES.status]: "completed",
+            [TASK_BLOCK_ATTRIBUTES.updatedAt]: completedUpdatedAt,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate]: "2026-07-11",
+        });
+
+        await editTask(api, {
+            blockId: BLOCK_ID,
+            original: {
+                ...ORIGINAL,
+                status: "completed",
+                updatedAt: completedUpdatedAt,
+            },
+            taskLabel: "TickTick task",
+            next: {
+                title: "Edited completed task",
+                url: ORIGINAL.url,
+                status: "completed",
+            },
+        }, () => new Date("2026-07-13T10:30:00.000Z"));
+
+        const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
+        expect(attributes).not.toHaveProperty(
+            TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate,
+        );
     });
 
     it("updates Markdown before attributes when the title changes", async () => {

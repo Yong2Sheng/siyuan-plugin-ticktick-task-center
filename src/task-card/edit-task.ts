@@ -1,8 +1,10 @@
 import {
     createTaskBlockAttributes,
     createTaskFallbackMarkdown,
+    TASK_BLOCK_OPTIONAL_ATTRIBUTES,
     type PersistedTickTickTaskData,
 } from "../domain/task";
+import { getLocalDate } from "../domain/local-date";
 import type { NormalizedTaskData } from "../domain/validation";
 import { parseTaskBlockAttributes } from "./task-data";
 
@@ -82,19 +84,24 @@ export async function editTask(
     }
 
     let nextData: PersistedTickTickTaskData;
+    let changedAt: Date;
     try {
+        changedAt = now();
         nextData = {
             version: current.version,
             title: request.next.title,
             url: request.next.url,
             status: request.next.status,
             createdAt: current.createdAt,
-            updatedAt: now().toISOString(),
+            updatedAt: changedAt.toISOString(),
         };
     } catch (error) {
         throw new TaskEditError("attribute-write-failed", request.blockId, error);
     }
-    const nextAttributes = createTaskBlockAttributes(nextData);
+    const nextAttributes: Record<string, string> = createTaskBlockAttributes(nextData);
+    if (statusChanged && nextData.status === "completed") {
+        nextAttributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate] = getLocalDate(changedAt);
+    }
 
     if (!titleChanged && !urlChanged) {
         try {

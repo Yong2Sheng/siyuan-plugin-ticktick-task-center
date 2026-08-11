@@ -1,4 +1,5 @@
 import type { PersistedTickTickTaskData } from "../domain/task";
+import { getLocalDate } from "../domain/local-date";
 import type { TaskCenterAggregationResult, TaskCenterItem } from "./task-center-data";
 import {
     DEFAULT_TASK_CENTER_FILTER,
@@ -88,8 +89,16 @@ export class TaskCenterController {
             updatedAt: data.updatedAt,
         };
         this.recentEdits.set(blockId, recent);
+        const completedDate = current.status !== "completed" && data.status === "completed"
+            ? getLocalDate(new Date(data.updatedAt))
+            : undefined;
+        if (completedDate) {
+            this.recentDailyProgress.set(blockId, completedDate);
+        }
         const items = sortTaskCenterItems(this.state.items.map((item) => (
-            item.blockId === blockId ? applyRecentEdit(item, recent) : item
+            item.blockId === blockId
+                ? applyEditedTask(item, recent, completedDate)
+                : item
         )));
         this.update({ items });
         return true;
@@ -244,6 +253,15 @@ function applyRecentEdit(item: TaskCenterItem, edit: RecentTaskEdit): TaskCenter
         status: edit.status,
         updatedAt: edit.updatedAt,
     };
+}
+
+function applyEditedTask(
+    item: TaskCenterItem,
+    edit: RecentTaskEdit,
+    completedDate: string | undefined,
+): TaskCenterItem {
+    const edited = applyRecentEdit(item, edit);
+    return completedDate ? applyRecentDailyProgress(edited, completedDate) : edited;
 }
 
 function applyRecentDailyProgress(

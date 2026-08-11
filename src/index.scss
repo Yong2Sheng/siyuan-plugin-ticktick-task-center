@@ -164,6 +164,11 @@
         #1f9d82 78%,
         var(--b3-theme-on-background)
     );
+    --ticktick-daily-completed-color: color-mix(
+        in srgb,
+        var(--b3-theme-success, #1a7f37) 82%,
+        var(--b3-theme-on-background)
+    );
 
     box-sizing: border-box;
     height: 100%;
@@ -199,6 +204,7 @@
     &__refresh,
     &__retry,
     &__daily-progress,
+    &__daily-completed,
     &__locate,
     &__external {
         flex: 0 0 auto;
@@ -343,6 +349,44 @@
         gap: 10px;
     }
 
+    &__daily-subgroup {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+
+        & + & {
+            margin-top: 5px;
+            padding-top: 11px;
+            border-top: 1px solid color-mix(
+                in srgb,
+                var(--ticktick-daily-progressed-color) 28%,
+                var(--b3-border-color)
+            );
+        }
+    }
+
+    &__daily-subheading {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0 2px;
+        color: var(--ticktick-daily-progressed-color);
+        font-size: 13px;
+        line-height: 1.4;
+
+        strong {
+            min-width: 18px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: color-mix(
+                in srgb,
+                var(--ticktick-daily-progressed-color) 14%,
+                var(--b3-theme-background)
+            );
+            text-align: center;
+        }
+    }
+
     &__daily-heading {
         display: flex;
         align-items: center;
@@ -453,6 +497,33 @@
             background: color-mix(
                 in srgb,
                 var(--ticktick-daily-progressed-color) 7%,
+                var(--b3-theme-surface)
+            );
+        }
+    }
+
+    &__daily-subgroup--completed {
+        .ticktick-task-center__daily-subheading {
+            color: var(--ticktick-daily-completed-color);
+
+            strong {
+                background: color-mix(
+                    in srgb,
+                    var(--ticktick-daily-completed-color) 15%,
+                    var(--b3-theme-background)
+                );
+            }
+        }
+
+        .ticktick-task-center__item {
+            border-color: color-mix(
+                in srgb,
+                var(--ticktick-daily-completed-color) 36%,
+                var(--b3-border-color)
+            );
+            background: color-mix(
+                in srgb,
+                var(--ticktick-daily-completed-color) 8%,
                 var(--b3-theme-surface)
             );
         }
@@ -571,6 +642,27 @@
             );
             color: #fff;
         }
+    }
+
+    &__daily-completed {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 9px;
+        border: 1px solid color-mix(
+            in srgb,
+            var(--ticktick-daily-completed-color) 70%,
+            var(--b3-border-color)
+        );
+        border-radius: 6px;
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-completed-color) 14%,
+            var(--b3-theme-background)
+        );
+        color: var(--ticktick-daily-completed-color);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.4;
     }
 
     &__external {

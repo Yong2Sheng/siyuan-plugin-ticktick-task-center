@@ -20,9 +20,12 @@ const dictionary: Record<string, string> = {
     "taskCenterView.summaryAll": "All",
     "taskCenterView.summaryActive": "Active",
     "taskCenterView.summaryClosed": "Closed",
-    "taskCenterView.summaryToday": "✨ Today",
+    "taskCenterView.summaryToday": "✨ Today’s progress",
     "taskCenterView.dailyPending": "🌤️ To progress today",
-    "taskCenterView.dailyProgressed": "✨ Progressed today",
+    "taskCenterView.dailyProgressed": "✨ Today’s progress",
+    "taskCenterView.dailyAdvanced": "🚀 Advanced",
+    "taskCenterView.dailyCompleted": "🏆 Completed today",
+    "taskCenterView.dailyCompletedBadge": "🏆 Completed today",
     "taskCenterView.dailyProgressAction": "🚀 Progress today",
     "taskCenterView.dailyProgressDone": "✨ Progressed today",
     "taskCenterView.dailyProgressTitle": "Mark progress",
@@ -68,6 +71,11 @@ const ACTIVE = item("in-progress", "DS9 Adaptor", "20260713120000-abcdefg");
 const CLOSED = item("completed", "Published", "20260713120001-hijklmn");
 const BLOCKED = item("blocked", "Waiting for access", "20260713120002-opqrstu");
 const TODAY = getLocalDate();
+const TODAY_UPDATED_AT = (() => {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    return date.toISOString();
+})();
 
 async function createView(load = vi.fn().mockResolvedValue({
     items: [ACTIVE, CLOSED],
@@ -212,8 +220,8 @@ describe("TaskCenterView", () => {
         expect(target.querySelector("[style*='width']")).toBeNull();
     });
 
-    it("rerenders classification and statistics immediately after a local edit", async () => {
-        const completed = { ...ACTIVE, status: "completed" as const, updatedAt: "2026-07-13T09:30:00.000Z" };
+    it("keeps a task completed today in the active view's progress area", async () => {
+        const completed = { ...ACTIVE, status: "completed" as const, updatedAt: TODAY_UPDATED_AT };
         const load = vi.fn().mockResolvedValueOnce({
             items: [ACTIVE],
             invalidBlocks: [],
@@ -232,15 +240,47 @@ describe("TaskCenterView", () => {
         });
 
         expect(load).toHaveBeenCalledOnce();
-        expect(harness.target.querySelectorAll(".ticktick-task-center__item")).toHaveLength(0);
-        expect(harness.target.querySelector(".ticktick-task-center__empty")?.textContent).toBe("No active tasks");
+        expect(harness.target.querySelectorAll(".ticktick-task-center__item")).toHaveLength(1);
+        expect(harness.target.querySelector(".ticktick-task-center__empty")).toBeNull();
+        expect(harness.target.querySelector(
+            ".ticktick-task-center__daily-subgroup--completed .ticktick-task-center__title",
+        )?.textContent).toBe(completed.title);
+        expect(harness.target.querySelector(
+            ".ticktick-task-center__daily-subgroup--completed .ticktick-task-center__status",
+        )?.textContent).toBe("✅ Completed");
+        expect(harness.target.querySelector(".ticktick-task-center__daily-completed")?.textContent)
+            .toBe("🏆 Completed today");
         expect(Array.from(harness.target.querySelectorAll(".ticktick-task-center__summary-item"), (node) => node.textContent))
-            .toEqual(["All 1", "Active 0", "Closed 1", "✨ Today 0 / 0"]);
+            .toEqual(["All 1", "Active 0", "Closed 1", "✨ Today’s progress 1 / 1"]);
 
         const closed = Array.from(harness.target.querySelectorAll<HTMLButtonElement>(".ticktick-task-center__filter"))
             .find((button) => button.textContent === "Closed");
         closed?.click();
         expect(harness.target.querySelector(".ticktick-task-center__title")?.textContent).toBe(completed.title);
+    });
+
+    it("shows completed work in today's progress but excludes failed terminal tasks", async () => {
+        const completedToday = { ...CLOSED, lastProgressedDate: TODAY };
+        const failedToday = {
+            ...item("failed", "Failed experiment", "20260713120003-vwxyz12"),
+            lastProgressedDate: TODAY,
+        };
+        const { target, controller } = await createView(vi.fn().mockResolvedValue({
+            items: [completedToday, failedToday],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        expect(Array.from(target.querySelectorAll(".ticktick-task-center__title"), (node) => node.textContent))
+            .toEqual([CLOSED.title]);
+        expect(target.querySelector(".ticktick-task-center__daily-subheading")?.textContent)
+            .toBe("🏆 Completed today 1");
+        expect(Array.from(target.querySelectorAll(".ticktick-task-center__summary-item"), (node) => node.textContent))
+            .toEqual(["All 2", "Active 0", "Closed 2", "✨ Today’s progress 1 / 1"]);
+
+        controller.setSearch("failed");
+        expect(target.querySelectorAll(".ticktick-task-center__item")).toHaveLength(0);
+        expect(target.querySelector(".ticktick-task-center__empty")?.textContent).toBe("No matches");
     });
 
     it("groups every non-terminal status by today's progress, including blocked tasks", async () => {
@@ -260,11 +300,13 @@ describe("TaskCenterView", () => {
         expect(groups[0]?.querySelector(".ticktick-task-center__status")?.textContent)
             .toBe("⛔ Blocked");
         expect(groups[1]?.querySelector(".ticktick-task-center__daily-heading")?.textContent)
-            .toBe("✨ Progressed today 1");
+            .toBe("✨ Today’s progress 1");
+        expect(groups[1]?.querySelector(".ticktick-task-center__daily-subheading")?.textContent)
+            .toBe("🚀 Advanced 1");
         expect(groups[1]?.querySelector(".ticktick-task-center__title")?.textContent)
             .toBe(ACTIVE.title);
         expect(Array.from(target.querySelectorAll(".ticktick-task-center__summary-item"), (node) => node.textContent))
-            .toEqual(["All 2", "Active 2", "Closed 0", "✨ Today 1 / 2"]);
+            .toEqual(["All 2", "Active 2", "Closed 0", "✨ Today’s progress 1 / 2"]);
         expect(target.querySelector(".ticktick-task-center__summary-item--daily")).not.toBeNull();
         expect(groups[0]?.querySelector(".ticktick-task-center__daily-progress")?.textContent)
             .toBe("🚀 Progress today");

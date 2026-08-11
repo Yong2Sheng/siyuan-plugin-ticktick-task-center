@@ -24,6 +24,8 @@ export type TaskCenterViewOptions = {
     onDailyProgressError?(error: unknown): void;
 };
 
+type DailyTaskAction = false | "toggle" | "completed";
+
 export class TaskCenterView {
     private readonly root = document.createElement("section");
     private readonly refreshButton = document.createElement("button");
@@ -104,10 +106,17 @@ export class TaskCenterView {
         const { translate } = this.options;
         const statistics = countTaskCenterItems(state.items);
         const today = getLocalDate();
-        const progressedToday = state.items.filter((item) => (
+        const activeProgressedToday = state.items.filter((item) => (
             !TASK_STATUS_CONFIG[item.status].terminal
             && isProgressedToday(item.lastProgressedDate, today)
         )).length;
+        const completedToday = state.items.filter((item) => (
+            item.status === "completed"
+            && isProgressedToday(item.lastProgressedDate, today)
+        )).length;
+        const dailyProgressCount = activeProgressedToday + completedToday;
+        const dailyPendingCount = statistics.active - activeProgressedToday;
+        const dailyTaskCount = dailyPendingCount + dailyProgressCount;
         this.refreshButton.textContent = translate(
             state.refreshing ? "taskCenterView.refreshing" : "taskCenterView.refresh",
         );
@@ -120,7 +129,7 @@ export class TaskCenterView {
             createSummaryItem(translate("taskCenterView.summaryClosed"), statistics.closed),
             createSummaryItem(
                 translate("taskCenterView.summaryToday"),
-                `${progressedToday} / ${statistics.active}`,
+                `${dailyProgressCount} / ${dailyTaskCount}`,
                 "daily",
             ),
         );
@@ -183,58 +192,121 @@ export class TaskCenterView {
             state.search,
             translate,
         );
-        if (state.filter === "active" && visibleItems.length > 0) {
+        let hasVisibleItems = visibleItems.length > 0;
+        if (state.filter === "active") {
             const pendingItems = visibleItems.filter((item) => (
                 !isProgressedToday(item.lastProgressedDate, today)
             ));
             const progressedItems = visibleItems.filter((item) => (
                 isProgressedToday(item.lastProgressedDate, today)
             ));
-            this.list.replaceChildren(
-                this.createDailyGroup("pending", pendingItems, today),
-                this.createDailyGroup("progressed", progressedItems, today),
-            );
+            const completedItems = filterTaskCenterItems(
+                state.items,
+                "all",
+                state.search,
+                translate,
+            ).filter((item) => (
+                item.status === "completed"
+                && isProgressedToday(item.lastProgressedDate, today)
+            ));
+            hasVisibleItems = pendingItems.length + progressedItems.length + completedItems.length > 0;
+            if (hasVisibleItems) {
+                this.list.replaceChildren(
+                    this.createPendingGroup(pendingItems, today),
+                    this.createProgressGroup(progressedItems, completedItems, today),
+                );
+            } else {
+                this.list.replaceChildren();
+            }
         } else {
             this.list.replaceChildren(...visibleItems.map((item) => (
                 this.createTaskItem(item, false, today)
             )));
         }
-        if (visibleItems.length === 0) {
+        if (!hasVisibleItems) {
             const key = getEmptyStateKey(state);
             this.feedback.append(createFeedback(translate(key), "empty"));
         }
     }
 
-    private createDailyGroup(
-        kind: "pending" | "progressed",
+    private createPendingGroup(
         items: readonly TaskCenterItem[],
         today: string,
     ): HTMLElement {
         const group = document.createElement("section");
-        group.className = `ticktick-task-center__daily-group ticktick-task-center__daily-group--${kind}`;
+        group.className = "ticktick-task-center__daily-group ticktick-task-center__daily-group--pending";
         group.setAttribute("role", "group");
 
         const heading = document.createElement("h2");
         heading.className = "ticktick-task-center__daily-heading";
-        const label = this.options.translate(
-            kind === "pending"
-                ? "taskCenterView.dailyPending"
-                : "taskCenterView.dailyProgressed",
-        );
+        const label = this.options.translate("taskCenterView.dailyPending");
         const count = document.createElement("strong");
         count.textContent = String(items.length);
         heading.append(`${label} `, count);
 
         const groupList = document.createElement("div");
         groupList.className = "ticktick-task-center__daily-list";
-        groupList.append(...items.map((item) => this.createTaskItem(item, true, today)));
+        groupList.append(...items.map((item) => this.createTaskItem(item, "toggle", today)));
         group.append(heading, groupList);
         return group;
     }
 
+    private createProgressGroup(
+        progressedItems: readonly TaskCenterItem[],
+        completedItems: readonly TaskCenterItem[],
+        today: string,
+    ): HTMLElement {
+        const group = document.createElement("section");
+        group.className = "ticktick-task-center__daily-group ticktick-task-center__daily-group--progressed";
+        group.setAttribute("role", "group");
+
+        const heading = document.createElement("h2");
+        heading.className = "ticktick-task-center__daily-heading";
+        const count = document.createElement("strong");
+        count.textContent = String(progressedItems.length + completedItems.length);
+        heading.append(`${this.options.translate("taskCenterView.dailyProgressed")} `, count);
+
+        const subgroups: HTMLElement[] = [];
+        if (progressedItems.length > 0) {
+            subgroups.push(this.createProgressSubgroup("advanced", progressedItems, today));
+        }
+        if (completedItems.length > 0) {
+            subgroups.push(this.createProgressSubgroup("completed", completedItems, today));
+        }
+        group.append(heading, ...subgroups);
+        return group;
+    }
+
+    private createProgressSubgroup(
+        kind: "advanced" | "completed",
+        items: readonly TaskCenterItem[],
+        today: string,
+    ): HTMLElement {
+        const subgroup = document.createElement("section");
+        subgroup.className = `ticktick-task-center__daily-subgroup ticktick-task-center__daily-subgroup--${kind}`;
+
+        const heading = document.createElement("h3");
+        heading.className = "ticktick-task-center__daily-subheading";
+        const label = this.options.translate(
+            kind === "advanced"
+                ? "taskCenterView.dailyAdvanced"
+                : "taskCenterView.dailyCompleted",
+        );
+        const count = document.createElement("strong");
+        count.textContent = String(items.length);
+        heading.append(`${label} `, count);
+
+        const list = document.createElement("div");
+        list.className = "ticktick-task-center__daily-list";
+        const action: DailyTaskAction = kind === "advanced" ? "toggle" : "completed";
+        list.append(...items.map((item) => this.createTaskItem(item, action, today)));
+        subgroup.append(heading, list);
+        return subgroup;
+    }
+
     private createTaskItem(
         item: TaskCenterItem,
-        showDailyProgress: boolean,
+        dailyAction: DailyTaskAction,
         today: string,
     ): HTMLElement {
         const { translate } = this.options;
@@ -276,8 +348,10 @@ export class TaskCenterView {
 
         const actions = document.createElement("div");
         actions.className = "ticktick-task-center__actions";
-        if (showDailyProgress) {
+        if (dailyAction === "toggle") {
             actions.append(this.createDailyProgressButton(item, today));
+        } else if (dailyAction === "completed") {
+            actions.append(this.createDailyCompletedBadge());
         }
         const locate = document.createElement("button");
         locate.type = "button";
@@ -294,6 +368,13 @@ export class TaskCenterView {
 
         article.append(statusButton, content, actions);
         return article;
+    }
+
+    private createDailyCompletedBadge(): HTMLSpanElement {
+        const badge = document.createElement("span");
+        badge.className = "ticktick-task-center__daily-completed";
+        badge.textContent = this.options.translate("taskCenterView.dailyCompletedBadge");
+        return badge;
     }
 
     private createDailyProgressButton(item: TaskCenterItem, today: string): HTMLButtonElement {

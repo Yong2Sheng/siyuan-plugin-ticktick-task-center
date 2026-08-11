@@ -7,6 +7,7 @@ import {
     createTaskCenterEditSession,
     TaskCenterController,
 } from "./task-center-controller";
+import { getLocalDate } from "./daily-progress";
 
 const FIRST_ID = "20260713120000-abcdefg";
 const SECOND_ID = "20260713120001-hijklmn";
@@ -117,6 +118,7 @@ describe("TaskCenterController", () => {
             url: "https://ticktick.com/task/edited",
             status: "completed",
             updatedAt: NEW_TIME,
+            lastProgressedDate: getLocalDate(new Date(NEW_TIME)),
         });
         expect(controller.getState().items[0]?.createdAt).toBe(original.createdAt);
         expect(controller.getState().items[0]?.documentPath).toBe(original.documentPath);
@@ -131,6 +133,21 @@ describe("TaskCenterController", () => {
         controller.applyEditedTask(FIRST_ID, edited("First latest", LATEST_TIME, "in-progress"));
 
         expect(controller.getState().items.map(({ blockId }) => blockId)).toEqual([FIRST_ID, SECOND_ID]);
+    });
+
+    it("does not replace the progress date when editing an already completed task", async () => {
+        const completed = {
+            ...item("Completed", OLD_TIME, FIRST_ID, "completed"),
+            lastProgressedDate: "2026-07-12",
+        };
+        const controller = new TaskCenterController({
+            load: vi.fn().mockResolvedValue(result(completed)),
+        });
+        await controller.start();
+
+        controller.applyEditedTask(FIRST_ID, edited("Renamed", NEW_TIME, "completed"));
+
+        expect(controller.getState().items[0]?.lastProgressedDate).toBe("2026-07-12");
     });
 
     it("applies daily progress locally without changing task metadata or sorting", async () => {
