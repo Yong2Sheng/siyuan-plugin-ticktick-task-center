@@ -3,6 +3,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Translate } from "../i18n";
+import type { TickTickTaskStatus } from "../domain/status";
+import { getLocalDate } from "./daily-progress";
 import type { TaskCenterItem } from "./task-center-data";
 import { TaskCenterController } from "./task-center-controller";
 import { TaskCenterView } from "./task-center-view";
@@ -18,6 +20,13 @@ const dictionary: Record<string, string> = {
     "taskCenterView.summaryAll": "All",
     "taskCenterView.summaryActive": "Active",
     "taskCenterView.summaryClosed": "Closed",
+    "taskCenterView.summaryToday": "✨ Today",
+    "taskCenterView.dailyPending": "🌤️ To progress today",
+    "taskCenterView.dailyProgressed": "✨ Progressed today",
+    "taskCenterView.dailyProgressAction": "🚀 Progress today",
+    "taskCenterView.dailyProgressDone": "✨ Progressed today",
+    "taskCenterView.dailyProgressTitle": "Mark progress",
+    "taskCenterView.dailyProgressUndoTitle": "Undo progress",
     "taskCenterView.source": "Source",
     "taskCenterView.updated": "Updated",
     "taskCenterView.locate": "Locate",
@@ -34,11 +43,12 @@ const dictionary: Record<string, string> = {
     "taskEdit.statusButtonTitle": "Click to edit task",
     "taskEdit.statusButtonAriaLabel": "Edit task, current status: ${status}",
     "status.inProgress": "In progress",
+    "status.blocked": "Blocked",
     "status.completed": "Completed",
 };
 const translate: Translate = (key) => dictionary[key] ?? key;
 
-function item(status: "in-progress" | "completed", title: string, id: string): TaskCenterItem {
+function item(status: TickTickTaskStatus, title: string, id: string): TaskCenterItem {
     return {
         blockId: id,
         rootId: "20260713110000-hijklmn",
@@ -56,6 +66,8 @@ function item(status: "in-progress" | "completed", title: string, id: string): T
 
 const ACTIVE = item("in-progress", "DS9 Adaptor", "20260713120000-abcdefg");
 const CLOSED = item("completed", "Published", "20260713120001-hijklmn");
+const BLOCKED = item("blocked", "Waiting for access", "20260713120002-opqrstu");
+const TODAY = getLocalDate();
 
 async function createView(load = vi.fn().mockResolvedValue({
     items: [ACTIVE, CLOSED],
@@ -67,15 +79,28 @@ async function createView(load = vi.fn().mockResolvedValue({
     const controller = new TaskCenterController({ load });
     const onEditTask = vi.fn();
     const onLocateTask = vi.fn();
+    const onSaveDailyProgress = vi.fn().mockResolvedValue(undefined);
+    const onDailyProgressError = vi.fn();
     const view = new TaskCenterView(target, {
         controller,
         translate,
         locale: "en-US",
         onEditTask,
         onLocateTask,
+        onSaveDailyProgress,
+        onDailyProgressError,
     });
     await controller.start();
-    return { target, controller, view, load, onEditTask, onLocateTask };
+    return {
+        target,
+        controller,
+        view,
+        load,
+        onEditTask,
+        onLocateTask,
+        onSaveDailyProgress,
+        onDailyProgressError,
+    };
 }
 
 describe("TaskCenterView", () => {
@@ -163,6 +188,7 @@ describe("TaskCenterView", () => {
             translate,
             onEditTask: vi.fn(),
             onLocateTask: vi.fn(),
+            onSaveDailyProgress: vi.fn().mockResolvedValue(undefined),
         });
 
         const start = controller.start();
@@ -209,12 +235,106 @@ describe("TaskCenterView", () => {
         expect(harness.target.querySelectorAll(".ticktick-task-center__item")).toHaveLength(0);
         expect(harness.target.querySelector(".ticktick-task-center__empty")?.textContent).toBe("No active tasks");
         expect(Array.from(harness.target.querySelectorAll(".ticktick-task-center__summary-item"), (node) => node.textContent))
-            .toEqual(["All 1", "Active 0", "Closed 1"]);
+            .toEqual(["All 1", "Active 0", "Closed 1", "✨ Today 0 / 0"]);
 
         const closed = Array.from(harness.target.querySelectorAll<HTMLButtonElement>(".ticktick-task-center__filter"))
             .find((button) => button.textContent === "Closed");
         closed?.click();
         expect(harness.target.querySelector(".ticktick-task-center__title")?.textContent).toBe(completed.title);
+    });
+
+    it("groups every non-terminal status by today's progress, including blocked tasks", async () => {
+        const progressed = { ...ACTIVE, lastProgressedDate: TODAY };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [BLOCKED, progressed],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        const groups = target.querySelectorAll<HTMLElement>(".ticktick-task-center__daily-group");
+        expect(groups).toHaveLength(2);
+        expect(groups[0]?.querySelector(".ticktick-task-center__daily-heading")?.textContent)
+            .toBe("🌤️ To progress today 1");
+        expect(groups[0]?.querySelector(".ticktick-task-center__title")?.textContent)
+            .toBe(BLOCKED.title);
+        expect(groups[0]?.querySelector(".ticktick-task-center__status")?.textContent)
+            .toBe("⛔ Blocked");
+        expect(groups[1]?.querySelector(".ticktick-task-center__daily-heading")?.textContent)
+            .toBe("✨ Progressed today 1");
+        expect(groups[1]?.querySelector(".ticktick-task-center__title")?.textContent)
+            .toBe(ACTIVE.title);
+        expect(Array.from(target.querySelectorAll(".ticktick-task-center__summary-item"), (node) => node.textContent))
+            .toEqual(["All 2", "Active 2", "Closed 0", "✨ Today 1 / 2"]);
+        expect(target.querySelector(".ticktick-task-center__summary-item--daily")).not.toBeNull();
+        expect(groups[0]?.querySelector(".ticktick-task-center__daily-progress")?.textContent)
+            .toBe("🚀 Progress today");
+        expect(groups[1]?.querySelector(".ticktick-task-center__daily-progress")?.textContent)
+            .toBe("✨ Progressed today");
+    });
+
+    it("persists, moves, and can undo a daily progress mark without reloading SQL", async () => {
+        const harness = await createView(vi.fn().mockResolvedValue({
+            items: [ACTIVE],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        harness.target.querySelector<HTMLButtonElement>(".ticktick-task-center__daily-progress")?.click();
+        await vi.waitFor(() => {
+            expect(harness.onSaveDailyProgress).toHaveBeenCalledWith(ACTIVE.blockId, TODAY);
+            expect(harness.controller.getState().items[0]?.lastProgressedDate).toBe(TODAY);
+        });
+        expect(harness.load).toHaveBeenCalledOnce();
+        expect(harness.target.querySelector(".ticktick-task-center__daily-group--progressed .ticktick-task-center__title")?.textContent)
+            .toBe(ACTIVE.title);
+
+        harness.target.querySelector<HTMLButtonElement>(
+            ".ticktick-task-center__daily-group--progressed .ticktick-task-center__daily-progress",
+        )?.click();
+        await vi.waitFor(() => {
+            expect(harness.onSaveDailyProgress).toHaveBeenLastCalledWith(ACTIVE.blockId, undefined);
+            expect(harness.controller.getState().items[0]?.lastProgressedDate).toBeUndefined();
+        });
+        expect(harness.target.querySelector(".ticktick-task-center__daily-group--pending .ticktick-task-center__title")?.textContent)
+            .toBe(ACTIVE.title);
+    });
+
+    it("keeps a task pending and reports an error when daily progress cannot be saved", async () => {
+        const harness = await createView();
+        harness.onSaveDailyProgress.mockRejectedValueOnce(new Error("attributes failed"));
+
+        harness.target.querySelector<HTMLButtonElement>(".ticktick-task-center__daily-progress")?.click();
+        await vi.waitFor(() => expect(harness.onDailyProgressError).toHaveBeenCalledOnce());
+
+        expect(harness.controller.getState().items[0]?.lastProgressedDate).toBeUndefined();
+        expect(harness.target.querySelector(".ticktick-task-center__daily-group--pending .ticktick-task-center__title")?.textContent)
+            .toBe(ACTIVE.title);
+    });
+
+    it("moves yesterday's progress back to pending after local midnight without rewriting data", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date(2026, 7, 11, 23, 59, 59, 900));
+        try {
+            const progressed = { ...ACTIVE, lastProgressedDate: "2026-08-11" };
+            const harness = await createView(vi.fn().mockResolvedValue({
+                items: [progressed],
+                invalidBlocks: [],
+                incompleteBlocks: [],
+            }));
+            expect(harness.target.querySelector(
+                ".ticktick-task-center__daily-group--progressed .ticktick-task-center__title",
+            )?.textContent).toBe(ACTIVE.title);
+
+            await vi.advanceTimersByTimeAsync(150);
+
+            expect(harness.target.querySelector(
+                ".ticktick-task-center__daily-group--pending .ticktick-task-center__title",
+            )?.textContent).toBe(ACTIVE.title);
+            expect(harness.onSaveDailyProgress).not.toHaveBeenCalled();
+            harness.view.destroy();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it("updates the rendered title and external URL locally without another query", async () => {

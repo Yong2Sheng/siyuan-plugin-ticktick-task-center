@@ -1,12 +1,17 @@
-import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import { querySiYuanSql, type SiYuanSqlRow } from "../siyuan/sql";
 import { aggregateTaskCenterRows, type TaskCenterAggregationResult } from "./task-center-data";
 
-const attributeNames = Object.values(TASK_BLOCK_ATTRIBUTES)
+const taskCenterAttributeNames = [
+    ...Object.values(TASK_BLOCK_ATTRIBUTES),
+    ...Object.values(TASK_BLOCK_OPTIONAL_ATTRIBUTES),
+];
+
+const attributeNames = taskCenterAttributeNames
     .map((name) => `'${name}'`)
     .join(", ");
 
-const attributeColumns = Object.values(TASK_BLOCK_ATTRIBUTES)
+const attributeColumns = taskCenterAttributeNames
     .map((name) => `    MAX(CASE WHEN attribute.name = '${name}' THEN attribute.value END) AS "${name}"`)
     .join(",\n");
 

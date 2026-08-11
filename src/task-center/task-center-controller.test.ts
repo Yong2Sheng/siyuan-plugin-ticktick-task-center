@@ -133,6 +133,54 @@ describe("TaskCenterController", () => {
         expect(controller.getState().items.map(({ blockId }) => blockId)).toEqual([FIRST_ID, SECOND_ID]);
     });
 
+    it("applies daily progress locally without changing task metadata or sorting", async () => {
+        const first = item("First", OLD_TIME, FIRST_ID);
+        const second = item("Second", NEW_TIME, SECOND_ID);
+        const controller = new TaskCenterController({
+            load: vi.fn().mockResolvedValue(result(first, second)),
+        });
+        await controller.start();
+
+        expect(controller.applyDailyProgress(FIRST_ID, "2026-08-11")).toBe(true);
+
+        expect(controller.getState().items.map(({ blockId }) => blockId)).toEqual([SECOND_ID, FIRST_ID]);
+        expect(controller.getState().items.find(({ blockId }) => blockId === FIRST_ID)).toEqual({
+            ...first,
+            lastProgressedDate: "2026-08-11",
+        });
+    });
+
+    it("keeps daily progress over stale SQL until the optional attribute catches up", async () => {
+        const old = item("Old");
+        const caughtUp = { ...old, lastProgressedDate: "2026-08-11" };
+        const load = vi.fn()
+            .mockResolvedValueOnce(result(old))
+            .mockResolvedValueOnce(result(old))
+            .mockResolvedValueOnce(result(caughtUp))
+            .mockResolvedValueOnce(result(old));
+        const controller = new TaskCenterController({ load });
+        await controller.start();
+        controller.applyDailyProgress(FIRST_ID, "2026-08-11");
+
+        await controller.refresh();
+        expect(controller.getState().items[0]?.lastProgressedDate).toBe("2026-08-11");
+
+        await controller.refresh();
+        await controller.refresh();
+        expect(controller.getState().items[0]?.lastProgressedDate).toBeUndefined();
+    });
+
+    it("clears a daily progress mark locally", async () => {
+        const progressed = { ...item("Old"), lastProgressedDate: "2026-08-11" };
+        const controller = new TaskCenterController({
+            load: vi.fn().mockResolvedValue(result(progressed)),
+        });
+        await controller.start();
+
+        expect(controller.applyDailyProgress(FIRST_ID, undefined)).toBe(true);
+        expect(controller.getState().items[0]?.lastProgressedDate).toBeUndefined();
+    });
+
     it("warns and does not invent an item when the edited block is absent", async () => {
         const onWarning = vi.fn();
         const controller = new TaskCenterController({ load: vi.fn().mockResolvedValue(result()), onWarning });

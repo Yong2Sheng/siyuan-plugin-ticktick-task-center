@@ -8,6 +8,11 @@ import {
     type TaskCenterFilter,
 } from "./task-center-filter";
 import { TaskCenterController, type TaskCenterState } from "./task-center-controller";
+import {
+    getLocalDate,
+    isProgressedToday,
+    millisecondsUntilNextLocalDay,
+} from "./daily-progress";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
@@ -15,6 +20,8 @@ export type TaskCenterViewOptions = {
     locale?: string;
     onEditTask(blockId: string): void;
     onLocateTask(blockId: string): void;
+    onSaveDailyProgress(blockId: string, date: string | undefined): Promise<void>;
+    onDailyProgressError?(error: unknown): void;
 };
 
 export class TaskCenterView {
@@ -26,7 +33,16 @@ export class TaskCenterView {
     private readonly notice = document.createElement("div");
     private readonly feedback = document.createElement("div");
     private readonly list = document.createElement("div");
+    private readonly pendingDailyProgress = new Set<string>();
     private readonly unsubscribe: () => void;
+    private dayBoundaryTimer?: number;
+    private destroyed = false;
+    private readonly handleWindowFocus = (): void => {
+        if (!this.destroyed) {
+            this.render(this.options.controller.getState());
+            this.scheduleDayBoundary();
+        }
+    };
 
     constructor(target: HTMLElement, private readonly options: TaskCenterViewOptions) {
         this.root.className = "ticktick-task-center";
@@ -70,9 +86,16 @@ export class TaskCenterView {
         this.root.append(header, this.summary, controls, this.notice, this.feedback, this.list);
         target.append(this.root);
         this.unsubscribe = options.controller.subscribe((state) => this.render(state));
+        window.addEventListener("focus", this.handleWindowFocus);
+        this.scheduleDayBoundary();
     }
 
     destroy(): void {
+        this.destroyed = true;
+        if (this.dayBoundaryTimer !== undefined) {
+            window.clearTimeout(this.dayBoundaryTimer);
+        }
+        window.removeEventListener("focus", this.handleWindowFocus);
         this.unsubscribe();
         this.root.remove();
     }
@@ -80,6 +103,11 @@ export class TaskCenterView {
     private render(state: TaskCenterState): void {
         const { translate } = this.options;
         const statistics = countTaskCenterItems(state.items);
+        const today = getLocalDate();
+        const progressedToday = state.items.filter((item) => (
+            !TASK_STATUS_CONFIG[item.status].terminal
+            && isProgressedToday(item.lastProgressedDate, today)
+        )).length;
         this.refreshButton.textContent = translate(
             state.refreshing ? "taskCenterView.refreshing" : "taskCenterView.refresh",
         );
@@ -90,6 +118,11 @@ export class TaskCenterView {
             createSummaryItem(translate("taskCenterView.summaryAll"), statistics.all),
             createSummaryItem(translate("taskCenterView.summaryActive"), statistics.active),
             createSummaryItem(translate("taskCenterView.summaryClosed"), statistics.closed),
+            createSummaryItem(
+                translate("taskCenterView.summaryToday"),
+                `${progressedToday} / ${statistics.active}`,
+                "daily",
+            ),
         );
         const filterLabels: Record<TaskCenterFilter, string> = {
             active: translate("taskCenterView.filterActive"),
@@ -150,14 +183,60 @@ export class TaskCenterView {
             state.search,
             translate,
         );
-        this.list.replaceChildren(...visibleItems.map((item) => this.createTaskItem(item)));
+        if (state.filter === "active" && visibleItems.length > 0) {
+            const pendingItems = visibleItems.filter((item) => (
+                !isProgressedToday(item.lastProgressedDate, today)
+            ));
+            const progressedItems = visibleItems.filter((item) => (
+                isProgressedToday(item.lastProgressedDate, today)
+            ));
+            this.list.replaceChildren(
+                this.createDailyGroup("pending", pendingItems, today),
+                this.createDailyGroup("progressed", progressedItems, today),
+            );
+        } else {
+            this.list.replaceChildren(...visibleItems.map((item) => (
+                this.createTaskItem(item, false, today)
+            )));
+        }
         if (visibleItems.length === 0) {
             const key = getEmptyStateKey(state);
             this.feedback.append(createFeedback(translate(key), "empty"));
         }
     }
 
-    private createTaskItem(item: TaskCenterItem): HTMLElement {
+    private createDailyGroup(
+        kind: "pending" | "progressed",
+        items: readonly TaskCenterItem[],
+        today: string,
+    ): HTMLElement {
+        const group = document.createElement("section");
+        group.className = `ticktick-task-center__daily-group ticktick-task-center__daily-group--${kind}`;
+        group.setAttribute("role", "group");
+
+        const heading = document.createElement("h2");
+        heading.className = "ticktick-task-center__daily-heading";
+        const label = this.options.translate(
+            kind === "pending"
+                ? "taskCenterView.dailyPending"
+                : "taskCenterView.dailyProgressed",
+        );
+        const count = document.createElement("strong");
+        count.textContent = String(items.length);
+        heading.append(`${label} `, count);
+
+        const groupList = document.createElement("div");
+        groupList.className = "ticktick-task-center__daily-list";
+        groupList.append(...items.map((item) => this.createTaskItem(item, true, today)));
+        group.append(heading, groupList);
+        return group;
+    }
+
+    private createTaskItem(
+        item: TaskCenterItem,
+        showDailyProgress: boolean,
+        today: string,
+    ): HTMLElement {
         const { translate } = this.options;
         const status = TASK_STATUS_CONFIG[item.status];
         const article = document.createElement("article");
@@ -197,6 +276,9 @@ export class TaskCenterView {
 
         const actions = document.createElement("div");
         actions.className = "ticktick-task-center__actions";
+        if (showDailyProgress) {
+            actions.append(this.createDailyProgressButton(item, today));
+        }
         const locate = document.createElement("button");
         locate.type = "button";
         locate.className = "b3-button b3-button--outline ticktick-task-center__locate";
@@ -213,11 +295,77 @@ export class TaskCenterView {
         article.append(statusButton, content, actions);
         return article;
     }
+
+    private createDailyProgressButton(item: TaskCenterItem, today: string): HTMLButtonElement {
+        const progressed = isProgressedToday(item.lastProgressedDate, today);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--outline ticktick-task-center__daily-progress";
+        button.dataset.progressedToday = String(progressed);
+        button.textContent = this.options.translate(
+            progressed
+                ? "taskCenterView.dailyProgressDone"
+                : "taskCenterView.dailyProgressAction",
+        );
+        button.title = this.options.translate(
+            progressed
+                ? "taskCenterView.dailyProgressUndoTitle"
+                : "taskCenterView.dailyProgressTitle",
+        );
+        button.setAttribute("aria-pressed", String(progressed));
+        button.disabled = this.pendingDailyProgress.has(item.blockId);
+        button.addEventListener("click", () => {
+            void this.toggleDailyProgress(item, today);
+        });
+        return button;
+    }
+
+    private async toggleDailyProgress(item: TaskCenterItem, today: string): Promise<void> {
+        if (this.pendingDailyProgress.has(item.blockId)) {
+            return;
+        }
+        const nextDate = isProgressedToday(item.lastProgressedDate, today) ? undefined : today;
+        this.pendingDailyProgress.add(item.blockId);
+        this.render(this.options.controller.getState());
+        try {
+            await this.options.onSaveDailyProgress(item.blockId, nextDate);
+            if (!this.options.controller.applyDailyProgress(item.blockId, nextDate)) {
+                throw new Error(`TickTick task ${item.blockId} is no longer available`);
+            }
+        } catch (error) {
+            this.options.onDailyProgressError?.(error);
+        } finally {
+            this.pendingDailyProgress.delete(item.blockId);
+            if (!this.destroyed) {
+                this.render(this.options.controller.getState());
+            }
+        }
+    }
+
+    private scheduleDayBoundary(): void {
+        if (this.dayBoundaryTimer !== undefined) {
+            window.clearTimeout(this.dayBoundaryTimer);
+        }
+        this.dayBoundaryTimer = window.setTimeout(() => {
+            if (this.destroyed) {
+                return;
+            }
+            this.render(this.options.controller.getState());
+            this.scheduleDayBoundary();
+        }, millisecondsUntilNextLocalDay());
+    }
 }
 
-function createSummaryItem(label: string, count: number): HTMLElement {
+function createSummaryItem(
+    label: string,
+    count: number | string,
+    kind?: "daily",
+): HTMLElement {
     const item = document.createElement("span");
     item.className = "ticktick-task-center__summary-item";
+    if (kind) {
+        item.classList.add(`ticktick-task-center__summary-item--${kind}`);
+    }
     const value = document.createElement("strong");
     value.textContent = String(count);
     item.append(`${label} `, value);

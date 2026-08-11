@@ -14,6 +14,7 @@ import {
     createTaskCenterEditSession,
     TaskCenterController,
 } from "./task-center/task-center-controller";
+import { saveDailyProgress } from "./task-center/daily-progress";
 import { loadTaskCenterData } from "./task-center/task-center-query";
 import {
     TaskCenterTabService,
@@ -175,6 +176,15 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 },
             }),
             onLocateTask: (blockId) => void this.locateTask(blockId, translate),
+            onSaveDailyProgress: (blockId, date) => saveDailyProgress(
+                { setBlockAttributes },
+                blockId,
+                date,
+            ),
+            onDailyProgressError: (error) => {
+                console.error("Failed to update daily TickTick task progress", error);
+                showMessage(translate("taskCenterView.dailyProgressFailed"), 5000, "error");
+            },
         });
         let started = false;
         return {

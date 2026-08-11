@@ -154,6 +154,17 @@
 }
 
 .ticktick-task-center {
+    --ticktick-daily-pending-color: color-mix(
+        in srgb,
+        #d58b19 78%,
+        var(--b3-theme-on-background)
+    );
+    --ticktick-daily-progressed-color: color-mix(
+        in srgb,
+        #1f9d82 78%,
+        var(--b3-theme-on-background)
+    );
+
     box-sizing: border-box;
     height: 100%;
     min-width: 0;
@@ -187,6 +198,7 @@
 
     &__refresh,
     &__retry,
+    &__daily-progress,
     &__locate,
     &__external {
         flex: 0 0 auto;
@@ -207,6 +219,22 @@
         background: var(--b3-theme-surface);
         color: var(--b3-theme-on-surface);
         white-space: nowrap;
+
+        &--daily {
+            border-color: color-mix(
+                in srgb,
+                var(--ticktick-daily-progressed-color) 54%,
+                var(--b3-border-color)
+            );
+            background: color-mix(
+                in srgb,
+                var(--ticktick-daily-progressed-color) 13%,
+                var(--b3-theme-background)
+            );
+            box-shadow: inset 3px 0 0 var(--ticktick-daily-progressed-color);
+            color: var(--ticktick-daily-progressed-color);
+            font-weight: 700;
+        }
     }
 
     &__controls {
@@ -294,8 +322,140 @@
 
     &__list {
         display: grid;
-        gap: 10px;
+        gap: 18px;
         min-width: 0;
+    }
+
+    &__daily-group,
+    &__daily-list {
+        display: grid;
+        min-width: 0;
+    }
+
+    &__daily-group {
+        gap: 9px;
+        padding: 12px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 12px;
+    }
+
+    &__daily-list {
+        gap: 10px;
+    }
+
+    &__daily-heading {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0;
+        color: var(--b3-theme-on-background);
+        font-size: 15px;
+        line-height: 1.4;
+
+        &::after {
+            content: "";
+            flex: 1 1 auto;
+            height: 1px;
+            background: var(--b3-border-color);
+        }
+
+        strong {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: var(--b3-theme-surface);
+            color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+            font-size: 12px;
+        }
+    }
+
+    &__daily-group--pending {
+        border-color: color-mix(
+            in srgb,
+            var(--ticktick-daily-pending-color) 30%,
+            var(--b3-border-color)
+        );
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-pending-color) 5%,
+            var(--b3-theme-background)
+        );
+
+        .ticktick-task-center__daily-heading {
+            color: var(--ticktick-daily-pending-color);
+
+            &::after {
+                background: color-mix(
+                    in srgb,
+                    var(--ticktick-daily-pending-color) 34%,
+                    var(--b3-border-color)
+                );
+            }
+        }
+
+        .ticktick-task-center__item {
+            background: color-mix(
+                in srgb,
+                var(--ticktick-daily-pending-color) 3%,
+                var(--b3-theme-surface)
+            );
+        }
+    }
+
+    &__daily-group--progressed {
+        border-color: color-mix(
+            in srgb,
+            var(--ticktick-daily-progressed-color) 42%,
+            var(--b3-border-color)
+        );
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-progressed-color) 10%,
+            var(--b3-theme-background)
+        );
+        box-shadow: inset 4px 0 0 color-mix(
+            in srgb,
+            var(--ticktick-daily-progressed-color) 78%,
+            transparent
+        );
+
+        .ticktick-task-center__daily-heading {
+            color: var(--ticktick-daily-progressed-color);
+
+            &::after {
+                background: color-mix(
+                    in srgb,
+                    var(--ticktick-daily-progressed-color) 44%,
+                    var(--b3-border-color)
+                );
+            }
+
+            strong {
+                background: color-mix(
+                    in srgb,
+                    var(--ticktick-daily-progressed-color) 18%,
+                    var(--b3-theme-background)
+                );
+                color: var(--ticktick-daily-progressed-color);
+            }
+        }
+
+        .ticktick-task-center__item {
+            border-color: color-mix(
+                in srgb,
+                var(--ticktick-daily-progressed-color) 30%,
+                var(--b3-border-color)
+            );
+            background: color-mix(
+                in srgb,
+                var(--ticktick-daily-progressed-color) 7%,
+                var(--b3-theme-surface)
+            );
+        }
     }
 
     &__item {
@@ -383,6 +543,34 @@
         justify-content: flex-end;
         gap: 6px;
         margin-left: auto;
+    }
+
+    &__daily-progress {
+        border-color: var(--ticktick-daily-pending-color);
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-pending-color) 9%,
+            var(--b3-theme-background)
+        );
+        color: var(--ticktick-daily-pending-color);
+        font-weight: 700;
+        transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+
+        &:hover:not(:disabled) {
+            filter: brightness(1.05);
+            transform: translateY(-1px);
+        }
+
+        &[data-progressed-today="true"] {
+            border-color: var(--ticktick-daily-progressed-color);
+            background: var(--ticktick-daily-progressed-color);
+            box-shadow: 0 2px 8px color-mix(
+                in srgb,
+                var(--ticktick-daily-progressed-color) 24%,
+                transparent
+            );
+            color: #fff;
+        }
     }
 
     &__external {

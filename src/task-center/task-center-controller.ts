@@ -45,6 +45,7 @@ export class TaskCenterController {
     };
     private readonly listeners = new Set<(state: TaskCenterState) => void>();
     private readonly recentEdits = new Map<string, RecentTaskEdit>();
+    private readonly recentDailyProgress = new Map<string, string | undefined>();
     private generation = 0;
     private started = false;
     private hasLoaded = false;
@@ -94,6 +95,27 @@ export class TaskCenterController {
         return true;
     }
 
+    applyDailyProgress(blockId: string, date: string | undefined): boolean {
+        if (this.destroyed) {
+            return false;
+        }
+        const current = this.state.items.find((item) => item.blockId === blockId);
+        if (!current) {
+            this.options.onWarning?.(
+                `Updated daily progress for TickTick task ${blockId} was not found in the current task center`,
+            );
+            return false;
+        }
+
+        this.recentDailyProgress.set(blockId, date);
+        this.update({
+            items: this.state.items.map((item) => (
+                item.blockId === blockId ? applyRecentDailyProgress(item, date) : item
+            )),
+        });
+        return true;
+    }
+
     setFilter(filter: TaskCenterFilter): void {
         this.update({ filter });
     }
@@ -118,6 +140,7 @@ export class TaskCenterController {
         this.destroyed = true;
         this.generation += 1;
         this.recentEdits.clear();
+        this.recentDailyProgress.clear();
         this.listeners.clear();
     }
 
@@ -167,6 +190,18 @@ export class TaskCenterController {
             }
             merged.set(blockId, applyRecentEdit(sqlItem, recent));
         }
+        for (const [blockId, date] of this.recentDailyProgress) {
+            const sqlItem = merged.get(blockId);
+            if (!sqlItem) {
+                this.recentDailyProgress.delete(blockId);
+                continue;
+            }
+            if (sqlItem.lastProgressedDate === date) {
+                this.recentDailyProgress.delete(blockId);
+                continue;
+            }
+            merged.set(blockId, applyRecentDailyProgress(sqlItem, date));
+        }
         return sortTaskCenterItems(Array.from(merged.values()));
     }
 
@@ -209,6 +244,15 @@ function applyRecentEdit(item: TaskCenterItem, edit: RecentTaskEdit): TaskCenter
         status: edit.status,
         updatedAt: edit.updatedAt,
     };
+}
+
+function applyRecentDailyProgress(
+    item: TaskCenterItem,
+    date: string | undefined,
+): TaskCenterItem {
+    const next = { ...item };
+    delete next.lastProgressedDate;
+    return date ? { ...next, lastProgressedDate: date } : next;
 }
 
 function isSqlAtLeastAsNew(sqlUpdatedAt: string, recentUpdatedAt: string): boolean {

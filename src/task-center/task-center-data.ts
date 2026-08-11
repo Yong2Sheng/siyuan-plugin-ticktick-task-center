@@ -1,7 +1,8 @@
 import { isSiYuanId } from "../domain/siyuan-id";
 import type { TickTickTaskStatus } from "../domain/status";
-import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import { parseTaskBlockAttributes, type TaskBlockParseFailure } from "../task-card/task-data";
+import { readLocalDate } from "./daily-progress";
 
 export type TaskCenterItem = {
     blockId: string;
@@ -14,6 +15,7 @@ export type TaskCenterItem = {
     status: TickTickTaskStatus;
     createdAt: string;
     updatedAt: string;
+    lastProgressedDate?: string;
 };
 
 export type TaskCenterInvalidReason =
@@ -45,7 +47,11 @@ type Aggregate = {
     documentPath: unknown;
 };
 
-const TASK_ATTRIBUTE_NAMES = new Set<string>(Object.values(TASK_BLOCK_ATTRIBUTES));
+const REQUIRED_TASK_ATTRIBUTE_NAMES = Object.values(TASK_BLOCK_ATTRIBUTES);
+const TASK_ATTRIBUTE_NAMES = new Set<string>([
+    ...REQUIRED_TASK_ATTRIBUTE_NAMES,
+    ...Object.values(TASK_BLOCK_OPTIONAL_ATTRIBUTES),
+]);
 
 export function aggregateTaskCenterRows(
     rows: readonly Readonly<Record<string, unknown>>[],
@@ -92,7 +98,7 @@ export function aggregateTaskCenterRows(
         if (aggregate.attrs[TASK_BLOCK_ATTRIBUTES.card] !== "true") {
             continue;
         }
-        const missingAttributes = Array.from(TASK_ATTRIBUTE_NAMES)
+        const missingAttributes = REQUIRED_TASK_ATTRIBUTE_NAMES
             .filter((attribute) => !(attribute in aggregate.attrs));
         if (missingAttributes.length > 0) {
             incompleteBlocks.push({ blockId, missingAttributes });
@@ -118,6 +124,9 @@ export function aggregateTaskCenterRows(
         const documentPath = readString(aggregate.documentPath);
         const rawDocumentTitle = readString(aggregate.documentTitle).trim();
         const notebookId = readString(aggregate.notebookId);
+        const lastProgressedDate = readLocalDate(
+            aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate],
+        );
         items.push({
             blockId,
             rootId,
@@ -129,6 +138,7 @@ export function aggregateTaskCenterRows(
             status: parsed.data.status,
             createdAt: parsed.data.createdAt,
             updatedAt: parsed.data.updatedAt,
+            ...(lastProgressedDate ? { lastProgressedDate } : {}),
         });
     }
 

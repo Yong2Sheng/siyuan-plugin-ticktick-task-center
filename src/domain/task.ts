@@ -12,6 +12,10 @@ export const TASK_BLOCK_ATTRIBUTES = {
     updatedAt: "custom-ticktick-updated-at",
 } as const;
 
+export const TASK_BLOCK_OPTIONAL_ATTRIBUTES = {
+    lastProgressedDate: "custom-ticktick-last-progressed-date",
+} as const;
+
 export const DEFAULT_TASK_STATUS = "in-progress" satisfies TickTickTaskStatus;
 export const DEFAULT_INSERT_POSITION = "document-top" as const;
 export const DEFAULT_TASK_CENTER_VIEW = "non-terminal" as const;

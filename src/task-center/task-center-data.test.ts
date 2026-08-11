@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import { aggregateTaskCenterRows } from "./task-center-data";
 
 const BLOCK_ID = "20260713120000-abcdefg";
@@ -8,7 +8,7 @@ const ROOT_ID = "20260713110000-hijklmn";
 
 function rowsFor(
     blockId = BLOCK_ID,
-    overrides: Partial<Record<(typeof TASK_BLOCK_ATTRIBUTES)[keyof typeof TASK_BLOCK_ATTRIBUTES], string>> = {},
+    overrides: Partial<Record<string, string>> = {},
 ): Record<string, unknown>[] {
     const attributes = {
         [TASK_BLOCK_ATTRIBUTES.card]: "true",
@@ -44,6 +44,27 @@ describe("aggregateTaskCenterRows", () => {
             title: "DS9 Adaptor",
             status: "in-progress",
         })]);
+    });
+
+    it("reads a valid optional progress date without requiring it on older tasks", () => {
+        const withProgress = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate]: "2026-08-11",
+        }));
+        const withoutProgress = aggregateTaskCenterRows(rowsFor());
+
+        expect(withProgress.items[0]?.lastProgressedDate).toBe("2026-08-11");
+        expect(withoutProgress.items[0]?.lastProgressedDate).toBeUndefined();
+        expect(withoutProgress.incompleteBlocks).toEqual([]);
+    });
+
+    it("ignores a malformed optional progress date without hiding the task", () => {
+        const result = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate]: "2026-02-31",
+        }));
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0]?.lastProgressedDate).toBeUndefined();
+        expect(result.invalidBlocks).toEqual([]);
     });
 
     it("groups multiple tasks and ignores duplicate SQL rows", () => {

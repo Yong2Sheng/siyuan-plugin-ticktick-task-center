@@ -7,7 +7,7 @@ English | [简体中文](README.md)
 >
 > Project requirements, feature decisions, real-world SiYuan testing, acceptance, and release decisions were handled by Yong Sheng.
 
-TickTick Task Center for SiYuan is a SiYuan plugin that associates ordinary SiYuan document blocks with TickTick / Dida365 tasks. The task block in the source document is the only persistent source of data. The plugin adds enhanced task cards, seven local statuses, and a workspace-wide task center without maintaining a second task database.
+TickTick Task Center for SiYuan is a SiYuan plugin that associates ordinary SiYuan document blocks with TickTick / Dida365 tasks. The task block in the source document is the only persistent source of data. The plugin adds enhanced task cards, seven local statuses, daily progress tracking, and a workspace-wide task center without maintaining a second task database.
 
 The current version does not use the TickTick API, OAuth, or background synchronization. A task is associated with TickTick / Dida365 only through the HTTPS task URL supplied by the user.
 
@@ -16,7 +16,7 @@ The current version does not use the TickTick API, OAuth, or background synchron
 ## Core features
 
 - Create a TickTick task block from the slash menu in an editable SiYuan document. The default status is `in-progress`, and the new block is inserted at the top of the current root document.
-- Store the task title, a validated TickTick URL, and seven structured `custom-ticktick-*` attributes in one ordinary SiYuan block.
+- Store the task title, a validated TickTick URL, seven required attributes, and an optional daily-progress date attribute in one ordinary SiYuan block.
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
 - Non-destructively enhance the block as a task card with a task link and a semantically colored status badge.
 - Open the complete editor from the status badge to change the title, URL, or status.
@@ -24,7 +24,10 @@ The current version does not use the TickTick API, OAuth, or background synchron
 - Check `updated-at` for edit conflicts before saving, and attempt to roll back Markdown when a title or URL double-write fails.
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
 - Filter Active, Closed, or All tasks and search task titles, source documents, source paths, and localized status names.
-- Display All, Active, and Closed statistics and apply a stable descending sort using the task attribute `updated-at`.
+- Display All, Active, Closed, and today's progress statistics and apply a stable descending sort using the task attribute `updated-at`.
+- Group active tasks into **🌤️ To progress today** and **✨ Progressed today**. To do, In progress, Waiting for response, and Blocked tasks all participate in daily progress.
+- Use **🚀 Progress today** and **✨ Progressed today** to mark or undo today's record without changing the task status or its existing `updated-at`.
+- Determine “today” from the system's local timezone and regroup automatically after local midnight without a background attribute-reset job.
 - Locate the original SiYuan task block and safely open the corresponding TickTick task URL in a new tab.
 - Immediately update the current list, filtered results, ordering, and statistics after an edit made inside the Task Center.
 - Read changes made in ordinary documents or other clients when the user presses **Refresh** in the Task Center.
@@ -70,6 +73,14 @@ pnpm dev
 
 `pnpm dev` is a long-running watch build. The watcher rebuilds the development bundle after source changes. If SiYuan does not load the latest bundle automatically, disable and re-enable the plugin.
 
+After `pnpm build`, you can also extract the generated `package.zip` from the repository root into:
+
+```text
+<SiYuan workspace>/data/plugins/siyuan-plugin-ticktick-task-center/
+```
+
+Make sure `plugin.json` is directly inside that directory, then fully restart SiYuan. Alternatively, while SiYuan is running, execute `pnpm make-install`, select the current workspace, and let the script build and overwrite the installed plugin.
+
 ## Usage
 
 ### 1. Create a task
@@ -101,13 +112,22 @@ pnpm dev
 
 ### 4. Use the Task Center
 
-- View counts for All, Active, and Closed tasks.
+- View counts for All, Active, Closed, and today's progressed tasks.
 - Switch between the Active, Closed, and All tasks filters.
 - Search task titles, source document titles, source paths, or localized status names.
 - Select a task title or **Locate source block** to open and locate the original SiYuan block.
 - Select **Open TickTick task** to open the validated external task URL in a new tab.
 - Select an item's status badge to reuse the same complete task editor.
 - After saving an edit from the Task Center, its list, filtered results, ordering, and statistics update immediately without a refresh.
+
+### 5. Track today's progress
+
+- The Active view is automatically divided into **🌤️ To progress today** and **✨ Progressed today**.
+- Every non-terminal status participates, including To do, In progress, Waiting for response, and Blocked. Checking whether a blocker has been resolved can itself count as progress for the day.
+- Select **🚀 Progress today** to move a task into Progressed today and update the top progress count.
+- Select **✨ Progressed today** to undo an accidental mark and move the task back to To progress today.
+- Daily progress stores only the latest progressed date. It does not complete the task or change its `updated-at` and existing sort order.
+- “Today” follows the computer's current system timezone. The view automatically treats yesterday's marks as pending after local midnight and rechecks the date when the SiYuan window regains focus.
 
 ## Refresh and synchronization behavior
 
@@ -119,6 +139,7 @@ pnpm dev
 | Where the action occurs | Task Center behavior |
 | --- | --- |
 | Edit a task in the Task Center | The current list updates immediately after saving; no refresh is needed |
+| Mark or undo today's progress | The task moves between groups and today's count updates immediately; no refresh is needed |
 | Create a task in an ordinary document | It does not appear automatically; select **Refresh** |
 | Edit a task in an ordinary document | The Task Center does not change automatically; select **Refresh** |
 | Directly change task block attributes | Select **Refresh** |
@@ -129,7 +150,7 @@ pnpm dev
 
 The **Refresh** button is not merely an error-recovery button. It is the explicit entry point for synchronizing changes made outside the Task Center.
 
-If Refresh is selected immediately after an edit inside the Task Center, the SiYuan SQL index may temporarily return the older value. The plugin keeps the recent edit in the current Task Center tab so that the UI does not fall back to an older title, URL, or status. The temporary overlay is cleared when SQL returns the same or newer data, or when the task is no longer valid. It never replaces the task block attributes, is not persisted across tabs, and is not a second task database.
+If Refresh is selected immediately after an edit or daily-progress update inside the Task Center, the SiYuan SQL index may temporarily return the older value. The plugin keeps the recent edit or progress result in the current Task Center tab so that the UI does not fall back to an older title, URL, status, or progress group. The temporary overlay is cleared when SQL returns the corresponding data or when the task is no longer valid. It never replaces the task block attributes, is not persisted across tabs, and is not a second task database.
 
 ## Data model and privacy
 
@@ -140,7 +161,7 @@ If Refresh is selected immediately after an edit inside the Task Center, the SiY
 - The plugin does not require a TickTick login, use OAuth, or call the TickTick API.
 - It does not upload or synchronize task data to TickTick in the background. External links open only when selected by the user.
 
-The seven structured attributes are:
+The seven required structured attributes are:
 
 ```text
 custom-ticktick-card
@@ -152,9 +173,17 @@ custom-ticktick-created-at
 custom-ticktick-updated-at
 ```
 
+Daily progress uses one optional attribute:
+
+```text
+custom-ticktick-last-progressed-date = YYYY-MM-DD
+```
+
+An older task without this attribute is treated as pending today and requires no migration. The plugin compares the stored date with the system-local date instead of rewriting every task block at midnight.
+
 ## Task Center query
 
-The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven task attributes into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
+The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven required task attributes and the optional daily-progress attribute into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
 
 The query is still subject to SiYuan's global SQL result-count limit, and pagination is not currently implemented. Search and filters operate only on the validated results already loaded in memory and do not execute additional SQL queries.
 
@@ -167,6 +196,8 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 - No task context menu.
 - No pagination or virtual scrolling; the Task Center is subject to SiYuan's SQL result-count limit.
 - No settings page.
+- Daily progress stores only the latest date; there is no history, streak, or trend reporting.
+- The daily date follows the current system timezone. When traveling across timezones, tasks are reevaluated using the local date at the current location.
 - Development and real-world acceptance currently focus on SiYuan Desktop for macOS; compatibility support for other platforms is not guaranteed.
 
 ## Development and verification
@@ -184,7 +215,7 @@ pnpm build
 - `pnpm run check`: runs Svelte / TypeScript static checks.
 - `pnpm build`: creates the production bundle, `dist/`, and `package.zip` in the repository root.
 
-The current verification suite contains 18 test files and 136 tests.
+The current verification suite contains 20 test files and 193 tests.
 
 ## License
 

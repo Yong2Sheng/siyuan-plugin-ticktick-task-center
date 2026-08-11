@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import { loadTaskCenterData, TASK_CENTER_SQL } from "./task-center-query";
 
 describe("task center SQL query", () => {
@@ -17,7 +17,12 @@ describe("task center SQL query", () => {
                 `MAX(CASE WHEN attribute.name = '${attribute}' THEN attribute.value END) AS "${attribute}"`,
             );
         }
-        expect(TASK_CENTER_SQL.match(/MAX\(CASE WHEN attribute\.name = /g)).toHaveLength(7);
+        for (const attribute of Object.values(TASK_BLOCK_OPTIONAL_ATTRIBUTES)) {
+            expect(TASK_CENTER_SQL).toContain(
+                `MAX(CASE WHEN attribute.name = '${attribute}' THEN attribute.value END) AS "${attribute}"`,
+            );
+        }
+        expect(TASK_CENTER_SQL.match(/MAX\(CASE WHEN attribute\.name = /g)).toHaveLength(8);
     });
 
     it("loads and aggregates with one SQL request", async () => {
