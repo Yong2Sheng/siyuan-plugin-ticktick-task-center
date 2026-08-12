@@ -81,13 +81,15 @@ jobs:
           tmp_dir="$(mktemp -d)"
           trap 'rm -rf "$tmp_dir"' EXIT
           unzip -q package.zip -d "$tmp_dir"
-          for file in LICENSE README.md README.en.md plugin.json icon.png preview.png index.js index.css i18n/en.json i18n/zh-CN.json; do
+          for file in LICENSE README.md README.en.md CHANGELOG.md CHANGELOG.en.md plugin.json icon.png preview.png index.js index.css i18n/en.json i18n/zh-CN.json; do
             test -f "$tmp_dir/$file"
           done
           cmp plugin.json "$tmp_dir/plugin.json"
           cmp LICENSE "$tmp_dir/LICENSE"
           cmp README.md "$tmp_dir/README.md"
           cmp README.en.md "$tmp_dir/README.en.md"
+          cmp CHANGELOG.md "$tmp_dir/CHANGELOG.md"
+          cmp CHANGELOG.en.md "$tmp_dir/CHANGELOG.en.md"
           cmp icon.png "$tmp_dir/icon.png"
           cmp preview.png "$tmp_dir/preview.png"
           cmp public/i18n/en.json "$tmp_dir/i18n/en.json"

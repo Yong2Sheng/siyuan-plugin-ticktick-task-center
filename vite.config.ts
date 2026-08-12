@@ -23,6 +23,8 @@ export default defineConfig({
             targets: [
                 { src: "./README.md", dest: "./" },
                 { src: "./README.en.md", dest: "./" },
+                { src: "./CHANGELOG.md", dest: "./" },
+                { src: "./CHANGELOG.en.md", dest: "./" },
                 { src: "./LICENSE", dest: "./" },
                 { src: "./plugin.json", dest: "./" },
                 { src: "./preview.png", dest: "./" },
@@ -52,6 +54,7 @@ export default defineConfig({
                     watchExternalFiles([
                         "public/i18n/*.json",
                         "README*.md",
+                        "CHANGELOG*.md",
                         "plugin.json",
                     ]),
                 ]

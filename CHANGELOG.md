@@ -1,30 +1,54 @@
-# Changelog
+[English](CHANGELOG.en.md) | 简体中文
 
-## 0.1.0
+# 更新日志
 
-- Initialize the TickTick Task Center project.
-- Remove the frontend sample features and the kernel plugin example.
-- Add the task status and task-data domain model.
-- Add TickTick task creation through the Protyle slash menu.
-- Persist task metadata in seven structured block attributes.
-- Add validation, rollback handling, and automated tests.
-- Add non-destructive read-only task-card enhancement for marked task blocks.
-- Add localized identity, task-link, and semantic status-badge rendering.
-- Restore the original Markdown display when task enhancement is removed.
-- Add task editing through the interactive status badge.
-- Support editing task titles, TickTick URLs, and task statuses.
-- Synchronize edits to complete block attributes and fallback Markdown while preserving creation timestamps.
-- Add optimistic edit-conflict detection, Markdown rollback, immediate card refresh, and edit workflow tests.
-- Add a singleton TickTick Task Center tab opened from the SiYuan top bar.
-- Dynamically aggregate validated task blocks across the workspace without persisting a second task list.
-- Add active, closed, and all-task filters, local search, stable updated-time sorting, and task statistics.
-- Add source-block navigation, safe TickTick links, explicit workspace refresh, and task-center editing that updates the current list immediately without waiting for SQL indexing.
-- Protect recent task-center edits from temporarily stale manual-refresh results with a tab-scoped in-memory overlay.
-- Distinguish temporarily incomplete SQL attribute rows from complete but invalid task metadata.
-- Aggregate all seven task attributes into one deterministic SQL row per task to avoid partial tasks at the SiYuan query result limit.
-- Add an optional local-calendar deadline to task creation, editing, persistence, validation, and Task Center aggregation.
-- Add a reusable three-row Deadline button with remaining-day text, an eight-segment urgency track, and direct deadline editing in source cards and the Task Center.
-- Add theme-adaptive warning and overdue emphasis without overriding readable status controls.
-- Sort the “To progress today” group by the nearest deadline, placing overdue tasks first and undated tasks last.
-- Replace the task-card identity emoji with an original theme-aware checklist SVG.
-- Replace the placeholder marketplace icon with a summer teal-to-sky-blue 3D checklist icon that meets SiYuan's 160×160 and 20KB recommendations.
+## 0.1.0 - 未发布
+
+这是计划中的首个发布版本。以下内容按功能汇总当前分支的全部开发成果，不逐条罗列 commit 或 push。
+
+### 任务卡片
+
+- 支持通过思源 Protyle 斜杠菜单创建 TickTick / 滴答清单任务，并将新任务插入当前根文档顶部。
+- 将每项任务保存在一个普通思源块中，以七项必需的结构化属性作为唯一持久化任务数据源。
+- 支持七种稳定的本地状态：待开始、进行中、等待回复、已阻塞、已完成、已失败和已取消。
+- 保留包含任务标题及 TickTick / 滴答清单链接的可读 Markdown，停用插件后仍可正常阅读。
+- 无损增强已标记的任务块，显示任务图标、安全的外部任务链接、语义化状态徽章和截止日期控件。
+- 支持从原文档任务卡片或任务中心编辑标题、URL、状态和截止日期，同时保留原始创建时间。
+- 移除卡片增强时恢复原始块显示，并使卡片与 Protyle 的重新渲染及编辑模式变化保持同步。
+
+### 工作空间任务中心
+
+- 增加从思源顶栏打开的单例任务中心页签，不维护第二套任务数据库。
+- 动态汇总整个工作空间中通过校验的任务，并提供活跃、已结束和全部任务筛选。
+- 支持按任务标题、来源文档、来源路径和本地化状态名称搜索。
+- 增加任务统计、按更新时间稳定排序、来源块定位、安全的 TickTick 链接和显式手动刷新。
+- 在任务中心编辑后立即更新当前列表、筛选结果、排序和统计。
+- 使用页签级内存覆盖层，避免刚刚完成的编辑被暂时滞后的 SQL 刷新结果覆盖。
+
+### 每日推进与截止日期
+
+- 为活跃任务增加基于本地日历的每日推进记录，不改变任务状态或 `updated-at`。
+- 将活跃视图分为“今日待推进”和“今日进展”，并在今日进展中区分“已推进”和“今日完成”。
+- 将当天完成的任务自动记录为今日进展，并在其进入已结束状态后继续显示。
+- 跨过本地午夜后自动重新判断每日分组，无需后台任务批量改写属性。
+- 在任务创建、编辑、校验、持久化、任务卡片和任务中心汇总中加入可选的本地截止日期。
+- 显示剩余天数、具体日期和八格紧迫度条，并使用适配主题的临近、今日截止和逾期提示。
+- 按截止日期由近到远排列今日待推进任务，逾期任务优先，无截止日期任务置后。
+
+### 数据完整性与可靠性
+
+- 在持久化或导航前校验任务数据、思源块 ID 以及 TickTick / 滴答清单 URL。
+- 保持 `created-at` 不变，仅在任务数据真实变化时更新 `updated-at`，并在保存前检测乐观编辑冲突。
+- 标题或 URL 双写失败时尝试回滚 Markdown 降级内容。
+- 稳定任务卡片的发现、渲染、增强生命周期、持久化和编辑器重新渲染后的恢复行为。
+- 将必需和可选属性聚合为每项任务一条确定性的 SQL 结果，降低触及思源查询上限时产生不完整任务的风险。
+- 区分暂时不完整的 SQL 属性行与属性完整但元数据无效的任务。
+
+### 界面、打包与兼容性
+
+- 增加中英文界面以及浅色、深色主题适配。
+- 增加任务卡片专用的主题自适应清单 SVG，以及符合思源集市要求的 160×160 插件图标。
+- 初始化 TypeScript、Vite 和 Svelte 项目，移除模板示例功能及未使用的内核插件示例。
+- 增加领域模型、持久化、任务卡片、编辑、查询、筛选、每日推进、截止日期和任务中心的自动化测试。
+- 增加 CI 检查、生产打包、GitHub Release 工作流配置、开发文档和 MIT 许可证。
+- 在运行 HarmonyOS 6 的华为平板上完成核心流程基础验证后，声明 HarmonyOS 原生移动端为实验性支持；Android、iOS 和浏览器移动端尚未验证。

@@ -55,6 +55,21 @@ Status IDs are the stable values used for persistence and queries. Emoji and lab
 | `failed` | ❌ 已失败 | Failed | Closed |
 | `cancelled` | ⏹️ 已取消 | Cancelled | Closed |
 
+## Development status and changelog
+
+> [!NOTE]
+> This project does not yet have a GitHub Release and is not listed in the SiYuan Marketplace. The current `0.1.0` is the planned first version number; it does not mean that the version has been formally released.
+
+### 0.1.0 (in development, unreleased)
+
+- Implement task-card creation and editing, seven local statuses, deadlines, and daily progress tracking.
+- Implement the workspace-wide Task Center, filtering and search, source navigation, task editing, and manual refresh.
+- Keep SiYuan block attributes as the only data source, with input validation, edit-conflict detection, and Markdown rollback.
+- Support light and dark themes, Chinese and English interfaces, and a dedicated plugin icon.
+- Declare experimental HarmonyOS native-mobile support after basic verification of the core workflow on a Huawei tablet running HarmonyOS 6.
+
+See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record. When the version is formally published, its release date and corresponding Git tag and GitHub Release will be added.
+
 ## Installation
 
 ### Installation for users
@@ -65,7 +80,7 @@ Published builds will be provided through [GitHub Releases](https://github.com/Y
 
 ### Development installation
 
-The development environment follows the project CI configuration: Node.js 20, pnpm 11.7.0, and SiYuan Desktop 3.7.0 or later. Development and real-world acceptance currently focus on SiYuan Desktop for macOS; compatibility support for other platforms is not guaranteed.
+The development environment follows the project CI configuration: Node.js 20, pnpm 11.7.0, and SiYuan Desktop 3.7.0 or later. Development and real-world acceptance currently focus on SiYuan Desktop for macOS. The core workflow has also received basic verification on a Huawei tablet running HarmonyOS 6, but HarmonyOS native-mobile support remains experimental. Android, iOS, and browser-based mobile clients have not been verified.
 
 Make sure SiYuan is running, then execute:
 
@@ -230,7 +245,8 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 - Daily progress stores only the latest date; there is no history, streak, or trend reporting.
 - The daily date follows the current system timezone. When traveling across timezones, tasks are reevaluated using the local date at the current location.
 - Deadlines are local SiYuan metadata. The plugin does not read or synchronize existing TickTick deadlines and does not issue system notifications.
-- Development and real-world acceptance currently focus on SiYuan Desktop for macOS; compatibility support for other platforms is not guaranteed.
+- HarmonyOS native-mobile support has passed basic core-workflow verification on a Huawei tablet running HarmonyOS 6, but remains experimental. Android, iOS, and browser-based mobile clients have not been verified.
+- Cross-app links on mobile depend on the operating system, browser, and target app. TickTick / Dida365 links may open on the web first, and `siyuan://blocks/...` links in external apps may not launch SiYuan and locate the block directly.
 
 ## Development and verification
 

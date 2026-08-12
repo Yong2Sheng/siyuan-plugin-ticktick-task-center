@@ -8,11 +8,13 @@
   "backends": [
     "windows",
     "linux",
-    "darwin"
+    "darwin",
+    "harmony"
   ],
   "frontends": [
     "desktop",
-    "desktop-window"
+    "desktop-window",
+    "mobile"
   ],
   "displayName": {
     "default": "TickTick Task Center",
