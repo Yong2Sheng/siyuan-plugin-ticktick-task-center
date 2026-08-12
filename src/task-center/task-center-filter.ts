@@ -34,14 +34,34 @@ export function filterTaskCenterItems(
 }
 
 export function sortTaskCenterItems(items: readonly TaskCenterItem[]): TaskCenterItem[] {
+    return [...items].sort(compareByUpdatedTitleAndId);
+}
+
+export function sortTaskCenterItemsByDeadline(
+    items: readonly TaskCenterItem[],
+): TaskCenterItem[] {
     return [...items].sort((left, right) => {
-        const updated = right.updatedAt.localeCompare(left.updatedAt);
-        if (updated !== 0) {
-            return updated;
+        if (left.deadline && right.deadline) {
+            const deadline = left.deadline.localeCompare(right.deadline);
+            if (deadline !== 0) {
+                return deadline;
+            }
+        } else if (left.deadline) {
+            return -1;
+        } else if (right.deadline) {
+            return 1;
         }
-        const title = left.title.localeCompare(right.title);
-        return title !== 0 ? title : left.blockId.localeCompare(right.blockId);
+        return compareByUpdatedTitleAndId(left, right);
     });
+}
+
+function compareByUpdatedTitleAndId(left: TaskCenterItem, right: TaskCenterItem): number {
+    const updated = right.updatedAt.localeCompare(left.updatedAt);
+    if (updated !== 0) {
+        return updated;
+    }
+    const title = left.title.localeCompare(right.title);
+    return title !== 0 ? title : left.blockId.localeCompare(right.blockId);
 }
 
 export function countTaskCenterItems(items: readonly TaskCenterItem[]): TaskCenterStatistics {

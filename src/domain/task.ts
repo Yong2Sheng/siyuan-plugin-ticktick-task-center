@@ -14,6 +14,7 @@ export const TASK_BLOCK_ATTRIBUTES = {
 
 export const TASK_BLOCK_OPTIONAL_ATTRIBUTES = {
     lastProgressedDate: "custom-ticktick-last-progressed-date",
+    deadline: "custom-ticktick-deadline",
 } as const;
 
 export const DEFAULT_TASK_STATUS = "in-progress" satisfies TickTickTaskStatus;
@@ -26,6 +27,7 @@ export type TickTickTaskCardData = {
     title: string;
     url: string;
     status: TickTickTaskStatus;
+    deadline?: string;
     createdAt?: string;
     updatedAt?: string;
 };
@@ -38,7 +40,10 @@ export type PersistedTickTickTaskData = TickTickTaskCardData & {
 export type TaskBlockAttributes = Record<
     (typeof TASK_BLOCK_ATTRIBUTES)[keyof typeof TASK_BLOCK_ATTRIBUTES],
     string
->;
+> & Partial<Record<
+    (typeof TASK_BLOCK_OPTIONAL_ATTRIBUTES)[keyof typeof TASK_BLOCK_OPTIONAL_ATTRIBUTES],
+    string
+>>;
 
 export function escapeMarkdownLinkTitle(title: string): string {
     return title
@@ -62,5 +67,6 @@ export function createTaskBlockAttributes(data: PersistedTickTickTaskData): Task
         [TASK_BLOCK_ATTRIBUTES.status]: data.status,
         [TASK_BLOCK_ATTRIBUTES.createdAt]: data.createdAt,
         [TASK_BLOCK_ATTRIBUTES.updatedAt]: data.updatedAt,
+        [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: data.deadline ?? "",
     };
 }

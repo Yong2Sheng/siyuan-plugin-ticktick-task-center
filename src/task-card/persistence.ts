@@ -42,15 +42,23 @@ function isGeneratedTaskCard(card: HTMLElement): boolean {
     }
 
     const children = Array.from(card.children);
-    if (children.length !== 3) {
+    if (children.length !== 3 && children.length !== 4) {
         return false;
     }
-    const [identity, main, status] = children;
+    const identity = children.find((child) => child.classList.contains("ticktick-task-card__identity"));
+    const main = children.find((child) => child.classList.contains("ticktick-task-card__main"));
+    const deadline = children.find((child) => child.classList.contains("ticktick-task-card__deadline"));
+    const status = children.find((child) => child.classList.contains("ticktick-task-card__status"));
     if (
         !(identity instanceof HTMLElement)
         || !identity.classList.contains("ticktick-task-card__identity")
         || !(main instanceof HTMLElement)
         || !main.classList.contains("ticktick-task-card__main")
+        || (children.length === 4 && (
+            !(deadline instanceof HTMLButtonElement)
+            || !deadline.classList.contains("ticktick-task-card__deadline")
+        ))
+        || (children.length === 3 && deadline !== undefined)
         || !(status instanceof HTMLButtonElement)
         || !status.classList.contains("ticktick-task-card__status")
     ) {

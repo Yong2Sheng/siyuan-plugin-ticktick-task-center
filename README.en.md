@@ -2,12 +2,16 @@ English | [简体中文](README.md)
 
 # TickTick Task Center for SiYuan
 
+<p align="center">
+  <img src="icon.png" width="96" height="96" alt="TickTick Task Center plugin icon">
+</p>
+
 > [!IMPORTANT]
 > **All source code, tests, and documentation in this project were created entirely with OpenAI GPT and Codex.**
 >
 > Project requirements, feature decisions, real-world SiYuan testing, acceptance, and release decisions were handled by Yong Sheng.
 
-TickTick Task Center for SiYuan is a SiYuan plugin that associates ordinary SiYuan document blocks with TickTick / Dida365 tasks. The task block in the source document is the only persistent source of data. The plugin adds enhanced task cards, seven local statuses, daily progress tracking, and a workspace-wide task center without maintaining a second task database.
+TickTick Task Center for SiYuan is a SiYuan plugin that associates ordinary SiYuan document blocks with TickTick / Dida365 tasks. The task block in the source document is the only persistent source of data. The plugin adds enhanced task cards, seven local statuses, deadline reminders, daily progress tracking, and a workspace-wide task center without maintaining a second task database.
 
 The current version does not use the TickTick API, OAuth, or background synchronization. A task is associated with TickTick / Dida365 only through the HTTPS task URL supplied by the user.
 
@@ -16,16 +20,20 @@ The current version does not use the TickTick API, OAuth, or background synchron
 ## Core features
 
 - Create a TickTick task block from the slash menu in an editable SiYuan document. The default status is `in-progress`, and the new block is inserted at the top of the current root document.
-- Store the task title, a validated TickTick URL, seven required attributes, and an optional daily-progress date attribute in one ordinary SiYuan block.
+- Store the task title, a validated TickTick URL, seven required attributes, and optional deadline and daily-progress date attributes in one ordinary SiYuan block.
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
-- Non-destructively enhance the block as a task card with a task link and a semantically colored status badge.
-- Open the complete editor from the status badge to change the title, URL, or status.
+- Non-destructively enhance the block as a task card with a task link, an original checklist icon, a semantically colored status badge, and a Deadline button.
+- Open the complete editor from either the status badge or Deadline button to change the title, URL, status, or deadline.
+- Show the deadline as remaining days, an eight-segment urgency track, and the calendar date. An undated task keeps the same track layout and a clear setup entry point.
+- Keep the track empty outside the seven-day window, then fill one segment per day from seven days remaining. Due-today and overdue tasks use a full track.
+- Apply theme-adaptive low-saturation emphasis to active tasks inside the seven-day window, with warning emphasis for due-today tasks and error emphasis for overdue tasks while preserving readable theme contrast.
 - Preserve `created-at` and update `updated-at` only when task data actually changes.
 - Check `updated-at` for edit conflicts before saving, and attempt to roll back Markdown when a title or URL double-write fails.
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
 - Filter Active, Closed, or All tasks and search task titles, source documents, source paths, and localized status names.
-- Display All, Active, Closed, and today's progress statistics and apply a stable descending sort using the task attribute `updated-at`.
+- Display All, Active, Closed, and today's progress statistics. Ordinary lists use a stable descending sort based on the task attribute `updated-at`.
 - Show **🌤️ To progress today** and **✨ Today's progress** in the Active view. Today's progress is further divided into **🚀 Advanced** and **🏆 Completed today**.
+- Force **To progress today** into deadline order: overdue and nearer deadlines first, undated tasks last, then descending update time when deadlines match.
 - To do, In progress, Waiting for response, and Blocked tasks all participate in daily progress. Moving a task to Completed automatically records it as progress for the day.
 - Use **🚀 Progress today** and **✨ Progressed today** to mark or undo today's record without changing the task status or its existing `updated-at`.
 - Determine “today” from the system's local timezone and regroup automatically after local midnight without a background attribute-reset job.
@@ -92,26 +100,36 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 4. Confirm or edit the task title. The plugin attempts to use the current root document title as the initial value.
 5. Paste a valid TickTick / Dida365 HTTPS URL. The hostname must be exactly `ticktick.com` or `dida365.com`.
 6. Select a task status. The default is `in-progress` (▶️ In progress).
-7. Select **Create**.
-8. The task is inserted as the first child block of the current root document—below the document title and before the existing body—and is immediately enhanced as a task card.
+7. Optionally set a deadline. It can be left empty, added later, or cleared.
+8. Select **Create**.
+9. The task is inserted as the first child block of the current root document—below the document title and before the existing body—and is immediately enhanced as a task card.
 
 ### 2. Edit a task in a document
 
-- Select the status badge on the right side of the task card to open the complete editor.
-- Change the task title, TickTick URL, or status, then save.
+- Select the status badge on the right side of the task card to open the complete editor with the status field focused.
+- Select the rightmost Deadline button to open the same editor with the deadline field focused.
+- Change the task title, TickTick URL, status, or deadline, then save.
 - The card in the current document updates immediately after a successful save.
 - When the title or URL changes, the fallback Markdown is updated as well.
 - Status is not written to Markdown; its stable ID is stored in structured attributes.
 - `created-at` stays unchanged, and a new `updated-at` is generated only for an actual edit.
 
-### 3. Open the Task Center
+### 3. Use deadline reminders
+
+- A deadline is a local calendar date without a time of day. Display and calculations follow the computer's current timezone.
+- The first button row shows “N days left,” “Due today,” “N days overdue,” or “No deadline.” The second row always contains eight track segments, and the third row shows the date or setup action.
+- The track remains low-contrast and empty when more than seven days remain or no deadline is configured.
+- The first segment fills at seven days remaining, then one more segment fills each day. One day remaining shows seven filled segments; due-today and overdue tasks show all eight.
+- Deadlines are stored only in SiYuan task-block attributes. They are not written to TickTick and do not create system notifications or background reminders.
+
+### 4. Open the Task Center
 
 - Select the TickTick Task Center button in the SiYuan top bar.
 - The Task Center opens as an independent custom tab.
 - Only one Task Center tab exists at a time. Selecting the top-bar button again focuses the existing tab instead of creating another one.
 - The workspace is queried once when the tab first opens.
 
-### 4. Use the Task Center
+### 5. Use the Task Center
 
 - View counts for All, Active, Closed, and today's progress.
 - Switch between the Active, Closed, and All tasks filters.
@@ -119,9 +137,11 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Select a task title or **Locate source block** to open and locate the original SiYuan block.
 - Select **Open TickTick task** to open the validated external task URL in a new tab.
 - Select an item's status badge to reuse the same complete task editor.
+- Select an item's Deadline button to edit or clear its deadline directly.
 - After saving an edit from the Task Center, its list, filtered results, ordering, and statistics update immediately without a refresh.
+- **To progress today** prioritizes overdue and upcoming tasks, with undated tasks placed last.
 
-### 5. Track today's progress
+### 6. Track today's progress
 
 - The Active view is automatically divided into **🌤️ To progress today** and **✨ Today's progress**.
 - Today's progress is further divided into **🚀 Advanced** and **🏆 Completed today**, keeping ongoing progress and completed work visible together.
@@ -155,7 +175,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 
 The **Refresh** button is not merely an error-recovery button. It is the explicit entry point for synchronizing changes made outside the Task Center.
 
-If Refresh is selected immediately after an edit or daily-progress update inside the Task Center, the SiYuan SQL index may temporarily return the older value. The plugin keeps the recent edit or progress result in the current Task Center tab so that the UI does not fall back to an older title, URL, status, or progress group. The temporary overlay is cleared when SQL returns the corresponding data or when the task is no longer valid. It never replaces the task block attributes, is not persisted across tabs, and is not a second task database.
+If Refresh is selected immediately after an edit or daily-progress update inside the Task Center, the SiYuan SQL index may temporarily return the older value. The plugin keeps the recent edit or progress result in the current Task Center tab so that the UI does not fall back to an older title, URL, status, deadline, or progress group. The temporary overlay is cleared when SQL returns the corresponding data or when the task is no longer valid. It never replaces the task block attributes, is not persisted across tabs, and is not a second task database.
 
 ## Data model and privacy
 
@@ -184,11 +204,17 @@ Daily progress uses one optional attribute:
 custom-ticktick-last-progressed-date = YYYY-MM-DD
 ```
 
-An older task without this attribute is treated as pending today and requires no migration. The plugin compares the stored date with the system-local date instead of rewriting every task block at midnight.
+The deadline uses another optional attribute:
+
+```text
+custom-ticktick-deadline = YYYY-MM-DD
+```
+
+Older tasks require no migration when either optional attribute is absent. A missing daily-progress date is treated as pending today; a missing deadline is displayed as “No deadline” and sorted after dated tasks. The plugin compares stored dates with the system-local date instead of rewriting every task block at midnight.
 
 ## Task Center query
 
-The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven required task attributes and the optional daily-progress attribute into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
+The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven required task attributes and the optional daily-progress and deadline attributes into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
 
 The query is still subject to SiYuan's global SQL result-count limit, and pagination is not currently implemented. Search and filters operate only on the validated results already loaded in memory and do not execute additional SQL queries.
 
@@ -203,6 +229,7 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 - No settings page.
 - Daily progress stores only the latest date; there is no history, streak, or trend reporting.
 - The daily date follows the current system timezone. When traveling across timezones, tasks are reevaluated using the local date at the current location.
+- Deadlines are local SiYuan metadata. The plugin does not read or synchronize existing TickTick deadlines and does not issue system notifications.
 - Development and real-world acceptance currently focus on SiYuan Desktop for macOS; compatibility support for other platforms is not guaranteed.
 
 ## Development and verification
@@ -220,7 +247,7 @@ pnpm build
 - `pnpm run check`: runs Svelte / TypeScript static checks.
 - `pnpm build`: creates the production bundle, `dist/`, and `package.zip` in the repository root.
 
-The current verification suite contains 20 test files and 196 tests.
+The current verification suite contains 22 test files and 218 tests.
 
 ## License
 

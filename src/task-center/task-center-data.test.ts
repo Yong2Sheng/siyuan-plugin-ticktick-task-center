@@ -57,6 +57,17 @@ describe("aggregateTaskCenterRows", () => {
         expect(withoutProgress.incompleteBlocks).toEqual([]);
     });
 
+    it("reads an optional deadline without requiring it on older tasks", () => {
+        const withDeadline = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "2026-08-31",
+        }));
+        const withoutDeadline = aggregateTaskCenterRows(rowsFor());
+
+        expect(withDeadline.items[0]?.deadline).toBe("2026-08-31");
+        expect(withoutDeadline.items[0]?.deadline).toBeUndefined();
+        expect(withoutDeadline.incompleteBlocks).toEqual([]);
+    });
+
     it("ignores a malformed optional progress date without hiding the task", () => {
         const result = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
             [TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate]: "2026-02-31",

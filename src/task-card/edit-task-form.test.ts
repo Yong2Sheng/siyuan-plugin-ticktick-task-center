@@ -22,6 +22,7 @@ function elements(root: ParentNode) {
         title: root.querySelector<HTMLInputElement>('[data-field="title"]')!,
         url: root.querySelector<HTMLInputElement>('[data-field="url"]')!,
         status: root.querySelector<HTMLSelectElement>('[data-field="status"]')!,
+        deadline: root.querySelector<HTMLInputElement>('[data-field="deadline"]')!,
         cancel: root.querySelector<HTMLButtonElement>('[data-action="cancel"]')!,
         save: root.querySelector<HTMLButtonElement>('[data-action="save"]')!,
         error: root.querySelector<HTMLElement>('[data-field="error"]')!,
@@ -42,7 +43,7 @@ describe("showEditTaskDialog", () => {
         vi.restoreAllMocks();
     });
 
-    it("prefills title, URL and status and focuses status for the status intent", () => {
+    it("prefills fields and supports status or deadline focus intents", () => {
         const handle = showEditTaskDialog({
             translate,
             initial: INITIAL,
@@ -53,8 +54,11 @@ describe("showEditTaskDialog", () => {
         expect(fields.title.value).toBe(INITIAL.title);
         expect(fields.url.value).toBe(INITIAL.url);
         expect(fields.status.value).toBe(INITIAL.status);
+        expect(fields.deadline.value).toBe("");
         handle.focusStatus();
         expect(document.activeElement).toBe(fields.status);
+        handle.focusDeadline();
+        expect(document.activeElement).toBe(fields.deadline);
     });
 
     it("disables every control while saving and ignores duplicate submits", async () => {
@@ -72,6 +76,7 @@ describe("showEditTaskDialog", () => {
         expect(fields.title.disabled).toBe(true);
         expect(fields.url.disabled).toBe(true);
         expect(fields.status.disabled).toBe(true);
+        expect(fields.deadline.disabled).toBe(true);
         expect(fields.cancel.disabled).toBe(true);
         expect(fields.save.disabled).toBe(true);
         expect(onSave).toHaveBeenCalledOnce();
@@ -92,6 +97,7 @@ describe("showEditTaskDialog", () => {
         expect(fields.title.disabled).toBe(false);
         expect(fields.url.disabled).toBe(false);
         expect(fields.status.disabled).toBe(false);
+        expect(fields.deadline.disabled).toBe(false);
         expect(fields.cancel.disabled).toBe(false);
         expect(fields.save.disabled).toBe(false);
         expect(fields.title.value).toBe("User input");

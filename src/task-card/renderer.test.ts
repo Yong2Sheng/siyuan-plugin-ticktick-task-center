@@ -22,7 +22,13 @@ const VALID_ATTRIBUTES: Record<string, unknown> = {
 };
 
 const VIEW_MODEL = {
-    identity: "✅ TickTick task",
+    translate: (key: string) => ({
+        "deadline.none": "No deadline",
+        "deadline.setAction": "Set deadline",
+        "deadline.editTitle": "Click to edit the deadline",
+        "deadline.editAriaLabel": "Edit deadline: ${summary}, ${date}",
+    })[key] ?? key,
+    identity: "TickTick task",
     linkText: "Open task: DS9 Adaptor ↗️",
     title: "DS9 Adaptor",
     url: "https://ticktick.com/task/1",
@@ -67,9 +73,23 @@ describe("task card renderer", () => {
         expect(original.getAttribute("class")).toBeNull();
 
         const link = card?.querySelector<HTMLAnchorElement>(".ticktick-task-card__link");
+        const identity = card?.querySelector<HTMLElement>(".ticktick-task-card__identity");
+        const identityIcon = identity?.querySelector<SVGSVGElement>(
+            ".ticktick-task-card__identity-icon",
+        );
         expect(link?.textContent).toBe(VIEW_MODEL.linkText);
         expect(link?.target).toBe("_blank");
         expect(link?.rel).toBe("noopener noreferrer");
+        expect(identity?.textContent).toBe("TickTick task");
+        expect(identityIcon?.getAttribute("viewBox")).toBe("0 0 20 20");
+        expect(identityIcon?.getAttribute("aria-hidden")).toBe("true");
+        expect(identityIcon?.querySelectorAll("rect, path")).toHaveLength(2);
+        expect(Array.from(card?.children ?? [], (child) => child.className)).toEqual([
+            "ticktick-task-card__identity",
+            "ticktick-task-card__main",
+            "ticktick-task-card__status",
+            "ticktick-task-card__deadline",
+        ]);
     });
 
     it("keeps the visual card completely outside the persisted block DOM", () => {
@@ -125,7 +145,7 @@ describe("task card renderer", () => {
         expect(original.textContent).toBe("TickTick task: DS9 Adaptor");
     });
 
-    it("uses the status button as the only accessible edit entry", () => {
+    it("uses separate accessible deadline and status edit entries", () => {
         const block = createBlock();
         document.body.append(block);
         const onEditTask = vi.fn();
@@ -134,6 +154,7 @@ describe("task card renderer", () => {
         const card = getTaskCardDecoration(block)!;
         const statusButtons = card.querySelectorAll<HTMLButtonElement>(".ticktick-task-card__status");
         const status = statusButtons[0];
+        const deadline = card.querySelector<HTMLButtonElement>(".ticktick-task-card__deadline")!;
 
         expect(card.querySelector(".ticktick-task-card__edit")).toBeNull();
         expect(Array.from(card.querySelectorAll("button"), (button) => button.textContent))
@@ -144,9 +165,14 @@ describe("task card renderer", () => {
         expect(status.textContent).toBe("Status: ▶️ In progress");
         expect(status.title).toBe("Click to edit task");
         expect(status.getAttribute("aria-label")).toBe("Edit task, current status: In progress");
+        expect(deadline.querySelector(".ticktick-task-card__deadline-summary")?.textContent)
+            .toBe("No deadline");
+        expect(deadline.querySelectorAll(".ticktick-task-card__deadline-segment")).toHaveLength(8);
 
+        deadline.click();
         status.click();
-        expect(onEditTask).toHaveBeenCalledOnce();
+        expect(onEditTask).toHaveBeenCalledTimes(2);
+        expect(onEditTask).toHaveBeenNthCalledWith(1, block.dataset.nodeId, { focus: "deadline" });
         expect(onEditTask).toHaveBeenCalledWith(block.dataset.nodeId, { focus: "status" });
     });
 

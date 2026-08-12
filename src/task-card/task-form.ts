@@ -31,6 +31,7 @@ const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
     "url-https-required": "validation.urlHttpsRequired",
     "url-host-invalid": "validation.urlHostInvalid",
     "status-invalid": "validation.statusInvalid",
+    "deadline-invalid": "validation.deadlineInvalid",
 };
 
 export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
@@ -67,6 +68,10 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
                 <span data-field-label="status"></span>
                 <select class="b3-select fn__block" data-field="status"></select>
             </label>
+            <label class="b3-label">
+                <span data-field-label="deadline"></span>
+                <input class="b3-text-field fn__block" data-field="deadline" type="date">
+            </label>
             <div class="b3-label fn__none ticktick-task-form__error" data-field="error" role="alert"></div>
             <div class="b3-dialog__action">
                 <button class="b3-button b3-button--cancel" data-action="cancel" type="button"></button>
@@ -83,6 +88,7 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     const titleInput = requireElement<HTMLInputElement>(form, '[data-field="title"]');
     const urlInput = requireElement<HTMLInputElement>(form, '[data-field="url"]');
     const statusSelect = requireElement<HTMLSelectElement>(form, '[data-field="status"]');
+    const deadlineInput = requireElement<HTMLInputElement>(form, '[data-field="deadline"]');
     const errorElement = requireElement<HTMLElement>(form, '[data-field="error"]');
     const cancelButton = requireElement<HTMLButtonElement>(form, '[data-action="cancel"]');
     const createButton = requireElement<HTMLButtonElement>(form, '[data-action="create"]');
@@ -90,6 +96,7 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     requireElement<HTMLElement>(form, '[data-field-label="title"]').textContent = translate("taskCreate.titleLabel");
     requireElement<HTMLElement>(form, '[data-field-label="url"]').textContent = translate("taskCreate.urlLabel");
     requireElement<HTMLElement>(form, '[data-field-label="status"]').textContent = translate("taskCreate.statusLabel");
+    requireElement<HTMLElement>(form, '[data-field-label="deadline"]').textContent = translate("taskCreate.deadlineLabel");
     cancelButton.textContent = translate("common.cancel");
     createButton.textContent = translate("taskCreate.create");
     titleInput.value = options.initialTitle;
@@ -123,6 +130,7 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
             title: titleInput.value,
             url: urlInput.value,
             status: statusSelect.value,
+            deadline: deadlineInput.value,
         });
 
         if (!submission.accepted) {

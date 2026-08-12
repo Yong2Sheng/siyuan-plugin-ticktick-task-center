@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import { loadTaskCenterData } from "../task-center/task-center-query";
 import { createTaskBlock, TaskCreationError, type TaskCreationApi } from "./create-task";
 
@@ -86,6 +86,17 @@ describe("createTaskBlock", () => {
             createdAt: created.updatedAt,
             updatedAt: created.updatedAt,
         })]);
+    });
+
+    it("persists an optional deadline", async () => {
+        const api = createApi();
+        await createTaskBlock(api, {
+            ...REQUEST,
+            task: { ...REQUEST.task, deadline: "2026-08-31" },
+        }, () => new Date("2026-07-12T08:30:00.000Z"));
+
+        expect(vi.mocked(api.setBlockAttributes).mock.calls[0][1][TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline])
+            .toBe("2026-08-31");
     });
 
     it("rolls back the inserted block when attribute writing fails", async () => {

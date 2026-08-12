@@ -9,10 +9,23 @@ function factory(created: FakeDialog[]) {
         const dialog: FakeDialog = {
             destroy: vi.fn(() => onDestroy()),
             focusStatus: vi.fn(),
+            focusDeadline: vi.fn(),
             close: onDestroy,
         };
         created.push(dialog);
         return dialog;
+    });
+
+    it("focuses the requested deadline field for new and reused dialogs", async () => {
+        const manager = new EditDialogManager<FakeDialog>();
+        const created: FakeDialog[] = [];
+        const create = factory(created);
+
+        await manager.open("block-a", create, "deadline");
+        await manager.open("block-a", create, "deadline");
+
+        expect(created[0].focusDeadline).toHaveBeenCalledTimes(2);
+        expect(created[0].focusStatus).not.toHaveBeenCalled();
     });
 }
 

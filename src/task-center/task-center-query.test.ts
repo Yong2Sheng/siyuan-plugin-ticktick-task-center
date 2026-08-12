@@ -4,7 +4,7 @@ import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain
 import { loadTaskCenterData, TASK_CENTER_SQL } from "./task-center-query";
 
 describe("task center SQL query", () => {
-    it("returns one grouped row per task with all seven centralized attribute columns", () => {
+    it("returns one grouped row per task with all centralized attribute columns", () => {
         expect(TASK_CENTER_SQL).toContain("FROM attributes AS marker");
         expect(TASK_CENTER_SQL).toContain("JOIN blocks AS task");
         expect(TASK_CENTER_SQL).toContain(
@@ -22,7 +22,10 @@ describe("task center SQL query", () => {
                 `MAX(CASE WHEN attribute.name = '${attribute}' THEN attribute.value END) AS "${attribute}"`,
             );
         }
-        expect(TASK_CENTER_SQL.match(/MAX\(CASE WHEN attribute\.name = /g)).toHaveLength(8);
+        expect(TASK_CENTER_SQL.match(/MAX\(CASE WHEN attribute\.name = /g)).toHaveLength(
+            Object.keys(TASK_BLOCK_ATTRIBUTES).length
+            + Object.keys(TASK_BLOCK_OPTIONAL_ATTRIBUTES).length,
+        );
     });
 
     it("loads and aggregates with one SQL request", async () => {

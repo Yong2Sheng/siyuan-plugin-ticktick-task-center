@@ -1,7 +1,10 @@
 export type ManagedEditDialog = {
     destroy(): void;
     focusStatus(): void;
+    focusDeadline(): void;
 };
+
+export type EditDialogFocus = "status" | "deadline";
 
 export type EditDialogFactory<TDialog extends ManagedEditDialog> = (
     onDestroy: () => void,
@@ -15,6 +18,7 @@ export class EditDialogManager<TDialog extends ManagedEditDialog = ManagedEditDi
     async open(
         blockId: string,
         factory: EditDialogFactory<TDialog>,
+        focus: EditDialogFocus = "status",
     ): Promise<TDialog> {
         if (this.stopped) {
             throw new Error("Task edit dialog manager is stopped");
@@ -22,14 +26,14 @@ export class EditDialogManager<TDialog extends ManagedEditDialog = ManagedEditDi
 
         const existing = this.dialogs.get(blockId);
         if (existing) {
-            existing.focusStatus();
+            focusDialog(existing, focus);
             return existing;
         }
 
         const pending = this.pending.get(blockId);
         if (pending) {
             const dialog = await pending;
-            dialog.focusStatus();
+            focusDialog(dialog, focus);
             return dialog;
         }
 
@@ -51,7 +55,7 @@ export class EditDialogManager<TDialog extends ManagedEditDialog = ManagedEditDi
 
         try {
             const created = await creation;
-            created.focusStatus();
+            focusDialog(created, focus);
             return created;
         } finally {
             if (this.pending.get(blockId) === creation) {
@@ -72,4 +76,12 @@ export class EditDialogManager<TDialog extends ManagedEditDialog = ManagedEditDi
     get size(): number {
         return this.dialogs.size;
     }
+}
+
+function focusDialog(dialog: ManagedEditDialog, focus: EditDialogFocus): void {
+    if (focus === "deadline") {
+        dialog.focusDeadline();
+        return;
+    }
+    dialog.focusStatus();
 }

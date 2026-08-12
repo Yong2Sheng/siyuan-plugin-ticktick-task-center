@@ -50,10 +50,21 @@
     }
 
     &__identity {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         flex: 0 0 auto;
         color: var(--b3-theme-primary);
         font-weight: 700;
         white-space: nowrap;
+    }
+
+    &__identity-icon {
+        display: block;
+        flex: 0 0 auto;
+        width: 20px;
+        height: 20px;
+        overflow: visible;
     }
 
     &__main {
@@ -90,7 +101,7 @@
         display: inline-flex;
         align-items: center;
         flex: 0 0 auto;
-        margin-left: auto;
+        margin-left: 0;
         padding: 3px 8px;
         border: 1px solid var(--ticktick-status-color);
         border-radius: 999px;
@@ -668,6 +679,218 @@
     &__external {
         text-decoration: none;
     }
+}
+
+.ticktick-task-card__deadline,
+.ticktick-task-center__deadline {
+    --ticktick-deadline-accent: var(--b3-theme-on-surface, var(--b3-theme-on-background));
+
+    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: minmax(16px, auto) 6px minmax(15px, auto);
+    gap: 4px;
+    align-items: center;
+    flex: 0 0 84px;
+    width: 84px;
+    min-width: 84px;
+    min-height: 54px;
+    margin: 0;
+    padding: 5px 7px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface, var(--b3-theme-on-background));
+    font-family: inherit;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+
+    &:hover {
+        border-color: var(--ticktick-deadline-accent);
+        transform: translateY(-1px);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--ticktick-deadline-accent);
+        outline-offset: 2px;
+    }
+
+    &[data-deadline-state="upcoming"],
+    &[data-deadline-state="today"] {
+        --ticktick-deadline-accent: color-mix(
+            in srgb,
+            var(--b3-theme-warning, #c47b12) 78%,
+            var(--b3-theme-on-background)
+        );
+
+        border-color: color-mix(
+            in srgb,
+            var(--ticktick-deadline-accent) 58%,
+            var(--b3-border-color)
+        );
+        background: color-mix(
+            in srgb,
+            var(--ticktick-deadline-accent) 8%,
+            var(--b3-theme-surface)
+        );
+    }
+
+    &[data-deadline-state="today"] {
+        background: color-mix(
+            in srgb,
+            var(--ticktick-deadline-accent) 12%,
+            var(--b3-theme-surface)
+        );
+    }
+
+    &[data-deadline-state="overdue"] {
+        --ticktick-deadline-accent: var(--b3-theme-error, #cf222e);
+
+        border-color: color-mix(
+            in srgb,
+            var(--ticktick-deadline-accent) 64%,
+            var(--b3-border-color)
+        );
+        background: color-mix(
+            in srgb,
+            var(--ticktick-deadline-accent) 9%,
+            var(--b3-theme-surface)
+        );
+    }
+}
+
+.ticktick-task-card__deadline-summary,
+.ticktick-task-center__deadline-summary {
+    min-width: 0;
+    color: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.ticktick-task-card__deadline-track,
+.ticktick-task-center__deadline-track {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 1px;
+    width: 100%;
+    height: 6px;
+}
+
+.ticktick-task-card__deadline-segment,
+.ticktick-task-center__deadline-segment {
+    min-width: 0;
+    border-radius: 1px;
+    background: color-mix(
+        in srgb,
+        var(--b3-theme-on-surface, var(--b3-theme-on-background)) 18%,
+        transparent
+    );
+
+    &[data-filled="true"] {
+        background: var(--ticktick-deadline-accent);
+    }
+}
+
+.ticktick-task-card__deadline-date,
+.ticktick-task-center__deadline-date {
+    min-width: 0;
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.ticktick-task-card:is(
+    [data-status-tone="neutral"],
+    [data-status-tone="primary"],
+    [data-status-tone="waiting"],
+    [data-status-tone="blocked"]
+)[data-deadline-state="upcoming"] {
+    border-color: color-mix(
+        in srgb,
+        var(--b3-theme-warning, #c47b12) 52%,
+        var(--b3-theme-primary)
+    );
+    background: color-mix(
+        in srgb,
+        var(--b3-theme-warning, #c47b12) 8%,
+        var(--b3-theme-background)
+    );
+}
+
+.ticktick-task-card:is(
+    [data-status-tone="neutral"],
+    [data-status-tone="primary"],
+    [data-status-tone="waiting"],
+    [data-status-tone="blocked"]
+)[data-deadline-state="today"] {
+    border-color: var(--b3-theme-warning, #c47b12);
+    background: color-mix(
+        in srgb,
+        var(--b3-theme-warning, #c47b12) 12%,
+        var(--b3-theme-background)
+    );
+}
+
+.ticktick-task-card:is(
+    [data-status-tone="neutral"],
+    [data-status-tone="primary"],
+    [data-status-tone="waiting"],
+    [data-status-tone="blocked"]
+)[data-deadline-state="overdue"] {
+    border-color: var(--b3-theme-error, #cf222e);
+    background: color-mix(
+        in srgb,
+        var(--b3-theme-error, #cf222e) 10%,
+        var(--b3-theme-background)
+    );
+}
+
+.ticktick-task-center .ticktick-task-center__item:is(
+    [data-status-tone="neutral"],
+    [data-status-tone="primary"],
+    [data-status-tone="waiting"],
+    [data-status-tone="blocked"]
+)[data-deadline-state="upcoming"] {
+    border-color: color-mix(
+        in srgb,
+        var(--b3-theme-warning, #c47b12) 54%,
+        var(--b3-border-color)
+    );
+    background: color-mix(
+        in srgb,
+        var(--b3-theme-warning, #c47b12) 8%,
+        var(--b3-theme-surface)
+    );
+}
+
+.ticktick-task-center .ticktick-task-center__item:is(
+    [data-status-tone="neutral"],
+    [data-status-tone="primary"],
+    [data-status-tone="waiting"],
+    [data-status-tone="blocked"]
+)[data-deadline-state="today"] {
+    border-color: var(--b3-theme-warning, #c47b12);
+    background: color-mix(
+        in srgb,
+        var(--b3-theme-warning, #c47b12) 12%,
+        var(--b3-theme-surface)
+    );
+}
+
+.ticktick-task-center .ticktick-task-center__item:is(
+    [data-status-tone="neutral"],
+    [data-status-tone="primary"],
+    [data-status-tone="waiting"],
+    [data-status-tone="blocked"]
+)[data-deadline-state="overdue"] {
+    border-color: var(--b3-theme-error, #cf222e);
+    background: color-mix(
+        in srgb,
+        var(--b3-theme-error, #cf222e) 10%,
+        var(--b3-theme-surface)
+    );
 }
 
 @media (max-width: 520px) {

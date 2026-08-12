@@ -69,7 +69,7 @@ describe("editTask", () => {
         expect(api.updateMarkdownBlock).not.toHaveBeenCalled();
         expect(api.setBlockAttributes).toHaveBeenCalledOnce();
         const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
-        expect(Object.keys(attributes)).toHaveLength(8);
+        expect(Object.keys(attributes)).toHaveLength(9);
         expect(attributes[TASK_BLOCK_ATTRIBUTES.card]).toBe("true");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.version]).toBe("1");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.title]).toBe(ORIGINAL.title);
@@ -77,8 +77,36 @@ describe("editTask", () => {
         expect(attributes[TASK_BLOCK_ATTRIBUTES.createdAt]).toBe(ORIGINAL.createdAt);
         expect(attributes[TASK_BLOCK_ATTRIBUTES.updatedAt]).toBe("2026-07-12T10:30:00.000Z");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.status]).toBe("completed");
+        expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]).toBe("");
         expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate])
             .toBe(getLocalDate(changedAt));
+    });
+
+    it("updates and clears the optional deadline without rewriting Markdown", async () => {
+        const api = createApi();
+        const withDeadline = await editTask(api, request({
+            title: ORIGINAL.title,
+            url: ORIGINAL.url,
+            status: ORIGINAL.status,
+            deadline: "2026-08-31",
+        }), () => new Date("2026-07-12T10:30:00.000Z"));
+
+        expect(withDeadline).toMatchObject({ changed: true, data: { deadline: "2026-08-31" } });
+        expect(api.updateMarkdownBlock).not.toHaveBeenCalled();
+        expect(vi.mocked(api.setBlockAttributes).mock.calls[0][1][TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline])
+            .toBe("2026-08-31");
+
+        const clearApi = createApi();
+        vi.mocked(clearApi.loadAttributes).mockResolvedValue({
+            ...CURRENT,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "2026-08-31",
+        });
+        await editTask(clearApi, {
+            ...request(),
+            original: { ...ORIGINAL, deadline: "2026-08-31" },
+        }, () => new Date("2026-07-12T10:30:00.000Z"));
+        expect(vi.mocked(clearApi.setBlockAttributes).mock.calls[0][1][TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline])
+            .toBe("");
     });
 
     it("does not replace daily progress when editing a task that was already completed", async () => {

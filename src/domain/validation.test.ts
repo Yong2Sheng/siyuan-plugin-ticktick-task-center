@@ -66,4 +66,19 @@ describe("TickTick task validation", () => {
             },
         });
     });
+
+    it("accepts an optional local-date deadline and rejects malformed dates", () => {
+        expect(normalizeTaskData({
+            title: "Task",
+            url: "https://ticktick.com/t/1",
+            status: "in-progress",
+            deadline: "2026-08-31",
+        })).toMatchObject({ valid: true, data: { deadline: "2026-08-31" } });
+        expect(validateTaskData({
+            title: "Task",
+            url: "https://ticktick.com/t/1",
+            status: "in-progress",
+            deadline: "2026-02-31",
+        })).toContain("deadline-invalid");
+    });
 });

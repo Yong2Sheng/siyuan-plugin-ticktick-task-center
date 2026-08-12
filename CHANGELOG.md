@@ -22,3 +22,9 @@
 - Protect recent task-center edits from temporarily stale manual-refresh results with a tab-scoped in-memory overlay.
 - Distinguish temporarily incomplete SQL attribute rows from complete but invalid task metadata.
 - Aggregate all seven task attributes into one deterministic SQL row per task to avoid partial tasks at the SiYuan query result limit.
+- Add an optional local-calendar deadline to task creation, editing, persistence, validation, and Task Center aggregation.
+- Add a reusable three-row Deadline button with remaining-day text, an eight-segment urgency track, and direct deadline editing in source cards and the Task Center.
+- Add theme-adaptive warning and overdue emphasis without overriding readable status controls.
+- Sort the “To progress today” group by the nearest deadline, placing overdue tasks first and undated tasks last.
+- Replace the task-card identity emoji with an original theme-aware checklist SVG.
+- Replace the placeholder marketplace icon with a summer teal-to-sky-blue 3D checklist icon that meets SiYuan's 160×160 and 20KB recommendations.

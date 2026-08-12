@@ -6,6 +6,7 @@ import {
     filterTaskCenterItems,
     TASK_CENTER_FILTERS,
     type TaskCenterFilter,
+    sortTaskCenterItemsByDeadline,
 } from "./task-center-filter";
 import { TaskCenterController, type TaskCenterState } from "./task-center-controller";
 import {
@@ -13,12 +14,14 @@ import {
     isProgressedToday,
     millisecondsUntilNextLocalDay,
 } from "./daily-progress";
+import { getDeadlineState } from "../domain/deadline";
+import { createDeadlineButton } from "../task-card/deadline-button";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
     translate: Translate;
     locale?: string;
-    onEditTask(blockId: string): void;
+    onEditTask(blockId: string, focus: "status" | "deadline"): void;
     onLocateTask(blockId: string): void;
     onSaveDailyProgress(blockId: string, date: string | undefined): Promise<void>;
     onDailyProgressError?(error: unknown): void;
@@ -194,9 +197,9 @@ export class TaskCenterView {
         );
         let hasVisibleItems = visibleItems.length > 0;
         if (state.filter === "active") {
-            const pendingItems = visibleItems.filter((item) => (
+            const pendingItems = sortTaskCenterItemsByDeadline(visibleItems.filter((item) => (
                 !isProgressedToday(item.lastProgressedDate, today)
-            ));
+            )));
             const progressedItems = visibleItems.filter((item) => (
                 isProgressedToday(item.lastProgressedDate, today)
             ));
@@ -314,6 +317,7 @@ export class TaskCenterView {
         const article = document.createElement("article");
         article.className = "ticktick-task-center__item";
         article.setAttribute("data-status-tone", status.tone);
+        article.setAttribute("data-deadline-state", getDeadlineState(item.deadline, today).kind);
         article.setAttribute("role", "listitem");
 
         const statusButton = document.createElement("button");
@@ -326,7 +330,16 @@ export class TaskCenterView {
             "aria-label",
             translate("taskEdit.statusButtonAriaLabel").replace("${status}", statusLabel),
         );
-        statusButton.addEventListener("click", () => this.options.onEditTask(item.blockId));
+        statusButton.addEventListener("click", () => this.options.onEditTask(item.blockId, "status"));
+
+        const deadlineButton = createDeadlineButton({
+            className: "ticktick-task-center__deadline",
+            deadline: item.deadline,
+            today,
+            locale: this.options.locale,
+            translate,
+            onClick: () => this.options.onEditTask(item.blockId, "deadline"),
+        });
 
         const content = document.createElement("div");
         content.className = "ticktick-task-center__content";
@@ -366,7 +379,7 @@ export class TaskCenterView {
         external.textContent = `${translate("taskCenterView.openTickTick")} ↗️`;
         actions.append(locate, external);
 
-        article.append(statusButton, content, actions);
+        article.append(deadlineButton, statusButton, content, actions);
         return article;
     }
 

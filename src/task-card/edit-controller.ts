@@ -22,6 +22,7 @@ export type SuccessfulTaskEditResult = {
 };
 
 export type OpenTaskEditOptions = {
+    focus?: "status" | "deadline";
     onSaved?(result: SuccessfulTaskEditResult): void;
 };
 
@@ -92,7 +93,7 @@ export class TaskEditController {
                         removeDialog();
                     },
                 });
-            });
+            }, options.focus);
         } catch (error) {
             this.onSaved.delete(blockId);
             this.warn(`TickTick task editor could not be opened for ${blockId}`, error);

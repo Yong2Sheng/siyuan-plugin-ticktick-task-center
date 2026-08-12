@@ -25,7 +25,8 @@
     "urlInvalid": "Enter a valid URL.",
     "urlHttpsRequired": "Only HTTPS links are supported.",
     "urlHostInvalid": "Only TickTick links from dida365.com or ticktick.com are supported.",
-    "statusInvalid": "The task status is invalid."
+    "statusInvalid": "The task status is invalid.",
+    "deadlineInvalid": "The deadline is invalid."
   },
   "taskCreate": {
     "slashName": "TickTick task card",
@@ -33,6 +34,7 @@
     "titleLabel": "Task title",
     "urlLabel": "TickTick URL",
     "statusLabel": "Task status",
+    "deadlineLabel": "Deadline (optional)",
     "create": "Create",
     "creating": "Creating…",
     "created": "TickTick task created",
@@ -46,9 +48,18 @@
     }
   },
   "taskCardView": {
-    "identity": "✅ TickTick task",
+    "identity": "TickTick task",
     "openTask": "Open task",
     "status": "Status"
+  },
+  "deadline": {
+    "none": "No deadline",
+    "setAction": "Set deadline",
+    "remainingDays": "${count} days left",
+    "dueToday": "Due today",
+    "overdueDays": "${count} days overdue",
+    "editTitle": "Click to edit the deadline",
+    "editAriaLabel": "Edit deadline: ${summary}, ${date}"
   },
   "taskEdit": {
     "dialogTitle": "Edit TickTick task",

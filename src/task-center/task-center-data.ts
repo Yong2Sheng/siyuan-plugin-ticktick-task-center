@@ -15,6 +15,7 @@ export type TaskCenterItem = {
     status: TickTickTaskStatus;
     createdAt: string;
     updatedAt: string;
+    deadline?: string;
     lastProgressedDate?: string;
 };
 
@@ -127,6 +128,9 @@ export function aggregateTaskCenterRows(
         const lastProgressedDate = readLocalDate(
             aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate],
         );
+        const deadline = readLocalDate(
+            aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline],
+        );
         items.push({
             blockId,
             rootId,
@@ -138,6 +142,7 @@ export function aggregateTaskCenterRows(
             status: parsed.data.status,
             createdAt: parsed.data.createdAt,
             updatedAt: parsed.data.updatedAt,
+            ...(deadline ? { deadline } : {}),
             ...(lastProgressedDate ? { lastProgressedDate } : {}),
         });
     }

@@ -32,6 +32,7 @@ function fields() {
         title: document.querySelector<HTMLInputElement>('[data-field="title"]')!,
         url: document.querySelector<HTMLInputElement>('[data-field="url"]')!,
         status: document.querySelector<HTMLSelectElement>('[data-field="status"]')!,
+        deadline: document.querySelector<HTMLInputElement>('[data-field="deadline"]')!,
         cancel: document.querySelector<HTMLButtonElement>('[data-action="cancel"]')!,
     };
 }
@@ -65,6 +66,7 @@ describe("TaskEditController saved result", () => {
         ["status", "completed"],
         ["title", "Updated title"],
         ["url", "https://ticktick.com/task/new"],
+        ["deadline", "2026-08-31"],
     ] as const)("returns a successful %s edit to its caller exactly once", async (field, value) => {
         const harness = createHarness();
         const load = vi.fn().mockResolvedValue({
@@ -97,6 +99,7 @@ describe("TaskEditController saved result", () => {
             title: field === "title" ? value : INITIAL.title,
             url: field === "url" ? value : INITIAL.url,
             status: field === "status" ? value : INITIAL.status,
+            ...(field === "deadline" ? { deadline: value } : {}),
         });
         harness.editor.stop();
         center.destroy();

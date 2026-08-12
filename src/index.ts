@@ -42,9 +42,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             repairMarkdown: updateMarkdownBlock,
             actions: {
                 onEditTask: (blockId, { focus }) => {
-                    if (focus === "status") {
-                        void this.taskEditController?.open(blockId);
-                    }
+                    void this.taskEditController?.open(blockId, { focus });
                 },
             },
         });
@@ -170,7 +168,8 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             controller,
             translate,
             locale: document.documentElement.lang || navigator.language,
-            onEditTask: (blockId) => void this.taskEditController?.open(blockId, {
+            onEditTask: (blockId, focus) => void this.taskEditController?.open(blockId, {
+                focus,
                 onSaved: ({ result }) => {
                     editSession.apply(blockId, result.data);
                 },

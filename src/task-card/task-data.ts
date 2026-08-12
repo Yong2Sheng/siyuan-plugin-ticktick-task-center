@@ -1,10 +1,12 @@
 import { isTickTickTaskStatus } from "../domain/status";
 import {
     TASK_BLOCK_ATTRIBUTES,
+    TASK_BLOCK_OPTIONAL_ATTRIBUTES,
     TASK_DATA_VERSION,
     type PersistedTickTickTaskData,
 } from "../domain/task";
 import { isAllowedTickTickUrl } from "../domain/validation";
+import { readLocalDate } from "../domain/local-date";
 
 export type TaskBlockParseFailure =
     | "not-task-card"
@@ -12,6 +14,7 @@ export type TaskBlockParseFailure =
     | "missing-title"
     | "invalid-url"
     | "invalid-status"
+    | "invalid-deadline"
     | "invalid-created-at"
     | "invalid-updated-at";
 
@@ -54,6 +57,14 @@ export function parseTaskBlockAttributes(
         return { valid: false, reason: "invalid-updated-at" };
     }
 
+    const rawDeadline = attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline];
+    const deadline = rawDeadline === undefined || rawDeadline === ""
+        ? undefined
+        : readLocalDate(rawDeadline);
+    if (rawDeadline !== undefined && rawDeadline !== "" && deadline === undefined) {
+        return { valid: false, reason: "invalid-deadline" };
+    }
+
     return {
         valid: true,
         data: {
@@ -61,6 +72,7 @@ export function parseTaskBlockAttributes(
             title: title.trim(),
             url,
             status,
+            ...(deadline ? { deadline } : {}),
             createdAt,
             updatedAt,
         },

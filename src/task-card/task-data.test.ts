@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import { parseTaskBlockAttributes } from "./task-data";
 
 const VALID_ATTRIBUTES: Record<string, unknown> = {
@@ -39,5 +39,16 @@ describe("parseTaskBlockAttributes", () => {
     ])("rejects invalid %s", (key, value, reason) => {
         expect(parseTaskBlockAttributes({ ...VALID_ATTRIBUTES, [key]: value }))
             .toEqual({ valid: false, reason });
+    });
+
+    it("reads a valid optional deadline and rejects an invalid one", () => {
+        expect(parseTaskBlockAttributes({
+            ...VALID_ATTRIBUTES,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "2026-08-31",
+        })).toMatchObject({ valid: true, data: { deadline: "2026-08-31" } });
+        expect(parseTaskBlockAttributes({
+            ...VALID_ATTRIBUTES,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "2026-02-31",
+        })).toEqual({ valid: false, reason: "invalid-deadline" });
     });
 });

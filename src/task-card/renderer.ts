@@ -1,10 +1,12 @@
 import type { TaskCardViewModel } from "./card-view-model";
+import { getDeadlineState } from "../domain/deadline";
+import { createDeadlineButton } from "./deadline-button";
 
 export const TASK_CARD_CONTAINER_ATTRIBUTE = "data-ticktick-task-enhancement";
 export const TASK_CARD_BLOCK_ID_ATTRIBUTE = "data-ticktick-task-block-id";
 
 export type TaskCardActions = {
-    onEditTask(blockId: string, options: { focus: "status" }): void;
+    onEditTask(blockId: string, options: { focus: "status" | "deadline" }): void;
 };
 
 export function enhanceTaskBlock(
@@ -40,11 +42,12 @@ export function enhanceTaskBlock(
     card.setAttribute(TASK_CARD_CONTAINER_ATTRIBUTE, "");
     card.setAttribute(TASK_CARD_BLOCK_ID_ATTRIBUTE, blockId);
     card.setAttribute("data-status-tone", viewModel.statusTone);
+    card.setAttribute("data-deadline-state", getDeadlineState(viewModel.deadline).kind);
     card.setAttribute("contenteditable", "false");
 
     const identity = document.createElement("span");
     identity.className = "ticktick-task-card__identity";
-    identity.textContent = viewModel.identity;
+    identity.append(createTaskIdentityIcon(), viewModel.identity);
 
     const main = document.createElement("span");
     main.className = "ticktick-task-card__main";
@@ -58,6 +61,13 @@ export function enhanceTaskBlock(
     link.textContent = viewModel.linkText;
     main.append(link);
 
+    const deadline = createDeadlineButton({
+        className: "ticktick-task-card__deadline",
+        deadline: viewModel.deadline,
+        translate: (key) => viewModel.translate(key),
+        onClick: () => actions?.onEditTask(blockId, { focus: "deadline" }),
+    });
+
     const status = document.createElement("button");
     status.type = "button";
     status.className = "ticktick-task-card__status";
@@ -70,7 +80,7 @@ export function enhanceTaskBlock(
         actions?.onEditTask(blockId, { focus: "status" });
     });
 
-    card.append(identity, main, status);
+    card.append(identity, main, status, deadline);
     blockElement.before(card);
     return true;
 }
@@ -117,6 +127,40 @@ function findOriginalContent(blockElement: HTMLElement): HTMLElement | null {
         && element.hasAttribute("spellcheck")
         && element.hasAttribute("contenteditable"),
     ) ?? null;
+}
+
+function createTaskIdentityIcon(): SVGSVGElement {
+    const namespace = "http://www.w3.org/2000/svg";
+    const icon = document.createElementNS(namespace, "svg");
+    icon.classList.add("ticktick-task-card__identity-icon");
+    icon.setAttribute("viewBox", "0 0 20 20");
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("focusable", "false");
+
+    const frame = document.createElementNS(namespace, "rect");
+    frame.setAttribute("x", "1.5");
+    frame.setAttribute("y", "1.5");
+    frame.setAttribute("width", "17");
+    frame.setAttribute("height", "17");
+    frame.setAttribute("rx", "4.25");
+    frame.setAttribute("fill", "currentColor");
+    frame.setAttribute("fill-opacity", "0.12");
+    frame.setAttribute("stroke", "currentColor");
+    frame.setAttribute("stroke-width", "1.5");
+
+    const checklist = document.createElementNS(namespace, "path");
+    checklist.setAttribute(
+        "d",
+        "M4.8 6.9 6.2 8.3 8.55 5.75M10.65 7h4.05M4.8 12.05l1.4 1.4 2.35-2.55m2.1 1.25h4.05",
+    );
+    checklist.setAttribute("fill", "none");
+    checklist.setAttribute("stroke", "currentColor");
+    checklist.setAttribute("stroke-width", "1.6");
+    checklist.setAttribute("stroke-linecap", "round");
+    checklist.setAttribute("stroke-linejoin", "round");
+
+    icon.append(frame, checklist);
+    return icon;
 }
 
 function findTaskCardDecorations(blockElement: HTMLElement): HTMLElement[] {

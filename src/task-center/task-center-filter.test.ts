@@ -8,6 +8,7 @@ import {
     DEFAULT_TASK_CENTER_FILTER,
     filterTaskCenterItems,
     sortTaskCenterItems,
+    sortTaskCenterItemsByDeadline,
 } from "./task-center-filter";
 
 const labels: Record<string, string> = {
@@ -71,6 +72,16 @@ describe("task center filtering", () => {
             "20260713120004-abcdefg",
             ITEMS[0].blockId,
         ]);
+    });
+
+    it("sorts today's pending work by nearest deadline and puts undated tasks last", () => {
+        const undated = ITEMS[0];
+        const later = { ...ITEMS[1], deadline: "2026-08-20" };
+        const overdue = { ...ITEMS[2], deadline: "2026-08-10" };
+        const today = { ...ITEMS[3], deadline: "2026-08-12" };
+
+        expect(sortTaskCenterItemsByDeadline([undated, later, today, overdue]))
+            .toEqual([overdue, today, later, undated]);
     });
 
     it.each([

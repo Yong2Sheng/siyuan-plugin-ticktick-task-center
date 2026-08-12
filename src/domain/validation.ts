@@ -1,5 +1,6 @@
 import { isTickTickTaskStatus } from "./status";
 import type { TickTickTaskStatus } from "./status";
+import { readLocalDate } from "./local-date";
 
 const ALLOWED_TICKTICK_HOSTS = new Set(["dida365.com", "ticktick.com"]);
 
@@ -9,18 +10,21 @@ export type TaskValidationError =
     | "url-invalid"
     | "url-https-required"
     | "url-host-invalid"
-    | "status-invalid";
+    | "status-invalid"
+    | "deadline-invalid";
 
 export type TaskDataCandidate = {
     title: unknown;
     url: unknown;
     status: unknown;
+    deadline?: unknown;
 };
 
 export type NormalizedTaskData = {
     title: string;
     url: string;
     status: TickTickTaskStatus;
+    deadline?: string;
 };
 
 export type TaskNormalizationResult =
@@ -72,6 +76,12 @@ export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationRes
         errors.push("status-invalid");
     }
 
+    const rawDeadline = typeof data.deadline === "string" ? data.deadline.trim() : "";
+    const deadline = rawDeadline === "" ? undefined : readLocalDate(rawDeadline);
+    if (rawDeadline !== "" && deadline === undefined) {
+        errors.push("deadline-invalid");
+    }
+
     if (errors.length > 0 || !isTickTickTaskStatus(data.status)) {
         return { valid: false, errors };
     }
@@ -82,6 +92,7 @@ export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationRes
             title,
             url: normalizedUrl,
             status: data.status,
+            ...(deadline ? { deadline } : {}),
         },
     };
 }

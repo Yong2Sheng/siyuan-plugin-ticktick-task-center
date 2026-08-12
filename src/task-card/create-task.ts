@@ -65,6 +65,7 @@ export async function createTaskBlock(
             title: request.task.title,
             url: request.task.url,
             status: request.task.status,
+            ...(request.task.deadline ? { deadline: request.task.deadline } : {}),
             createdAt: timestamp,
             updatedAt: timestamp,
         });

@@ -4,7 +4,7 @@ import { TASK_STATUS_CONFIG, TASK_STATUS_IDS } from "../domain/status";
 import { createTaskCardViewModel } from "./card-view-model";
 
 const translate = (key: string): string => ({
-    "taskCardView.identity": "✅ TickTick task",
+    "taskCardView.identity": "TickTick task",
     "taskCardView.openTask": "Open task",
     "taskCardView.status": "Status",
     "taskEdit.statusButtonTitle": "Click to edit task",
@@ -35,21 +35,23 @@ describe("createTaskCardViewModel", () => {
         expect(viewModel.statusTone).toBe(config.tone);
     });
 
-    it("uses translated UI labels and carries title and URL into the model", () => {
+    it("uses translated UI labels and carries task fields into the model", () => {
         const viewModel = createTaskCardViewModel({
             version: 1,
             title: "DS9 Adaptor",
             url: "https://ticktick.com/task/1",
             status: "in-progress",
+            deadline: "2026-08-31",
             createdAt: "2026-07-12T08:30:00.000Z",
             updatedAt: "2026-07-12T08:30:00.000Z",
         }, translate);
 
-        expect(viewModel.identity).toBe("✅ TickTick task");
+        expect(viewModel.identity).toBe("TickTick task");
         expect(viewModel.linkText).toBe("Open task: DS9 Adaptor ↗️");
         expect(viewModel.statusTitle).toBe("Click to edit task");
         expect(viewModel.statusAriaLabel).toBe("Edit task, current status: In progress");
         expect(viewModel.title).toBe("DS9 Adaptor");
         expect(viewModel.url).toBe("https://ticktick.com/task/1");
+        expect(viewModel.deadline).toBe("2026-08-31");
     });
 });

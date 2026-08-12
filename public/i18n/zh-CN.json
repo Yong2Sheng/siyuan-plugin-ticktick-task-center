@@ -25,7 +25,8 @@
     "urlInvalid": "请输入合法的 URL。",
     "urlHttpsRequired": "仅支持 HTTPS 链接。",
     "urlHostInvalid": "仅支持 dida365.com 或 ticktick.com 的 TickTick 链接。",
-    "statusInvalid": "任务状态无效。"
+    "statusInvalid": "任务状态无效。",
+    "deadlineInvalid": "截止日期无效。"
   },
   "taskCreate": {
     "slashName": "滴答任务卡片",
@@ -33,6 +34,7 @@
     "titleLabel": "任务标题",
     "urlLabel": "TickTick 链接",
     "statusLabel": "任务状态",
+    "deadlineLabel": "截止日期（可选）",
     "create": "创建",
     "creating": "创建中…",
     "created": "滴答任务已创建",
@@ -46,9 +48,18 @@
     }
   },
   "taskCardView": {
-    "identity": "✅ 滴答清单任务",
+    "identity": "滴答清单任务",
     "openTask": "打开任务",
     "status": "状态"
+  },
+  "deadline": {
+    "none": "无截止日期",
+    "setAction": "点击设置",
+    "remainingDays": "剩余 ${count} 天",
+    "dueToday": "今天截止",
+    "overdueDays": "逾期 ${count} 天",
+    "editTitle": "点击修改截止日期",
+    "editAriaLabel": "修改截止日期，${summary}，${date}"
   },
   "taskEdit": {
     "dialogTitle": "编辑滴答任务",

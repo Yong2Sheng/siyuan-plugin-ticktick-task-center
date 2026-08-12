@@ -48,6 +48,13 @@ const dictionary: Record<string, string> = {
     "status.inProgress": "In progress",
     "status.blocked": "Blocked",
     "status.completed": "Completed",
+    "deadline.none": "No deadline",
+    "deadline.setAction": "Set deadline",
+    "deadline.remainingDays": "${count} days left",
+    "deadline.dueToday": "Due today",
+    "deadline.overdueDays": "${count} days overdue",
+    "deadline.editTitle": "Edit deadline",
+    "deadline.editAriaLabel": "Edit deadline: ${summary}, ${date}",
 };
 const translate: Translate = (key) => dictionary[key] ?? key;
 
@@ -150,8 +157,54 @@ describe("TaskCenterView", () => {
         expect(status.textContent).toBe("▶️ In progress");
         status.click();
         title.click();
-        expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId);
+        expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId, "status");
         expect(onLocateTask).toHaveBeenCalledWith(ACTIVE.blockId);
+    });
+
+    it("renders the eight-segment deadline editor and opens the deadline field", async () => {
+        const dueToday = { ...ACTIVE, deadline: TODAY };
+        const { target, onEditTask } = await createView(vi.fn().mockResolvedValue({
+            items: [dueToday],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        const article = target.querySelector<HTMLElement>(".ticktick-task-center__item")!;
+        const deadline = article.querySelector<HTMLButtonElement>(".ticktick-task-center__deadline")!;
+
+        expect(article.dataset.deadlineState).toBe("today");
+        expect(deadline.querySelector(".ticktick-task-center__deadline-summary")?.textContent)
+            .toBe("Due today");
+        expect(deadline.querySelectorAll('[data-filled="true"]')).toHaveLength(8);
+        deadline.click();
+        expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId, "deadline");
+    });
+
+    it("orders today's pending tasks by deadline and leaves undated tasks last", async () => {
+        const undated = { ...ACTIVE, title: "Undated" };
+        const later = {
+            ...ACTIVE,
+            blockId: "20260713120003-vwxyz12",
+            title: "Later",
+            deadline: "2026-08-20",
+        };
+        const earlier = {
+            ...ACTIVE,
+            blockId: "20260713120004-abcdefg",
+            title: "Earlier",
+            deadline: "2026-08-14",
+        };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [undated, later, earlier],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        expect(Array.from(
+            target.querySelectorAll(
+                ".ticktick-task-center__daily-group--pending .ticktick-task-center__title",
+            ),
+            (node) => node.textContent,
+        )).toEqual(["Earlier", "Later", "Undated"]);
     });
 
     it("renders a safe external URL and semantic localized time", async () => {

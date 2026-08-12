@@ -5,6 +5,7 @@ import {
     createTaskFallbackMarkdown,
     escapeMarkdownLinkTitle,
     TASK_BLOCK_ATTRIBUTES,
+    TASK_BLOCK_OPTIONAL_ATTRIBUTES,
     TASK_DATA_VERSION,
 } from "./task";
 
@@ -34,8 +35,8 @@ describe("task block attributes", () => {
         updatedAt: timestamp,
     });
 
-    it("creates all seven structured attributes", () => {
-        expect(Object.keys(attributes)).toHaveLength(7);
+    it("creates the seven required attributes and a clearable optional deadline", () => {
+        expect(Object.keys(attributes)).toHaveLength(8);
         expect(attributes).toEqual({
             [TASK_BLOCK_ATTRIBUTES.card]: "true",
             [TASK_BLOCK_ATTRIBUTES.version]: "1",
@@ -44,7 +45,20 @@ describe("task block attributes", () => {
             [TASK_BLOCK_ATTRIBUTES.status]: "in-progress",
             [TASK_BLOCK_ATTRIBUTES.createdAt]: timestamp,
             [TASK_BLOCK_ATTRIBUTES.updatedAt]: timestamp,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "",
         });
+    });
+
+    it("persists a configured deadline", () => {
+        expect(createTaskBlockAttributes({
+            version: TASK_DATA_VERSION,
+            title: "Task",
+            url: "https://ticktick.com/t/1",
+            status: "in-progress",
+            deadline: "2026-08-31",
+            createdAt: timestamp,
+            updatedAt: timestamp,
+        })[TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]).toBe("2026-08-31");
     });
 
     it("uses the same valid ISO timestamp for initial creation and update times", () => {

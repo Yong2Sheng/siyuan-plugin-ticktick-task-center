@@ -3,10 +3,12 @@ import type { PersistedTickTickTaskData } from "../domain/task";
 import type { Translate } from "../i18n";
 
 export type TaskCardViewModel = {
+    translate: Translate;
     identity: string;
     linkText: string;
     title: string;
     url: string;
+    deadline?: string;
     statusText: string;
     statusTitle: string;
     statusAriaLabel: string;
@@ -21,10 +23,12 @@ export function createTaskCardViewModel(
     const statusLabel = translate(status.labelKey);
 
     return {
+        translate,
         identity: translate("taskCardView.identity"),
         linkText: `${translate("taskCardView.openTask")}: ${task.title} ↗️`,
         title: task.title,
         url: task.url,
+        ...(task.deadline ? { deadline: task.deadline } : {}),
         statusText: `${translate("taskCardView.status")}: ${status.icon} ${statusLabel}`,
         statusTitle: translate("taskEdit.statusButtonTitle"),
         statusAriaLabel: translate("taskEdit.statusButtonAriaLabel").replace("${status}", statusLabel),
