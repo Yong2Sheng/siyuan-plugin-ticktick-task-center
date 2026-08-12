@@ -43,7 +43,7 @@ This is the first planned release. The entries below summarize all development o
 - Stabilize card discovery, rendering, enhancement lifecycle, persistence, and restoration across editor rerenders.
 - Aggregate required and optional attributes into one deterministic SQL row per task to reduce partial results at SiYuan's query limit.
 - Distinguish temporarily incomplete SQL rows from complete but invalid task metadata.
-- Fix cold-opening a source task from the Task Center loading only the task block and making the document appear blank; desktop and mobile navigation now load the complete document before locating the block.
+- Fix cold-opening a source task from the Task Center loading only the task block and making the document appear blank; navigation now reuses SiYuan's normal file-tree document-opening actions before scrolling to and highlighting the task card in the loaded editor.
 
 ### Interface, packaging, and compatibility
 

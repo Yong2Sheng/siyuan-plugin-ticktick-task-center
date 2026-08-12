@@ -9,7 +9,11 @@ import {
 } from "siyuan";
 import { TASK_CARD_BLOCK_ID_ATTRIBUTE } from "../task-card/renderer";
 
-const OPEN_DOCUMENT_ACTIONS: TProtyleAction[] = ["cb-get-all"];
+const DESKTOP_OPEN_DOCUMENT_ACTIONS: TProtyleAction[] = [
+    "cb-get-focus",
+    "cb-get-scroll",
+];
+const MOBILE_OPEN_DOCUMENT_ACTIONS: TProtyleAction[] = ["cb-get-scroll"];
 const HIGHLIGHT_DURATION_MS = 1024;
 const CARD_WAIT_TIMEOUT_MS = 1000;
 const CARD_WAIT_INTERVAL_MS = 50;
@@ -43,7 +47,7 @@ export async function locateSiYuanBlock(
         app,
         doc: {
             id: location.rootId,
-            action: [...OPEN_DOCUMENT_ACTIONS],
+            action: [...DESKTOP_OPEN_DOCUMENT_ACTIONS],
         },
         keepCursor: false,
     });
@@ -58,7 +62,7 @@ function locateMobileBlock(app: App, location: SiYuanBlockLocation): void {
     openMobileFile(
         app,
         location.rootId,
-        [...OPEN_DOCUMENT_ACTIONS],
+        [...MOBILE_OPEN_DOCUMENT_ACTIONS],
         undefined,
         location.notebookId,
         (protyle) => {

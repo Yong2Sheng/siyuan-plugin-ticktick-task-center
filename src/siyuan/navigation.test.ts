@@ -19,7 +19,8 @@ const LOCATION = {
     rootId: "20260811005000-abcdefg",
     notebookId: "20260801000000-hijklmn",
 };
-const OPEN_DOCUMENT_ACTIONS = ["cb-get-all"];
+const DESKTOP_OPEN_DOCUMENT_ACTIONS = ["cb-get-focus", "cb-get-scroll"];
+const MOBILE_OPEN_DOCUMENT_ACTIONS = ["cb-get-scroll"];
 
 function createEditorTarget() {
     const root = document.createElement("div");
@@ -53,7 +54,7 @@ describe("SiYuan block navigation", () => {
             app: APP,
             doc: {
                 id: LOCATION.rootId,
-                action: OPEN_DOCUMENT_ACTIONS,
+                action: DESKTOP_OPEN_DOCUMENT_ACTIONS,
             },
             keepCursor: false,
         });
@@ -74,7 +75,7 @@ describe("SiYuan block navigation", () => {
             expect(siyuanMocks.openMobileFileById).toHaveBeenCalledWith(
                 APP,
                 LOCATION.rootId,
-                OPEN_DOCUMENT_ACTIONS,
+                MOBILE_OPEN_DOCUMENT_ACTIONS,
                 undefined,
                 LOCATION.notebookId,
                 expect.any(Function),
