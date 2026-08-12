@@ -49,6 +49,7 @@ This is the first planned release. The entries below summarize all development o
 
 - Add Chinese and English localization together with light- and dark-theme styling.
 - Add an original theme-aware checklist SVG for task cards and a marketplace-ready 160×160 plugin icon.
+- Tighten the Task Center SVG's internal whitespace so its top-bar and tab icons match the visual size of adjacent SiYuan and plugin icons.
 - Initialize the TypeScript, Vite, and Svelte project; remove template sample features and the unused kernel-plugin example.
 - Add automated domain, persistence, card, editing, query, filtering, daily-progress, deadline, and Task Center tests.
 - Add CI checks, production packaging, GitHub Release workflow configuration, development documentation, and the MIT License.

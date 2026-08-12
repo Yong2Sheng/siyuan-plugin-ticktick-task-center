@@ -75,6 +75,9 @@ describe("TaskCenterTabService", () => {
         harness.service.mountTopBar();
 
         expect(harness.addIcons).toHaveBeenCalledOnce();
+        expect(harness.addIcons).toHaveBeenCalledWith(expect.stringContaining(
+            'viewBox="4 4 24 24"',
+        ));
         expect(harness.addTab).toHaveBeenCalledOnce();
         expect(harness.tabConfig()?.type).toBe(TASK_CENTER_TAB_TYPE);
         expect(harness.addTopBar).toHaveBeenCalledWith(expect.objectContaining({

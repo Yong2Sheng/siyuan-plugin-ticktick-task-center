@@ -3,7 +3,7 @@ import type { App, Custom, Plugin, Tab } from "siyuan";
 export const TASK_CENTER_TAB_TYPE = "ticktick-task-center";
 export const TASK_CENTER_ICON_ID = "iconTickTickTaskCenter";
 
-const TASK_CENTER_ICON = `<symbol id="${TASK_CENTER_ICON_ID}" viewBox="0 0 32 32">
+const TASK_CENTER_ICON = `<symbol id="${TASK_CENTER_ICON_ID}" viewBox="4 4 24 24">
     <rect x="7" y="7" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/>
     <path d="m10 12 2 2 4-4M18 12h4M10 19l2 2 4-4M18 19h4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"/>
 </symbol>`;
