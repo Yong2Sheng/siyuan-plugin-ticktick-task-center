@@ -22,7 +22,7 @@ export type TaskCenterViewOptions = {
     translate: Translate;
     locale?: string;
     onEditTask(blockId: string, focus: "status" | "deadline"): void;
-    onLocateTask(blockId: string): void;
+    onLocateTask(blockId: string, rootId: string, notebookId?: string): void;
     onSaveDailyProgress(blockId: string, date: string | undefined): Promise<void>;
     onDailyProgressError?(error: unknown): void;
 };
@@ -347,7 +347,11 @@ export class TaskCenterView {
         title.type = "button";
         title.className = "ticktick-task-center__title";
         title.textContent = item.title;
-        title.addEventListener("click", () => this.options.onLocateTask(item.blockId));
+        title.addEventListener("click", () => this.options.onLocateTask(
+            item.blockId,
+            item.rootId,
+            item.notebookId,
+        ));
         const source = document.createElement("div");
         source.className = "ticktick-task-center__source";
         source.textContent = `${translate("taskCenterView.source")}: ${item.documentTitle}`;
@@ -370,7 +374,11 @@ export class TaskCenterView {
         locate.type = "button";
         locate.className = "b3-button b3-button--outline ticktick-task-center__locate";
         locate.textContent = translate("taskCenterView.locate");
-        locate.addEventListener("click", () => this.options.onLocateTask(item.blockId));
+        locate.addEventListener("click", () => this.options.onLocateTask(
+            item.blockId,
+            item.rootId,
+            item.notebookId,
+        ));
         const external = document.createElement("a");
         external.className = "b3-button b3-button--text ticktick-task-center__external";
         external.href = item.url;

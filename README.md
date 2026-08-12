@@ -263,7 +263,7 @@ pnpm build
 - `pnpm run check`：运行 Svelte / TypeScript 静态检查。
 - `pnpm build`：生成生产 bundle、`dist/` 和根目录下的 `package.zip`。
 
-当前验证规模为 22 个测试文件、218 项测试。
+当前验证规模为 23 个测试文件、221 项测试。
 
 ## 许可证
 

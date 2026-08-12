@@ -263,7 +263,7 @@ pnpm build
 - `pnpm run check`: runs Svelte / TypeScript static checks.
 - `pnpm build`: creates the production bundle, `dist/`, and `package.zip` in the repository root.
 
-The current verification suite contains 22 test files and 218 tests.
+The current verification suite contains 23 test files and 221 tests.
 
 ## License
 

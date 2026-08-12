@@ -158,7 +158,11 @@ describe("TaskCenterView", () => {
         status.click();
         title.click();
         expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId, "status");
-        expect(onLocateTask).toHaveBeenCalledWith(ACTIVE.blockId);
+        expect(onLocateTask).toHaveBeenCalledWith(
+            ACTIVE.blockId,
+            ACTIVE.rootId,
+            ACTIVE.notebookId,
+        );
     });
 
     it("renders the eight-segment deadline editor and opens the deadline field", async () => {

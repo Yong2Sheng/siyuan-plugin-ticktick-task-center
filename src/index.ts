@@ -174,7 +174,10 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                     editSession.apply(blockId, result.data);
                 },
             }),
-            onLocateTask: (blockId) => void this.locateTask(blockId, translate),
+            onLocateTask: (blockId, rootId, notebookId) => void this.locateTask(
+                { blockId, rootId, notebookId },
+                translate,
+            ),
             onSaveDailyProgress: (blockId, date) => saveDailyProgress(
                 { setBlockAttributes },
                 blockId,
@@ -203,13 +206,13 @@ export default class TickTickTaskCenterPlugin extends Plugin {
     }
 
     private async locateTask(
-        blockId: string,
+        location: { blockId: string; rootId: string; notebookId?: string },
         translate: ReturnType<typeof createTranslator>,
     ): Promise<void> {
         try {
-            await locateSiYuanBlock(this.app, blockId);
+            await locateSiYuanBlock(this.app, location);
         } catch (error) {
-            console.error(`Failed to locate TickTick task block ${blockId}`, error);
+            console.error(`Failed to locate TickTick task block ${location.blockId}`, error);
             showMessage(translate("taskCenterView.locateFailed"), 5000, "error");
         }
     }
