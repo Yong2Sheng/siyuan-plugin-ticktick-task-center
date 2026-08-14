@@ -45,6 +45,10 @@ const dictionary: Record<string, string> = {
     "taskCenterView.incompleteRead": "Incomplete ${count}",
     "taskEdit.statusButtonTitle": "Click to edit task",
     "taskEdit.statusButtonAriaLabel": "Edit task, current status: ${status}",
+    "taskEdit.workModeButtonTitle": "Click to edit work category",
+    "taskEdit.workModeButtonAriaLabel": "Edit task, current work category: ${workMode}",
+    "workMode.review": "评审-Review",
+    "workMode.unclassified": "未分类-Unclassified",
     "status.inProgress": "In progress",
     "status.blocked": "Blocked",
     "status.completed": "Completed",
@@ -75,6 +79,7 @@ function item(status: TickTickTaskStatus, title: string, id: string): TaskCenter
 }
 
 const ACTIVE = item("in-progress", "DS9 Adaptor", "20260713120000-abcdefg");
+ACTIVE.workMode = "review";
 const CLOSED = item("completed", "Published", "20260713120001-hijklmn");
 const BLOCKED = item("blocked", "Waiting for access", "20260713120002-opqrstu");
 const TODAY = getLocalDate();
@@ -147,16 +152,22 @@ describe("TaskCenterView", () => {
         expect(load).toHaveBeenCalledOnce();
     });
 
-    it("renders shared status tone and reuses edit and locate actions", async () => {
+    it("stacks work category above status and reuses edit and locate actions", async () => {
         const { target, onEditTask, onLocateTask } = await createView();
         const article = target.querySelector<HTMLElement>(".ticktick-task-center__item")!;
         const status = article.querySelector<HTMLButtonElement>(".ticktick-task-center__status")!;
+        const workMode = article.querySelector<HTMLButtonElement>(".ticktick-task-center__work-mode")!;
+        const classification = article.querySelector<HTMLElement>(".ticktick-task-center__classification")!;
         const title = article.querySelector<HTMLButtonElement>(".ticktick-task-center__title")!;
 
         expect(article.dataset.statusTone).toBe("primary");
         expect(status.textContent).toBe("▶️ In progress");
+        expect(workMode.textContent).toBe("🔎 评审-Review");
+        expect(Array.from(classification.children)).toEqual([workMode, status]);
+        workMode.click();
         status.click();
         title.click();
+        expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId, "work-mode");
         expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId, "status");
         expect(onLocateTask).toHaveBeenCalledWith(
             ACTIVE.blockId,

@@ -6,7 +6,7 @@ export const TASK_CARD_CONTAINER_ATTRIBUTE = "data-ticktick-task-enhancement";
 export const TASK_CARD_BLOCK_ID_ATTRIBUTE = "data-ticktick-task-block-id";
 
 export type TaskCardActions = {
-    onEditTask(blockId: string, options: { focus: "status" | "deadline" }): void;
+    onEditTask(blockId: string, options: { focus: "status" | "work-mode" | "deadline" }): void;
 };
 
 export function enhanceTaskBlock(
@@ -68,6 +68,21 @@ export function enhanceTaskBlock(
         onClick: () => actions?.onEditTask(blockId, { focus: "deadline" }),
     });
 
+    const classification = document.createElement("span");
+    classification.className = "ticktick-task-card__classification";
+
+    const workMode = document.createElement("button");
+    workMode.type = "button";
+    workMode.className = "ticktick-task-card__work-mode";
+    workMode.textContent = viewModel.workModeText;
+    workMode.title = viewModel.workModeTitle;
+    workMode.setAttribute("aria-label", viewModel.workModeAriaLabel);
+    workMode.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        actions?.onEditTask(blockId, { focus: "work-mode" });
+    });
+
     const status = document.createElement("button");
     status.type = "button";
     status.className = "ticktick-task-card__status";
@@ -80,7 +95,8 @@ export function enhanceTaskBlock(
         actions?.onEditTask(blockId, { focus: "status" });
     });
 
-    card.append(identity, main, status, deadline);
+    classification.append(workMode, status);
+    card.append(identity, main, classification, deadline);
     blockElement.before(card);
     return true;
 }

@@ -32,6 +32,9 @@ const VIEW_MODEL = {
     linkText: "Open task: DS9 Adaptor ↗️",
     title: "DS9 Adaptor",
     url: "https://ticktick.com/task/1",
+    workModeText: "🔎 评审-Review",
+    workModeTitle: "Click to edit work category",
+    workModeAriaLabel: "Edit task, current work category: 评审-Review",
     statusText: "Status: ▶️ In progress",
     statusTitle: "Click to edit task",
     statusAriaLabel: "Edit task, current status: In progress",
@@ -87,7 +90,7 @@ describe("task card renderer", () => {
         expect(Array.from(card?.children ?? [], (child) => child.className)).toEqual([
             "ticktick-task-card__identity",
             "ticktick-task-card__main",
-            "ticktick-task-card__status",
+            "ticktick-task-card__classification",
             "ticktick-task-card__deadline",
         ]);
     });
@@ -145,7 +148,7 @@ describe("task card renderer", () => {
         expect(original.textContent).toBe("TickTick task: DS9 Adaptor");
     });
 
-    it("uses separate accessible deadline and status edit entries", () => {
+    it("stacks work category above status and keeps separate edit entries", () => {
         const block = createBlock();
         document.body.append(block);
         const onEditTask = vi.fn();
@@ -154,12 +157,16 @@ describe("task card renderer", () => {
         const card = getTaskCardDecoration(block)!;
         const statusButtons = card.querySelectorAll<HTMLButtonElement>(".ticktick-task-card__status");
         const status = statusButtons[0];
+        const workMode = card.querySelector<HTMLButtonElement>(".ticktick-task-card__work-mode")!;
+        const classification = card.querySelector<HTMLElement>(".ticktick-task-card__classification")!;
         const deadline = card.querySelector<HTMLButtonElement>(".ticktick-task-card__deadline")!;
 
         expect(card.querySelector(".ticktick-task-card__edit")).toBeNull();
         expect(Array.from(card.querySelectorAll("button"), (button) => button.textContent))
             .not.toContain("✏️ Edit");
         expect(statusButtons).toHaveLength(1);
+        expect(workMode.textContent).toBe("🔎 评审-Review");
+        expect(Array.from(classification.children)).toEqual([workMode, status]);
         expect(status.tagName).toBe("BUTTON");
         expect(status.type).toBe("button");
         expect(status.textContent).toBe("Status: ▶️ In progress");
@@ -170,9 +177,11 @@ describe("task card renderer", () => {
         expect(deadline.querySelectorAll(".ticktick-task-card__deadline-segment")).toHaveLength(8);
 
         deadline.click();
+        workMode.click();
         status.click();
-        expect(onEditTask).toHaveBeenCalledTimes(2);
+        expect(onEditTask).toHaveBeenCalledTimes(3);
         expect(onEditTask).toHaveBeenNthCalledWith(1, block.dataset.nodeId, { focus: "deadline" });
+        expect(onEditTask).toHaveBeenCalledWith(block.dataset.nodeId, { focus: "work-mode" });
         expect(onEditTask).toHaveBeenCalledWith(block.dataset.nodeId, { focus: "status" });
     });
 

@@ -79,8 +79,9 @@ export async function editTask(
     const titleChanged = current.title !== request.next.title;
     const urlChanged = current.url !== request.next.url;
     const statusChanged = current.status !== request.next.status;
+    const workModeChanged = current.workMode !== request.next.workMode;
     const deadlineChanged = current.deadline !== request.next.deadline;
-    if (!titleChanged && !urlChanged && !statusChanged && !deadlineChanged) {
+    if (!titleChanged && !urlChanged && !statusChanged && !workModeChanged && !deadlineChanged) {
         return { changed: false, data: current };
     }
 
@@ -93,6 +94,7 @@ export async function editTask(
             title: request.next.title,
             url: request.next.url,
             status: request.next.status,
+            workMode: request.next.workMode,
             ...(request.next.deadline ? { deadline: request.next.deadline } : {}),
             createdAt: current.createdAt,
             updatedAt: changedAt.toISOString(),

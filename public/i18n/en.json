@@ -19,6 +19,13 @@
     "failed": "Failed",
     "cancelled": "Cancelled"
   },
+  "workMode": {
+    "explore": "探索-Explore",
+    "build": "构建-Build",
+    "execute": "执行-Execute",
+    "review": "评审-Review",
+    "unclassified": "未分类-Unclassified"
+  },
   "validation": {
     "titleRequired": "Task title is required.",
     "urlRequired": "TickTick URL is required.",
@@ -26,6 +33,7 @@
     "urlHttpsRequired": "Only HTTPS links are supported.",
     "urlHostInvalid": "Only TickTick links from dida365.com or ticktick.com are supported.",
     "statusInvalid": "The task status is invalid.",
+    "workModeInvalid": "Select a work category.",
     "deadlineInvalid": "The deadline is invalid."
   },
   "taskCreate": {
@@ -34,6 +42,7 @@
     "titleLabel": "Task title",
     "urlLabel": "TickTick URL",
     "statusLabel": "Task status",
+    "workModeLabel": "Work category",
     "deadlineLabel": "Deadline (optional)",
     "create": "Create",
     "creating": "Creating…",
@@ -68,6 +77,8 @@
     "updated": "TickTick task updated",
     "statusButtonTitle": "Click to edit task",
     "statusButtonAriaLabel": "Edit task, current status: ${status}",
+    "workModeButtonTitle": "Click to edit the work category",
+    "workModeButtonAriaLabel": "Edit task, current work category: ${workMode}",
     "noChanges": "There are no changes to save.",
     "errors": {
       "updateFailed": "Failed to update the TickTick task.",

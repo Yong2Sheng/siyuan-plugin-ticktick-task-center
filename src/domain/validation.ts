@@ -1,6 +1,7 @@
 import { isTickTickTaskStatus } from "./status";
 import type { TickTickTaskStatus } from "./status";
 import { readLocalDate } from "./local-date";
+import { isTickTickTaskWorkMode, type TickTickTaskWorkMode } from "./work-mode";
 
 const ALLOWED_TICKTICK_HOSTS = new Set(["dida365.com", "ticktick.com"]);
 
@@ -11,12 +12,14 @@ export type TaskValidationError =
     | "url-https-required"
     | "url-host-invalid"
     | "status-invalid"
+    | "work-mode-invalid"
     | "deadline-invalid";
 
 export type TaskDataCandidate = {
     title: unknown;
     url: unknown;
     status: unknown;
+    workMode: unknown;
     deadline?: unknown;
 };
 
@@ -24,6 +27,7 @@ export type NormalizedTaskData = {
     title: string;
     url: string;
     status: TickTickTaskStatus;
+    workMode: TickTickTaskWorkMode;
     deadline?: string;
 };
 
@@ -76,13 +80,21 @@ export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationRes
         errors.push("status-invalid");
     }
 
+    if (!isTickTickTaskWorkMode(data.workMode)) {
+        errors.push("work-mode-invalid");
+    }
+
     const rawDeadline = typeof data.deadline === "string" ? data.deadline.trim() : "";
     const deadline = rawDeadline === "" ? undefined : readLocalDate(rawDeadline);
     if (rawDeadline !== "" && deadline === undefined) {
         errors.push("deadline-invalid");
     }
 
-    if (errors.length > 0 || !isTickTickTaskStatus(data.status)) {
+    if (
+        errors.length > 0
+        || !isTickTickTaskStatus(data.status)
+        || !isTickTickTaskWorkMode(data.workMode)
+    ) {
         return { valid: false, errors };
     }
 
@@ -92,6 +104,7 @@ export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationRes
             title,
             url: normalizedUrl,
             status: data.status,
+            workMode: data.workMode,
             ...(deadline ? { deadline } : {}),
         },
     };

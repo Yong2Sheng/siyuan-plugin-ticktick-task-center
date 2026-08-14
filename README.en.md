@@ -11,7 +11,7 @@ English | [简体中文](README.md)
 >
 > Project requirements, feature decisions, real-world SiYuan testing, acceptance, and release decisions were handled by Yong Sheng.
 
-TickTick Task Center for SiYuan is a SiYuan plugin that associates ordinary SiYuan document blocks with TickTick / Dida365 tasks. The task block in the source document is the only persistent source of data. The plugin adds enhanced task cards, seven local statuses, deadline reminders, daily progress tracking, and a workspace-wide task center without maintaining a second task database.
+TickTick Task Center for SiYuan is a SiYuan plugin that associates ordinary SiYuan document blocks with TickTick / Dida365 tasks. The task block in the source document is the only persistent source of data. The plugin adds enhanced task cards, seven local statuses, four work categories, deadline reminders, daily progress tracking, and a workspace-wide task center without maintaining a second task database.
 
 The current version does not use the TickTick API, OAuth, or background synchronization. A task is associated with TickTick / Dida365 only through the HTTPS task URL supplied by the user.
 
@@ -20,10 +20,10 @@ The current version does not use the TickTick API, OAuth, or background synchron
 ## Core features
 
 - Create a TickTick task block from the slash menu in an editable SiYuan document. The default status is `in-progress`, and the new block is inserted at the top of the current root document.
-- Store the task title, a validated TickTick URL, seven required attributes, and optional deadline and daily-progress date attributes in one ordinary SiYuan block.
+- Store the task title, a validated TickTick URL, seven required attributes, and optional work-category, deadline, and daily-progress date attributes in one ordinary SiYuan block.
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
-- Non-destructively enhance the block as a task card with a task link, an original checklist icon, a semantically colored status badge, and a Deadline button.
-- Open the complete editor from either the status badge or Deadline button to change the title, URL, status, or deadline.
+- Non-destructively enhance the block as a task card with a task link, an original checklist icon, a work-category button, a semantically colored status badge, and a Deadline button. The work category is stacked above the status.
+- Open the complete editor from the work-category, status, or Deadline button to change the title, URL, work category, status, or deadline. Work categories and statuses are both selected from directly visible button groups.
 - Show the deadline as remaining days, an eight-segment urgency track, and the calendar date. An undated task keeps the same track layout and a clear setup entry point.
 - Keep the track empty outside the seven-day window, then fill one segment per day from seven days remaining. Due-today and overdue tasks use a full track.
 - Apply theme-adaptive low-saturation emphasis to active tasks inside the seven-day window, with warning emphasis for due-today tasks and error emphasis for overdue tasks while preserving readable theme contrast.
@@ -55,6 +55,17 @@ Status IDs are the stable values used for persistence and queries. Emoji and lab
 | `failed` | ❌ 已失败 | Failed | Closed |
 | `cancelled` | ⏹️ 已取消 | Cancelled | Closed |
 
+## Four work categories
+
+The work category describes how a task is approached and remains independent of its current status. Stable category IDs are stored in SiYuan block attributes; Emoji and bilingual labels are display-only.
+
+| Key | Display label | Meaning |
+| --- | --- | --- |
+| `explore` | 🔭 探索-Explore | Research, learn, test feasibility, or find a direction when outcomes and effort remain uncertain |
+| `build` | 🛠️ 构建-Build | Turn an established method, derivation, or design into code, tooling, or a working process |
+| `execute` | ⚙️ 执行-Execute | Complete analysis or delivery with mature tools and an established workflow |
+| `review` | 🔎 评审-Review | Inspect implementations or results, provide feedback, and make a judgment, such as a PR review |
+
 ## Development status and changelog
 
 > [!NOTE]
@@ -62,7 +73,7 @@ Status IDs are the stable values used for persistence and queries. Emoji and lab
 
 ### 0.1.0 (in development, unreleased)
 
-- Implement task-card creation and editing, seven local statuses, deadlines, and daily progress tracking.
+- Implement task-card creation and editing, seven local statuses, four work categories, deadlines, and daily progress tracking.
 - Implement the workspace-wide Task Center, filtering and search, source navigation, task editing, and manual refresh.
 - Keep SiYuan block attributes as the only data source, with input validation, edit-conflict detection, and Markdown rollback.
 - Support light and dark themes, Chinese and English interfaces, and a dedicated plugin icon.
@@ -115,15 +126,18 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 4. Confirm or edit the task title. The plugin attempts to use the current root document title as the initial value.
 5. Paste a valid TickTick / Dida365 HTTPS URL. The hostname must be exactly `ticktick.com` or `dida365.com`.
 6. Select a task status. The default is `in-progress` (▶️ In progress).
-7. Optionally set a deadline. It can be left empty, added later, or cleared.
-8. Select **Create**.
-9. The task is inserted as the first child block of the current root document—below the document title and before the existing body—and is immediately enhanced as a task card.
+7. Select one work category from the four directly visible buttons. New tasks require an explicit choice and are not categorized automatically.
+8. Optionally set a deadline. It can be left empty, added later, or cleared.
+9. Select **Create**.
+10. The task is inserted as the first child block of the current root document—below the document title and before the existing body—and is immediately enhanced as a task card.
 
 ### 2. Edit a task in a document
 
-- Select the status badge on the right side of the task card to open the complete editor with the status field focused.
+- Select the work-category button at the top of the right-side vertical group to open the complete editor with the work category focused.
+- Select the status badge below it to open the same editor with the task status focused.
 - Select the rightmost Deadline button to open the same editor with the deadline field focused.
-- Change the task title, TickTick URL, status, or deadline, then save.
+- Work categories and task statuses both expose all choices as buttons instead of dropdown menus.
+- Change the task title, TickTick URL, work category, status, or deadline, then save.
 - The card in the current document updates immediately after a successful save.
 - When the title or URL changes, the fallback Markdown is updated as well.
 - Status is not written to Markdown; its stable ID is stored in structured attributes.
@@ -151,6 +165,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Search task titles, source document titles, source paths, or localized status names.
 - Select a task title or **Locate source block** to open and locate the original SiYuan block.
 - Select **Open TickTick task** to open the validated external task URL in a new tab.
+- Select an item's work-category button to reuse the complete task editor with the work category focused.
 - Select an item's status badge to reuse the same complete task editor.
 - Select an item's Deadline button to edit or clear its deadline directly.
 - After saving an edit from the Task Center, its list, filtered results, ordering, and statistics update immediately without a refresh.
@@ -225,11 +240,17 @@ The deadline uses another optional attribute:
 custom-ticktick-deadline = YYYY-MM-DD
 ```
 
-Older tasks require no migration when either optional attribute is absent. A missing daily-progress date is treated as pending today; a missing deadline is displayed as “No deadline” and sorted after dated tasks. The plugin compares stored dates with the system-local date instead of rewriting every task block at midnight.
+The work category stores a stable category ID in another optional attribute:
+
+```text
+custom-ticktick-work-mode = explore | build | execute | review
+```
+
+Older tasks require no migration when these optional attributes are absent. A missing daily-progress date is treated as pending today; a missing deadline is displayed as “No deadline” and sorted after dated tasks; a missing work category is displayed as “未分类-Unclassified”. Editing a legacy task again requires an explicit work-category choice. The plugin compares stored dates with the system-local date instead of rewriting every task block at midnight.
 
 ## Task Center query
 
-The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven required task attributes and the optional daily-progress and deadline attributes into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
+The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven required task attributes and the optional work-category, daily-progress, and deadline attributes into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
 
 The query is still subject to SiYuan's global SQL result-count limit, and pagination is not currently implemented. Search and filters operate only on the validated results already loaded in memory and do not execute additional SQL queries.
 
@@ -245,6 +266,7 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 - Daily progress stores only the latest date; there is no history, streak, or trend reporting.
 - The daily date follows the current system timezone. When traveling across timezones, tasks are reevaluated using the local date at the current location.
 - Deadlines are local SiYuan metadata. The plugin does not read or synchronize existing TickTick deadlines and does not issue system notifications.
+- Work categories are local SiYuan metadata and do not automatically create or synchronize TickTick / Dida365 tags.
 - HarmonyOS native-mobile support has passed basic core-workflow verification on a Huawei tablet running HarmonyOS 6, but remains experimental. Android, iOS, and browser-based mobile clients have not been verified.
 - Cross-app links on mobile depend on the operating system, browser, and target app. TickTick / Dida365 links may open on the web first, and `siyuan://blocks/...` links in external apps may not launch SiYuan and locate the block directly.
 
@@ -263,7 +285,7 @@ pnpm build
 - `pnpm run check`: runs Svelte / TypeScript static checks.
 - `pnpm build`: creates the production bundle, `dist/`, and `package.zip` in the repository root.
 
-The current verification suite contains 23 test files and 221 tests.
+The current verification suite contains 23 test files and 225 tests.
 
 ## License
 

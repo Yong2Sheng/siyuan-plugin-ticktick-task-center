@@ -68,6 +68,17 @@ describe("aggregateTaskCenterRows", () => {
         expect(withoutDeadline.incompleteBlocks).toEqual([]);
     });
 
+    it("reads an optional work category without requiring it on older tasks", () => {
+        const withWorkMode = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]: "build",
+        }));
+        const withoutWorkMode = aggregateTaskCenterRows(rowsFor());
+
+        expect(withWorkMode.items[0]?.workMode).toBe("build");
+        expect(withoutWorkMode.items[0]?.workMode).toBeUndefined();
+        expect(withoutWorkMode.incompleteBlocks).toEqual([]);
+    });
+
     it("ignores a malformed optional progress date without hiding the task", () => {
         const result = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
             [TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate]: "2026-02-31",

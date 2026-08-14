@@ -19,6 +19,13 @@
     "failed": "已失败",
     "cancelled": "已取消"
   },
+  "workMode": {
+    "explore": "探索-Explore",
+    "build": "构建-Build",
+    "execute": "执行-Execute",
+    "review": "评审-Review",
+    "unclassified": "未分类-Unclassified"
+  },
   "validation": {
     "titleRequired": "请输入任务名称。",
     "urlRequired": "请输入 TickTick 任务链接。",
@@ -26,6 +33,7 @@
     "urlHttpsRequired": "仅支持 HTTPS 链接。",
     "urlHostInvalid": "仅支持 dida365.com 或 ticktick.com 的 TickTick 链接。",
     "statusInvalid": "任务状态无效。",
+    "workModeInvalid": "请选择工作分类。",
     "deadlineInvalid": "截止日期无效。"
   },
   "taskCreate": {
@@ -34,6 +42,7 @@
     "titleLabel": "任务标题",
     "urlLabel": "TickTick 链接",
     "statusLabel": "任务状态",
+    "workModeLabel": "工作分类",
     "deadlineLabel": "截止日期（可选）",
     "create": "创建",
     "creating": "创建中…",
@@ -68,6 +77,8 @@
     "updated": "滴答任务已更新",
     "statusButtonTitle": "点击编辑任务",
     "statusButtonAriaLabel": "编辑任务，当前状态：${status}",
+    "workModeButtonTitle": "点击编辑工作分类",
+    "workModeButtonAriaLabel": "编辑任务，当前工作分类：${workMode}",
     "noChanges": "没有需要保存的更改。",
     "errors": {
       "updateFailed": "滴答任务更新失败。",

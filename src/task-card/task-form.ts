@@ -2,6 +2,7 @@ import { Dialog, showMessage } from "siyuan";
 
 import { TASK_STATUS_CONFIG, TASK_STATUS_IDS } from "../domain/status";
 import { DEFAULT_TASK_STATUS } from "../domain/task";
+import { TASK_WORK_MODE_CONFIG, TASK_WORK_MODE_IDS } from "../domain/work-mode";
 import {
     normalizeTaskData,
     type NormalizedTaskData,
@@ -11,6 +12,7 @@ import {
 import type { Translate } from "../i18n";
 import { TaskCreationError } from "./create-task";
 import { SubmissionController } from "./submission-controller";
+import { createTaskChoiceGroup } from "./task-choice-group";
 
 type FormOutcome =
     | { kind: "validation-error"; errors: TaskValidationError[] }
@@ -31,6 +33,7 @@ const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
     "url-https-required": "validation.urlHttpsRequired",
     "url-host-invalid": "validation.urlHostInvalid",
     "status-invalid": "validation.statusInvalid",
+    "work-mode-invalid": "validation.workModeInvalid",
     "deadline-invalid": "validation.deadlineInvalid",
 };
 
@@ -64,10 +67,16 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
                 <span data-field-label="url"></span>
                 <input class="b3-text-field fn__block" data-field="url" type="url" autocomplete="off">
             </label>
-            <label class="b3-label">
+            <div class="b3-label">
                 <span data-field-label="status"></span>
-                <select class="b3-select fn__block" data-field="status"></select>
-            </label>
+                <div class="ticktick-task-form__choices ticktick-task-form__choices--status" data-choice-group="status" role="radiogroup"></div>
+                <input data-field="status" type="hidden">
+            </div>
+            <div class="b3-label">
+                <span data-field-label="work-mode"></span>
+                <div class="ticktick-task-form__choices ticktick-task-form__choices--work-mode" data-choice-group="work-mode" role="radiogroup"></div>
+                <input data-field="work-mode" type="hidden">
+            </div>
             <label class="b3-label">
                 <span data-field-label="deadline"></span>
                 <input class="b3-text-field fn__block" data-field="deadline" type="date">
@@ -87,7 +96,8 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     const form = requireElement<HTMLFormElement>(dialog.element, ".ticktick-task-form");
     const titleInput = requireElement<HTMLInputElement>(form, '[data-field="title"]');
     const urlInput = requireElement<HTMLInputElement>(form, '[data-field="url"]');
-    const statusSelect = requireElement<HTMLSelectElement>(form, '[data-field="status"]');
+    const statusInput = requireElement<HTMLInputElement>(form, '[data-field="status"]');
+    const workModeInput = requireElement<HTMLInputElement>(form, '[data-field="work-mode"]');
     const deadlineInput = requireElement<HTMLInputElement>(form, '[data-field="deadline"]');
     const errorElement = requireElement<HTMLElement>(form, '[data-field="error"]');
     const cancelButton = requireElement<HTMLButtonElement>(form, '[data-action="cancel"]');
@@ -96,19 +106,29 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     requireElement<HTMLElement>(form, '[data-field-label="title"]').textContent = translate("taskCreate.titleLabel");
     requireElement<HTMLElement>(form, '[data-field-label="url"]').textContent = translate("taskCreate.urlLabel");
     requireElement<HTMLElement>(form, '[data-field-label="status"]').textContent = translate("taskCreate.statusLabel");
+    requireElement<HTMLElement>(form, '[data-field-label="work-mode"]').textContent = translate("taskCreate.workModeLabel");
     requireElement<HTMLElement>(form, '[data-field-label="deadline"]').textContent = translate("taskCreate.deadlineLabel");
     cancelButton.textContent = translate("common.cancel");
     createButton.textContent = translate("taskCreate.create");
     titleInput.value = options.initialTitle;
 
-    for (const status of TASK_STATUS_IDS) {
-        const config = TASK_STATUS_CONFIG[status];
-        const option = document.createElement("option");
-        option.value = status;
-        option.textContent = `${config.icon} ${translate(config.labelKey)}`;
-        option.selected = status === DEFAULT_TASK_STATUS;
-        statusSelect.append(option);
-    }
+    const statusChoices = createTaskChoiceGroup({
+        container: requireElement(form, '[data-choice-group="status"]'),
+        input: statusInput,
+        choices: TASK_STATUS_IDS.map((status) => ({
+            value: status,
+            text: `${TASK_STATUS_CONFIG[status].icon} ${translate(TASK_STATUS_CONFIG[status].labelKey)}`,
+        })),
+        initialValue: DEFAULT_TASK_STATUS,
+    });
+    const workModeChoices = createTaskChoiceGroup({
+        container: requireElement(form, '[data-choice-group="work-mode"]'),
+        input: workModeInput,
+        choices: TASK_WORK_MODE_IDS.map((workMode) => ({
+            value: workMode,
+            text: `${TASK_WORK_MODE_CONFIG[workMode].icon} ${translate(TASK_WORK_MODE_CONFIG[workMode].labelKey)}`,
+        })),
+    });
 
     cancelButton.addEventListener("click", () => {
         controller.cancel();
@@ -123,13 +143,16 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     async function submitForm(): Promise<void> {
         createButton.disabled = true;
         cancelButton.disabled = true;
+        statusChoices.setDisabled(true);
+        workModeChoices.setDisabled(true);
         createButton.textContent = translate("taskCreate.creating");
         hideError(errorElement);
 
         const submission = await controller.submit({
             title: titleInput.value,
             url: urlInput.value,
-            status: statusSelect.value,
+            status: statusInput.value,
+            workMode: workModeInput.value,
             deadline: deadlineInput.value,
         });
 
@@ -145,6 +168,8 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
 
         createButton.disabled = false;
         cancelButton.disabled = false;
+        statusChoices.setDisabled(false);
+        workModeChoices.setDisabled(false);
         createButton.textContent = translate("taskCreate.create");
 
         if (submission.value.kind === "validation-error") {

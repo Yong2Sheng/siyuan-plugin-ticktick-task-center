@@ -2,6 +2,7 @@ import { Dialog, showMessage } from "siyuan";
 
 import { TASK_STATUS_CONFIG, TASK_STATUS_IDS } from "../domain/status";
 import type { PersistedTickTickTaskData } from "../domain/task";
+import { TASK_WORK_MODE_CONFIG, TASK_WORK_MODE_IDS } from "../domain/work-mode";
 import {
     normalizeTaskData,
     type NormalizedTaskData,
@@ -12,6 +13,7 @@ import type { Translate } from "../i18n";
 import { TaskEditError, type EditTaskResult } from "./edit-task";
 import type { ManagedEditDialog } from "./edit-dialog-manager";
 import { SubmissionController } from "./submission-controller";
+import { createTaskChoiceGroup } from "./task-choice-group";
 
 type FormOutcome =
     | { kind: "validation-error"; errors: TaskValidationError[] }
@@ -36,6 +38,7 @@ const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
     "url-https-required": "validation.urlHttpsRequired",
     "url-host-invalid": "validation.urlHostInvalid",
     "status-invalid": "validation.statusInvalid",
+    "work-mode-invalid": "validation.workModeInvalid",
     "deadline-invalid": "validation.deadlineInvalid",
 };
 
@@ -68,10 +71,16 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
                 <span data-field-label="url"></span>
                 <input class="b3-text-field fn__block" data-field="url" type="url" autocomplete="off">
             </label>
-            <label class="b3-label">
+            <div class="b3-label">
                 <span data-field-label="status"></span>
-                <select class="b3-select fn__block" data-field="status"></select>
-            </label>
+                <div class="ticktick-task-form__choices ticktick-task-form__choices--status" data-choice-group="status" role="radiogroup"></div>
+                <input data-field="status" type="hidden">
+            </div>
+            <div class="b3-label">
+                <span data-field-label="work-mode"></span>
+                <div class="ticktick-task-form__choices ticktick-task-form__choices--work-mode" data-choice-group="work-mode" role="radiogroup"></div>
+                <input data-field="work-mode" type="hidden">
+            </div>
             <label class="b3-label">
                 <span data-field-label="deadline"></span>
                 <input class="b3-text-field fn__block" data-field="deadline" type="date">
@@ -91,15 +100,15 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
     const form = requireElement<HTMLFormElement>(dialog.element, ".ticktick-task-edit-form");
     const titleInput = requireElement<HTMLInputElement>(form, '[data-field="title"]');
     const urlInput = requireElement<HTMLInputElement>(form, '[data-field="url"]');
-    const statusSelect = requireElement<HTMLSelectElement>(form, '[data-field="status"]');
+    const statusInput = requireElement<HTMLInputElement>(form, '[data-field="status"]');
+    const workModeInput = requireElement<HTMLInputElement>(form, '[data-field="work-mode"]');
     const deadlineInput = requireElement<HTMLInputElement>(form, '[data-field="deadline"]');
     const errorElement = requireElement<HTMLElement>(form, '[data-field="error"]');
     const cancelButton = requireElement<HTMLButtonElement>(form, '[data-action="cancel"]');
     const saveButton = requireElement<HTMLButtonElement>(form, '[data-action="save"]');
-    const controls: Array<HTMLInputElement | HTMLSelectElement | HTMLButtonElement> = [
+    const controls: Array<HTMLInputElement | HTMLButtonElement> = [
         titleInput,
         urlInput,
-        statusSelect,
         deadlineInput,
         cancelButton,
         saveButton,
@@ -108,6 +117,7 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
     requireElement<HTMLElement>(form, '[data-field-label="title"]').textContent = translate("taskCreate.titleLabel");
     requireElement<HTMLElement>(form, '[data-field-label="url"]').textContent = translate("taskCreate.urlLabel");
     requireElement<HTMLElement>(form, '[data-field-label="status"]').textContent = translate("taskCreate.statusLabel");
+    requireElement<HTMLElement>(form, '[data-field-label="work-mode"]').textContent = translate("taskCreate.workModeLabel");
     requireElement<HTMLElement>(form, '[data-field-label="deadline"]').textContent = translate("taskCreate.deadlineLabel");
     cancelButton.textContent = translate("common.cancel");
     saveButton.textContent = translate("taskEdit.save");
@@ -115,14 +125,24 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
     urlInput.value = options.initial.url;
     deadlineInput.value = options.initial.deadline ?? "";
 
-    for (const status of TASK_STATUS_IDS) {
-        const config = TASK_STATUS_CONFIG[status];
-        const option = document.createElement("option");
-        option.value = status;
-        option.textContent = `${config.icon} ${translate(config.labelKey)}`;
-        option.selected = status === options.initial.status;
-        statusSelect.append(option);
-    }
+    const statusChoices = createTaskChoiceGroup({
+        container: requireElement(form, '[data-choice-group="status"]'),
+        input: statusInput,
+        choices: TASK_STATUS_IDS.map((status) => ({
+            value: status,
+            text: `${TASK_STATUS_CONFIG[status].icon} ${translate(TASK_STATUS_CONFIG[status].labelKey)}`,
+        })),
+        initialValue: options.initial.status,
+    });
+    const workModeChoices = createTaskChoiceGroup({
+        container: requireElement(form, '[data-choice-group="work-mode"]'),
+        input: workModeInput,
+        choices: TASK_WORK_MODE_IDS.map((workMode) => ({
+            value: workMode,
+            text: `${TASK_WORK_MODE_CONFIG[workMode].icon} ${translate(TASK_WORK_MODE_CONFIG[workMode].labelKey)}`,
+        })),
+        ...(options.initial.workMode ? { initialValue: options.initial.workMode } : {}),
+    });
 
     cancelButton.addEventListener("click", () => {
         controller.cancel();
@@ -135,13 +155,16 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
 
     async function submitForm(): Promise<void> {
         setDisabled(controls, true);
+        statusChoices.setDisabled(true);
+        workModeChoices.setDisabled(true);
         saveButton.textContent = translate("taskEdit.saving");
         hideError(errorElement);
 
         const submission = await controller.submit({
             title: titleInput.value,
             url: urlInput.value,
-            status: statusSelect.value,
+            status: statusInput.value,
+            workMode: workModeInput.value,
             deadline: deadlineInput.value,
         });
         if (!submission.accepted) {
@@ -157,6 +180,8 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
         }
 
         setDisabled(controls, false);
+        statusChoices.setDisabled(false);
+        workModeChoices.setDisabled(false);
         saveButton.textContent = translate("taskEdit.save");
         if (submission.value.kind === "validation-error") {
             showError(
@@ -175,7 +200,8 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
     return {
         dialog,
         destroy: () => dialog.destroy(),
-        focusStatus: () => statusSelect.focus(),
+        focusStatus: () => statusChoices.focus(),
+        focusWorkMode: () => workModeChoices.focus(),
         focusDeadline: () => deadlineInput.focus(),
     };
 }
@@ -207,7 +233,7 @@ function requireElement<TElement extends Element>(root: ParentNode, selector: st
 }
 
 function setDisabled(
-    elements: Array<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>,
+    elements: Array<HTMLInputElement | HTMLButtonElement>,
     disabled: boolean,
 ): void {
     for (const element of elements) {

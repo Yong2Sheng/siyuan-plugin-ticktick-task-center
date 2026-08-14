@@ -22,7 +22,7 @@ export type SuccessfulTaskEditResult = {
 };
 
 export type OpenTaskEditOptions = {
-    focus?: "status" | "deadline";
+    focus?: "status" | "work-mode" | "deadline";
     onSaved?(result: SuccessfulTaskEditResult): void;
 };
 

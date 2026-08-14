@@ -16,6 +16,14 @@ This is the first planned release. The entries below summarize all development o
 - Edit the task title, URL, status, and deadline from source cards or the Task Center while preserving the original creation timestamp.
 - Restore the original block presentation when card enhancement is removed, and keep cards synchronized with Protyle rendering and edit-mode changes.
 
+### Work categories and editing interaction
+
+- Add four stable work categories: `explore` (🔭 探索-Explore), `build` (🛠️ 构建-Build), `execute` (⚙️ 执行-Execute), and `review` (🔎 评审-Review).
+- Persist the category ID in the optional `custom-ticktick-work-mode` block attribute. Legacy tasks remain valid when it is absent and display “未分类-Unclassified”.
+- Stack the work category above task status in source-document cards and Task Center items, using a theme-primary adaptive tint to keep Emoji legible.
+- Replace the status dropdown with directly visible button choices, and use the same interaction for all four work categories in create and edit dialogs.
+- Open the same editor with the corresponding field focused from the category, status, or Deadline button.
+
 ### Workspace Task Center
 
 - Add a singleton Task Center tab opened from the SiYuan top bar without maintaining a second task database.

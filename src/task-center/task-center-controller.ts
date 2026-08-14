@@ -29,6 +29,7 @@ export type RecentTaskEdit = {
     title: string;
     url: string;
     status: PersistedTickTickTaskData["status"];
+    workMode?: PersistedTickTickTaskData["workMode"];
     deadline?: string;
     createdAt: string;
     updatedAt: string;
@@ -86,6 +87,7 @@ export class TaskCenterController {
             title: data.title,
             url: data.url,
             status: data.status,
+            ...(data.workMode ? { workMode: data.workMode } : {}),
             ...(data.deadline ? { deadline: data.deadline } : {}),
             createdAt: current.createdAt,
             updatedAt: data.updatedAt,
@@ -255,6 +257,10 @@ function applyRecentEdit(item: TaskCenterItem, edit: RecentTaskEdit): TaskCenter
         status: edit.status,
         updatedAt: edit.updatedAt,
     };
+    delete next.workMode;
+    if (edit.workMode) {
+        next.workMode = edit.workMode;
+    }
     delete next.deadline;
     return edit.deadline ? { ...next, deadline: edit.deadline } : next;
 }

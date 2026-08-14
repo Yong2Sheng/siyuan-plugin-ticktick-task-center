@@ -12,6 +12,7 @@ const CURRENT = {
     [TASK_BLOCK_ATTRIBUTES.title]: "DS9 Adaptor",
     [TASK_BLOCK_ATTRIBUTES.url]: "https://dida365.com/task/old",
     [TASK_BLOCK_ATTRIBUTES.status]: "in-progress",
+    [TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]: "explore",
     [TASK_BLOCK_ATTRIBUTES.createdAt]: "2026-07-12T08:30:00.000Z",
     [TASK_BLOCK_ATTRIBUTES.updatedAt]: "2026-07-12T09:30:00.000Z",
 };
@@ -20,6 +21,7 @@ const ORIGINAL = {
     title: "DS9 Adaptor",
     url: "https://dida365.com/task/old",
     status: "in-progress" as const,
+    workMode: "explore" as const,
     createdAt: "2026-07-12T08:30:00.000Z",
     updatedAt: "2026-07-12T09:30:00.000Z",
 };
@@ -36,6 +38,7 @@ function request(next: NormalizedTaskData = {
     title: ORIGINAL.title,
     url: ORIGINAL.url,
     status: ORIGINAL.status,
+    workMode: ORIGINAL.workMode,
 }) {
     return {
         blockId: BLOCK_ID,
@@ -63,13 +66,14 @@ describe("editTask", () => {
             title: ORIGINAL.title,
             url: ORIGINAL.url,
             status: "completed",
+            workMode: ORIGINAL.workMode,
         }), () => changedAt);
 
         expect(result).toMatchObject({ changed: true });
         expect(api.updateMarkdownBlock).not.toHaveBeenCalled();
         expect(api.setBlockAttributes).toHaveBeenCalledOnce();
         const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
-        expect(Object.keys(attributes)).toHaveLength(9);
+        expect(Object.keys(attributes)).toHaveLength(10);
         expect(attributes[TASK_BLOCK_ATTRIBUTES.card]).toBe("true");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.version]).toBe("1");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.title]).toBe(ORIGINAL.title);
@@ -77,6 +81,7 @@ describe("editTask", () => {
         expect(attributes[TASK_BLOCK_ATTRIBUTES.createdAt]).toBe(ORIGINAL.createdAt);
         expect(attributes[TASK_BLOCK_ATTRIBUTES.updatedAt]).toBe("2026-07-12T10:30:00.000Z");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.status]).toBe("completed");
+        expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]).toBe("explore");
         expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]).toBe("");
         expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate])
             .toBe(getLocalDate(changedAt));
@@ -88,6 +93,7 @@ describe("editTask", () => {
             title: ORIGINAL.title,
             url: ORIGINAL.url,
             status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
             deadline: "2026-08-31",
         }), () => new Date("2026-07-12T10:30:00.000Z"));
 
@@ -124,6 +130,7 @@ describe("editTask", () => {
             original: {
                 ...ORIGINAL,
                 status: "completed",
+                workMode: ORIGINAL.workMode,
                 updatedAt: completedUpdatedAt,
             },
             taskLabel: "TickTick task",
@@ -131,6 +138,7 @@ describe("editTask", () => {
                 title: "Edited completed task",
                 url: ORIGINAL.url,
                 status: "completed",
+                workMode: ORIGINAL.workMode,
             },
         }, () => new Date("2026-07-13T10:30:00.000Z"));
 
@@ -146,6 +154,7 @@ describe("editTask", () => {
             title: "New [DS9]\\Name\nLine",
             url: ORIGINAL.url,
             status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
         }));
 
         expect(api.updateMarkdownBlock).toHaveBeenCalledWith(
@@ -162,6 +171,7 @@ describe("editTask", () => {
             title: ORIGINAL.title,
             url: "https://ticktick.com/task/new",
             status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
         }));
 
         expect(api.updateMarkdownBlock).toHaveBeenCalledWith(
@@ -180,6 +190,7 @@ describe("editTask", () => {
             title: "New title",
             url: ORIGINAL.url,
             status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
         }))).rejects.toMatchObject({ code: "content-update-failed", blockId: BLOCK_ID });
         expect(api.setBlockAttributes).not.toHaveBeenCalled();
     });
@@ -192,6 +203,7 @@ describe("editTask", () => {
             title: "New title",
             url: ORIGINAL.url,
             status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
         }))).rejects.toMatchObject({ code: "attribute-write-failed", blockId: BLOCK_ID });
         expect(api.updateMarkdownBlock).toHaveBeenNthCalledWith(
             2,
@@ -213,6 +225,7 @@ describe("editTask", () => {
             title: "New title",
             url: ORIGINAL.url,
             status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
         })).catch((reason: unknown) => reason);
 
         expect(error).toBeInstanceOf(TaskEditError);
@@ -235,6 +248,7 @@ describe("editTask", () => {
             title: "New title",
             url: ORIGINAL.url,
             status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
         }))).rejects.toMatchObject({
             code: "edit-conflict",
             blockId: BLOCK_ID,

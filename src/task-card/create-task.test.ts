@@ -11,6 +11,7 @@ const REQUEST = {
         title: "Task",
         url: "https://ticktick.com/t/1",
         status: "in-progress" as const,
+        workMode: "explore" as const,
     },
 };
 
@@ -53,6 +54,7 @@ describe("createTaskBlock", () => {
         expect(attributes[TASK_BLOCK_ATTRIBUTES.createdAt]).toBe("2026-07-12T08:30:00.000Z");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.updatedAt])
             .toBe(attributes[TASK_BLOCK_ATTRIBUTES.createdAt]);
+        expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]).toBe("explore");
     });
 
     it("creates attributes that remain a valid task through the task-center SQL row shape", async () => {
@@ -83,6 +85,7 @@ describe("createTaskBlock", () => {
             title: REQUEST.task.title,
             url: REQUEST.task.url,
             status: REQUEST.task.status,
+            workMode: REQUEST.task.workMode,
             createdAt: created.updatedAt,
             updatedAt: created.updatedAt,
         })]);

@@ -10,6 +10,7 @@ const INITIAL: PersistedTickTickTaskData = {
     title: "DS9 Adaptor",
     url: "https://dida365.com/task/old",
     status: "in-progress",
+    workMode: "review",
     createdAt: "2026-07-12T08:30:00.000Z",
     updatedAt: "2026-07-12T09:30:00.000Z",
 };
@@ -21,7 +22,10 @@ function elements(root: ParentNode) {
         form: root.querySelector<HTMLFormElement>("form")!,
         title: root.querySelector<HTMLInputElement>('[data-field="title"]')!,
         url: root.querySelector<HTMLInputElement>('[data-field="url"]')!,
-        status: root.querySelector<HTMLSelectElement>('[data-field="status"]')!,
+        status: root.querySelector<HTMLInputElement>('[data-field="status"]')!,
+        workMode: root.querySelector<HTMLInputElement>('[data-field="work-mode"]')!,
+        statusChoices: Array.from(root.querySelectorAll<HTMLButtonElement>('[data-choice-group="status"] button')),
+        workModeChoices: Array.from(root.querySelectorAll<HTMLButtonElement>('[data-choice-group="work-mode"] button')),
         deadline: root.querySelector<HTMLInputElement>('[data-field="deadline"]')!,
         cancel: root.querySelector<HTMLButtonElement>('[data-action="cancel"]')!,
         save: root.querySelector<HTMLButtonElement>('[data-action="save"]')!,
@@ -43,7 +47,7 @@ describe("showEditTaskDialog", () => {
         vi.restoreAllMocks();
     });
 
-    it("prefills fields and supports status or deadline focus intents", () => {
+    it("prefills fields and supports status, work category, or deadline focus intents", () => {
         const handle = showEditTaskDialog({
             translate,
             initial: INITIAL,
@@ -53,12 +57,27 @@ describe("showEditTaskDialog", () => {
 
         expect(fields.title.value).toBe(INITIAL.title);
         expect(fields.url.value).toBe(INITIAL.url);
+        expect(handle.dialog.element.querySelector("select")).toBeNull();
+        expect(fields.statusChoices).toHaveLength(7);
+        expect(fields.workModeChoices).toHaveLength(4);
         expect(fields.status.value).toBe(INITIAL.status);
+        expect(fields.workMode.value).toBe(INITIAL.workMode);
         expect(fields.deadline.value).toBe("");
         handle.focusStatus();
-        expect(document.activeElement).toBe(fields.status);
+        expect(document.activeElement).toBe(fields.statusChoices.find((button) => (
+            button.dataset.value === INITIAL.status
+        )));
+        handle.focusWorkMode();
+        expect(document.activeElement).toBe(fields.workModeChoices.find((button) => (
+            button.dataset.value === INITIAL.workMode
+        )));
         handle.focusDeadline();
         expect(document.activeElement).toBe(fields.deadline);
+
+        fields.statusChoices.find((button) => button.dataset.value === "completed")?.click();
+        fields.workModeChoices.find((button) => button.dataset.value === "build")?.click();
+        expect(fields.status.value).toBe("completed");
+        expect(fields.workMode.value).toBe("build");
     });
 
     it("disables every control while saving and ignores duplicate submits", async () => {
@@ -75,7 +94,8 @@ describe("showEditTaskDialog", () => {
 
         expect(fields.title.disabled).toBe(true);
         expect(fields.url.disabled).toBe(true);
-        expect(fields.status.disabled).toBe(true);
+        expect(fields.statusChoices.every((button) => button.disabled)).toBe(true);
+        expect(fields.workModeChoices.every((button) => button.disabled)).toBe(true);
         expect(fields.deadline.disabled).toBe(true);
         expect(fields.cancel.disabled).toBe(true);
         expect(fields.save.disabled).toBe(true);
@@ -96,7 +116,8 @@ describe("showEditTaskDialog", () => {
 
         expect(fields.title.disabled).toBe(false);
         expect(fields.url.disabled).toBe(false);
-        expect(fields.status.disabled).toBe(false);
+        expect(fields.statusChoices.every((button) => !button.disabled)).toBe(true);
+        expect(fields.workModeChoices.every((button) => !button.disabled)).toBe(true);
         expect(fields.deadline.disabled).toBe(false);
         expect(fields.cancel.disabled).toBe(false);
         expect(fields.save.disabled).toBe(false);

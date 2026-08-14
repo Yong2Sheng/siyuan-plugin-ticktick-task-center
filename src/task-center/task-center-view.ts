@@ -16,12 +16,13 @@ import {
 } from "./daily-progress";
 import { getDeadlineState } from "../domain/deadline";
 import { createDeadlineButton } from "../task-card/deadline-button";
+import { TASK_WORK_MODE_CONFIG } from "../domain/work-mode";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
     translate: Translate;
     locale?: string;
-    onEditTask(blockId: string, focus: "status" | "deadline"): void;
+    onEditTask(blockId: string, focus: "status" | "work-mode" | "deadline"): void;
     onLocateTask(blockId: string, rootId: string, notebookId?: string): void;
     onSaveDailyProgress(blockId: string, date: string | undefined): Promise<void>;
     onDailyProgressError?(error: unknown): void;
@@ -332,6 +333,24 @@ export class TaskCenterView {
         );
         statusButton.addEventListener("click", () => this.options.onEditTask(item.blockId, "status"));
 
+        const workModeButton = document.createElement("button");
+        workModeButton.type = "button";
+        workModeButton.className = "ticktick-task-center__work-mode";
+        const workModeLabel = item.workMode
+            ? `${TASK_WORK_MODE_CONFIG[item.workMode].icon} ${translate(TASK_WORK_MODE_CONFIG[item.workMode].labelKey)}`
+            : translate("workMode.unclassified");
+        workModeButton.textContent = workModeLabel;
+        workModeButton.title = translate("taskEdit.workModeButtonTitle");
+        workModeButton.setAttribute(
+            "aria-label",
+            translate("taskEdit.workModeButtonAriaLabel").replace("${workMode}", workModeLabel),
+        );
+        workModeButton.addEventListener("click", () => this.options.onEditTask(item.blockId, "work-mode"));
+
+        const classification = document.createElement("div");
+        classification.className = "ticktick-task-center__classification";
+        classification.append(workModeButton, statusButton);
+
         const deadlineButton = createDeadlineButton({
             className: "ticktick-task-center__deadline",
             deadline: item.deadline,
@@ -387,7 +406,7 @@ export class TaskCenterView {
         external.textContent = `${translate("taskCenterView.openTickTick")} ↗️`;
         actions.append(locate, external);
 
-        article.append(deadlineButton, statusButton, content, actions);
+        article.append(deadlineButton, classification, content, actions);
         return article;
     }
 

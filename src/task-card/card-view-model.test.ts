@@ -9,6 +9,10 @@ const translate = (key: string): string => ({
     "taskCardView.status": "Status",
     "taskEdit.statusButtonTitle": "Click to edit task",
     "taskEdit.statusButtonAriaLabel": "Edit task, current status: ${status}",
+    "taskEdit.workModeButtonTitle": "Click to edit work category",
+    "taskEdit.workModeButtonAriaLabel": "Edit task, current work category: ${workMode}",
+    "workMode.review": "评审-Review",
+    "workMode.unclassified": "未分类-Unclassified",
     "status.todo": "To do",
     "status.inProgress": "In progress",
     "status.waiting": "Waiting for response",
@@ -41,6 +45,7 @@ describe("createTaskCardViewModel", () => {
             title: "DS9 Adaptor",
             url: "https://ticktick.com/task/1",
             status: "in-progress",
+            workMode: "review",
             deadline: "2026-08-31",
             createdAt: "2026-07-12T08:30:00.000Z",
             updatedAt: "2026-07-12T08:30:00.000Z",
@@ -50,6 +55,8 @@ describe("createTaskCardViewModel", () => {
         expect(viewModel.linkText).toBe("Open task: DS9 Adaptor ↗️");
         expect(viewModel.statusTitle).toBe("Click to edit task");
         expect(viewModel.statusAriaLabel).toBe("Edit task, current status: In progress");
+        expect(viewModel.workModeText).toBe("🔎 评审-Review");
+        expect(viewModel.workModeTitle).toBe("Click to edit work category");
         expect(viewModel.title).toBe("DS9 Adaptor");
         expect(viewModel.url).toBe("https://ticktick.com/task/1");
         expect(viewModel.deadline).toBe("2026-08-31");

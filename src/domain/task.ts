@@ -1,4 +1,5 @@
 import type { TickTickTaskStatus } from "./status";
+import type { TickTickTaskWorkMode } from "./work-mode";
 
 export const TASK_DATA_VERSION = 1 as const;
 
@@ -15,6 +16,7 @@ export const TASK_BLOCK_ATTRIBUTES = {
 export const TASK_BLOCK_OPTIONAL_ATTRIBUTES = {
     lastProgressedDate: "custom-ticktick-last-progressed-date",
     deadline: "custom-ticktick-deadline",
+    workMode: "custom-ticktick-work-mode",
 } as const;
 
 export const DEFAULT_TASK_STATUS = "in-progress" satisfies TickTickTaskStatus;
@@ -27,6 +29,7 @@ export type TickTickTaskCardData = {
     title: string;
     url: string;
     status: TickTickTaskStatus;
+    workMode?: TickTickTaskWorkMode;
     deadline?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -68,5 +71,6 @@ export function createTaskBlockAttributes(data: PersistedTickTickTaskData): Task
         [TASK_BLOCK_ATTRIBUTES.createdAt]: data.createdAt,
         [TASK_BLOCK_ATTRIBUTES.updatedAt]: data.updatedAt,
         [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: data.deadline ?? "",
+        [TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]: data.workMode ?? "",
     };
 }

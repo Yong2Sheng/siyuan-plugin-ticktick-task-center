@@ -35,8 +35,8 @@ describe("task block attributes", () => {
         updatedAt: timestamp,
     });
 
-    it("creates the seven required attributes and a clearable optional deadline", () => {
-        expect(Object.keys(attributes)).toHaveLength(8);
+    it("creates the seven required attributes and clearable optional fields", () => {
+        expect(Object.keys(attributes)).toHaveLength(9);
         expect(attributes).toEqual({
             [TASK_BLOCK_ATTRIBUTES.card]: "true",
             [TASK_BLOCK_ATTRIBUTES.version]: "1",
@@ -46,6 +46,7 @@ describe("task block attributes", () => {
             [TASK_BLOCK_ATTRIBUTES.createdAt]: timestamp,
             [TASK_BLOCK_ATTRIBUTES.updatedAt]: timestamp,
             [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "",
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]: "",
         });
     });
 

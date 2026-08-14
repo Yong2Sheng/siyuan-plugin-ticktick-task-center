@@ -7,6 +7,7 @@ import {
 } from "../domain/task";
 import { isAllowedTickTickUrl } from "../domain/validation";
 import { readLocalDate } from "../domain/local-date";
+import { isTickTickTaskWorkMode } from "../domain/work-mode";
 
 export type TaskBlockParseFailure =
     | "not-task-card"
@@ -14,6 +15,7 @@ export type TaskBlockParseFailure =
     | "missing-title"
     | "invalid-url"
     | "invalid-status"
+    | "invalid-work-mode"
     | "invalid-deadline"
     | "invalid-created-at"
     | "invalid-updated-at";
@@ -65,6 +67,14 @@ export function parseTaskBlockAttributes(
         return { valid: false, reason: "invalid-deadline" };
     }
 
+    const rawWorkMode = attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode];
+    const workMode = rawWorkMode === undefined || rawWorkMode === ""
+        ? undefined
+        : rawWorkMode;
+    if (workMode !== undefined && !isTickTickTaskWorkMode(workMode)) {
+        return { valid: false, reason: "invalid-work-mode" };
+    }
+
     return {
         valid: true,
         data: {
@@ -72,6 +82,7 @@ export function parseTaskBlockAttributes(
             title: title.trim(),
             url,
             status,
+            ...(workMode ? { workMode } : {}),
             ...(deadline ? { deadline } : {}),
             createdAt,
             updatedAt,

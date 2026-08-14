@@ -51,4 +51,20 @@ describe("parseTaskBlockAttributes", () => {
             [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "2026-02-31",
         })).toEqual({ valid: false, reason: "invalid-deadline" });
     });
+
+    it("reads an optional work category while keeping legacy tasks valid", () => {
+        expect(parseTaskBlockAttributes({
+            ...VALID_ATTRIBUTES,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]: "review",
+        })).toMatchObject({ valid: true, data: { workMode: "review" } });
+        const legacy = parseTaskBlockAttributes(VALID_ATTRIBUTES);
+        expect(legacy.valid).toBe(true);
+        if (legacy.valid) {
+            expect(legacy.data.workMode).toBeUndefined();
+        }
+        expect(parseTaskBlockAttributes({
+            ...VALID_ATTRIBUTES,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]: "unknown",
+        })).toEqual({ valid: false, reason: "invalid-work-mode" });
+    });
 });

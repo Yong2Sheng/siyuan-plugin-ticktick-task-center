@@ -16,6 +16,7 @@ describe("TickTick task validation", () => {
             title: "Task",
             url: "http://ticktick.com/t/1",
             status: "in-progress",
+            workMode: "explore",
         })).toContain("url-https-required");
     });
 
@@ -24,6 +25,7 @@ describe("TickTick task validation", () => {
             title: "Task",
             url: "https://example.com/t/1",
             status: "in-progress",
+            workMode: "explore",
         })).toContain("url-host-invalid");
     });
 
@@ -32,6 +34,7 @@ describe("TickTick task validation", () => {
             title: "",
             url: "https://ticktick.com/t/1",
             status: "in-progress",
+            workMode: "explore",
         })).toContain("title-required");
     });
 
@@ -40,6 +43,7 @@ describe("TickTick task validation", () => {
             title: " \n\t ",
             url: "https://ticktick.com/t/1",
             status: "in-progress",
+            workMode: "explore",
         })).toContain("title-required");
     });
 
@@ -48,7 +52,17 @@ describe("TickTick task validation", () => {
             title: "Task",
             url: "https://ticktick.com/t/1",
             status: "done",
+            workMode: "explore",
         })).toContain("status-invalid");
+    });
+
+    it("requires one of the four work categories", () => {
+        expect(validateTaskData({
+            title: "Task",
+            url: "https://ticktick.com/t/1",
+            status: "in-progress",
+            workMode: "unknown",
+        })).toContain("work-mode-invalid");
     });
 
     it("trims the title and normalizes the URL", () => {
@@ -56,6 +70,7 @@ describe("TickTick task validation", () => {
             title: "  Task  ",
             url: "  https://ticktick.com  ",
             status: "in-progress",
+            workMode: "explore",
         });
         expect(result).toEqual({
             valid: true,
@@ -63,6 +78,7 @@ describe("TickTick task validation", () => {
                 title: "Task",
                 url: "https://ticktick.com/",
                 status: "in-progress",
+                workMode: "explore",
             },
         });
     });
@@ -72,12 +88,14 @@ describe("TickTick task validation", () => {
             title: "Task",
             url: "https://ticktick.com/t/1",
             status: "in-progress",
+            workMode: "explore",
             deadline: "2026-08-31",
         })).toMatchObject({ valid: true, data: { deadline: "2026-08-31" } });
         expect(validateTaskData({
             title: "Task",
             url: "https://ticktick.com/t/1",
             status: "in-progress",
+            workMode: "explore",
             deadline: "2026-02-31",
         })).toContain("deadline-invalid");
     });

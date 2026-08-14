@@ -9,6 +9,7 @@ function factory(created: FakeDialog[]) {
         const dialog: FakeDialog = {
             destroy: vi.fn(() => onDestroy()),
             focusStatus: vi.fn(),
+            focusWorkMode: vi.fn(),
             focusDeadline: vi.fn(),
             close: onDestroy,
         };

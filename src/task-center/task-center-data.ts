@@ -3,6 +3,7 @@ import type { TickTickTaskStatus } from "../domain/status";
 import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import { readLocalDate } from "../domain/local-date";
 import { parseTaskBlockAttributes, type TaskBlockParseFailure } from "../task-card/task-data";
+import type { TickTickTaskWorkMode } from "../domain/work-mode";
 
 export type TaskCenterItem = {
     blockId: string;
@@ -13,6 +14,7 @@ export type TaskCenterItem = {
     title: string;
     url: string;
     status: TickTickTaskStatus;
+    workMode?: TickTickTaskWorkMode;
     createdAt: string;
     updatedAt: string;
     deadline?: string;
@@ -140,6 +142,7 @@ export function aggregateTaskCenterRows(
             title: parsed.data.title,
             url: parsed.data.url,
             status: parsed.data.status,
+            ...(parsed.data.workMode ? { workMode: parsed.data.workMode } : {}),
             createdAt: parsed.data.createdAt,
             updatedAt: parsed.data.updatedAt,
             ...(deadline ? { deadline } : {}),

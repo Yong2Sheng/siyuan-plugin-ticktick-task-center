@@ -13,6 +13,7 @@ const INITIAL: PersistedTickTickTaskData = {
     title: "DS9 Adaptor",
     url: "https://dida365.com/task/old",
     status: "in-progress",
+    workMode: "explore",
     createdAt: "2026-07-12T08:30:00.000Z",
     updatedAt: "2026-07-12T09:30:00.000Z",
 };
@@ -31,7 +32,8 @@ function fields() {
         form: document.querySelector<HTMLFormElement>(".ticktick-task-edit-form")!,
         title: document.querySelector<HTMLInputElement>('[data-field="title"]')!,
         url: document.querySelector<HTMLInputElement>('[data-field="url"]')!,
-        status: document.querySelector<HTMLSelectElement>('[data-field="status"]')!,
+        status: document.querySelector<HTMLInputElement>('[data-field="status"]')!,
+        workMode: document.querySelector<HTMLInputElement>('[data-field="work-mode"]')!,
         deadline: document.querySelector<HTMLInputElement>('[data-field="deadline"]')!,
         cancel: document.querySelector<HTMLButtonElement>('[data-action="cancel"]')!,
     };
@@ -64,6 +66,7 @@ describe("TaskEditController saved result", () => {
 
     it.each([
         ["status", "completed"],
+        ["workMode", "review"],
         ["title", "Updated title"],
         ["url", "https://ticktick.com/task/new"],
         ["deadline", "2026-08-31"],
@@ -99,6 +102,7 @@ describe("TaskEditController saved result", () => {
             title: field === "title" ? value : INITIAL.title,
             url: field === "url" ? value : INITIAL.url,
             status: field === "status" ? value : INITIAL.status,
+            workMode: field === "workMode" ? value : INITIAL.workMode,
             ...(field === "deadline" ? { deadline: value } : {}),
         });
         harness.editor.stop();

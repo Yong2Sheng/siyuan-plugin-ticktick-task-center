@@ -13,6 +13,55 @@
         width: 100%;
     }
 
+    &__choices {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+        margin-top: 8px;
+
+        &--work-mode {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    &__choice {
+        box-sizing: border-box;
+        min-width: 0;
+        min-height: 36px;
+        padding: 7px 9px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 6px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-surface);
+        font: inherit;
+        line-height: 1.35;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+
+        &:hover:not(:disabled) {
+            border-color: var(--b3-theme-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 2px;
+        }
+
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+
+        &--selected {
+            border-color: var(--b3-theme-primary);
+            background: color-mix(in srgb, var(--b3-theme-primary) 14%, var(--b3-theme-background));
+            box-shadow: inset 0 0 0 1px var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+            font-weight: 700;
+        }
+    }
+
     &__error {
         color: var(--b3-theme-error);
     }
@@ -72,6 +121,51 @@
         min-width: 0;
     }
 
+    &__classification {
+        display: grid;
+        flex: 0 0 auto;
+        gap: 6px;
+        align-items: stretch;
+    }
+
+    &__work-mode {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        margin: 0;
+        padding: 3px 8px;
+        border: 1px solid color-mix(
+            in srgb,
+            var(--b3-theme-primary) 62%,
+            var(--b3-border-color)
+        );
+        border-radius: 999px;
+        background: rgba(103, 58, 183, 0.13);
+        background: color-mix(
+            in srgb,
+            var(--b3-theme-primary) 14%,
+            var(--b3-theme-background)
+        );
+        color: var(--b3-theme-primary);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 2px;
+        }
+    }
+
     &__link {
         box-sizing: border-box;
         display: inline-block;
@@ -113,6 +207,8 @@
         font-weight: 700;
         line-height: 1.2;
         white-space: nowrap;
+        justify-content: center;
+        width: 100%;
         cursor: pointer;
 
         &:hover {
@@ -582,6 +678,46 @@
         }
     }
 
+    &__classification {
+        display: grid;
+        flex: 0 0 auto;
+        gap: 6px;
+        align-items: stretch;
+    }
+
+    &__work-mode {
+        width: 100%;
+        padding: 4px 9px;
+        border: 1px solid color-mix(
+            in srgb,
+            var(--b3-theme-primary) 62%,
+            var(--b3-border-color)
+        );
+        border-radius: 999px;
+        background: rgba(103, 58, 183, 0.13);
+        background: color-mix(
+            in srgb,
+            var(--b3-theme-primary) 14%,
+            var(--b3-theme-background)
+        );
+        color: var(--b3-theme-primary);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 2px;
+        }
+    }
+
     &__content {
         flex: 1 1 300px;
         min-width: 0;
@@ -894,6 +1030,10 @@
 }
 
 @media (max-width: 520px) {
+    .ticktick-task-form__choices {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .ticktick-task-card {
         padding: 10px 12px;
 

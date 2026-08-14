@@ -1,10 +1,11 @@
 export type ManagedEditDialog = {
     destroy(): void;
     focusStatus(): void;
+    focusWorkMode(): void;
     focusDeadline(): void;
 };
 
-export type EditDialogFocus = "status" | "deadline";
+export type EditDialogFocus = "status" | "work-mode" | "deadline";
 
 export type EditDialogFactory<TDialog extends ManagedEditDialog> = (
     onDestroy: () => void,
@@ -81,6 +82,10 @@ export class EditDialogManager<TDialog extends ManagedEditDialog = ManagedEditDi
 function focusDialog(dialog: ManagedEditDialog, focus: EditDialogFocus): void {
     if (focus === "deadline") {
         dialog.focusDeadline();
+        return;
+    }
+    if (focus === "work-mode") {
+        dialog.focusWorkMode();
         return;
     }
     dialog.focusStatus();
