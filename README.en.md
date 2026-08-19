@@ -22,7 +22,7 @@ The current version does not use the TickTick API, OAuth, or background synchron
 - Create a TickTick task block from the slash menu in an editable SiYuan document. The default status is `in-progress`, and the new block is inserted at the top of the current root document.
 - Store the task title, a validated TickTick URL, seven required attributes, and optional work-category, deadline, and daily-progress date attributes in one ordinary SiYuan block.
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
-- Non-destructively enhance the block as a task card with a task link, an original checklist icon, a work-category button, a semantically colored status badge, and a Deadline button. The work category is stacked above the status.
+- Non-destructively enhance the block as a task card with an original checklist icon that opens the Task Center, a task link, a work-category button, a semantically colored status badge, and a Deadline button. The work category is stacked above the status.
 - Open the complete editor from the work-category, status, or Deadline button to change the title, URL, work category, status, or deadline. Work categories and statuses are both selected from directly visible button groups.
 - Show the deadline as remaining days, an eight-segment urgency track, and the calendar date. An undated task keeps the same track layout and a clear setup entry point.
 - Keep the track empty outside the seven-day window, then fill one segment per day from seven days remaining. Due-today and overdue tasks use a full track.
@@ -153,9 +153,9 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 
 ### 4. Open the Task Center
 
-- Select the TickTick Task Center button in the SiYuan top bar.
+- Select the checklist icon on the left side of any document task card, or select the TickTick Task Center button in the SiYuan top bar.
 - The Task Center opens as an independent custom tab.
-- Only one Task Center tab exists at a time. Selecting the top-bar button again focuses the existing tab instead of creating another one.
+- Only one Task Center tab exists at a time. Selecting either entry again focuses the existing tab instead of creating another one.
 - The workspace is queried once when the tab first opens.
 
 ### 5. Use the Task Center

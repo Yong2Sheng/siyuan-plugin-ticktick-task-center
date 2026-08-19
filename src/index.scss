@@ -108,6 +108,30 @@
         white-space: nowrap;
     }
 
+    &__identity-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        width: 20px;
+        height: 20px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        line-height: 0;
+        appearance: none;
+        cursor: pointer;
+
+        &:focus-visible {
+            outline: 2px solid currentColor;
+            outline-offset: 2px;
+        }
+    }
+
     &__identity-icon {
         display: block;
         flex: 0 0 auto;

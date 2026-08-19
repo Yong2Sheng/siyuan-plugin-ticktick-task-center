@@ -27,6 +27,7 @@ const VIEW_MODEL = {
         "deadline.setAction": "Set deadline",
         "deadline.editTitle": "Click to edit the deadline",
         "deadline.editAriaLabel": "Edit deadline: ${summary}, ${date}",
+        "taskCenterView.openTooltip": "Open TickTick Task Center",
     })[key] ?? key,
     identity: "TickTick task",
     linkText: "Open task: DS9 Adaptor ↗️",
@@ -77,6 +78,9 @@ describe("task card renderer", () => {
 
         const link = card?.querySelector<HTMLAnchorElement>(".ticktick-task-card__link");
         const identity = card?.querySelector<HTMLElement>(".ticktick-task-card__identity");
+        const identityButton = identity?.querySelector<HTMLButtonElement>(
+            ".ticktick-task-card__identity-button",
+        );
         const identityIcon = identity?.querySelector<SVGSVGElement>(
             ".ticktick-task-card__identity-icon",
         );
@@ -84,6 +88,9 @@ describe("task card renderer", () => {
         expect(link?.target).toBe("_blank");
         expect(link?.rel).toBe("noopener noreferrer");
         expect(identity?.textContent).toBe("TickTick task");
+        expect(identityButton?.type).toBe("button");
+        expect(identityButton?.title).toBe("Open TickTick Task Center");
+        expect(identityButton?.getAttribute("aria-label")).toBe("Open TickTick Task Center");
         expect(identityIcon?.getAttribute("viewBox")).toBe("0 0 20 20");
         expect(identityIcon?.getAttribute("aria-hidden")).toBe("true");
         expect(identityIcon?.querySelectorAll("rect, path")).toHaveLength(2);
@@ -152,9 +159,16 @@ describe("task card renderer", () => {
         const block = createBlock();
         document.body.append(block);
         const onEditTask = vi.fn();
+        const onOpenTaskCenter = vi.fn();
 
-        enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL, { onEditTask });
+        enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL, {
+            onEditTask,
+            onOpenTaskCenter,
+        });
         const card = getTaskCardDecoration(block)!;
+        const identityButton = card.querySelector<HTMLButtonElement>(
+            ".ticktick-task-card__identity-button",
+        )!;
         const statusButtons = card.querySelectorAll<HTMLButtonElement>(".ticktick-task-card__status");
         const status = statusButtons[0];
         const workMode = card.querySelector<HTMLButtonElement>(".ticktick-task-card__work-mode")!;
@@ -176,9 +190,11 @@ describe("task card renderer", () => {
             .toBe("No deadline");
         expect(deadline.querySelectorAll(".ticktick-task-card__deadline-segment")).toHaveLength(8);
 
+        identityButton.click();
         deadline.click();
         workMode.click();
         status.click();
+        expect(onOpenTaskCenter).toHaveBeenCalledOnce();
         expect(onEditTask).toHaveBeenCalledTimes(3);
         expect(onEditTask).toHaveBeenNthCalledWith(1, block.dataset.nodeId, { focus: "deadline" });
         expect(onEditTask).toHaveBeenCalledWith(block.dataset.nodeId, { focus: "work-mode" });

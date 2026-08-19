@@ -13,6 +13,7 @@ This is the first planned release. The entries below summarize all development o
 - Support seven stable local statuses: To do, In progress, Waiting for response, Blocked, Completed, Failed, and Cancelled.
 - Preserve readable fallback Markdown containing the task title and TickTick / Dida365 link when the plugin is disabled.
 - Non-destructively enhance marked blocks with a task identity icon, safe external task link, semantic status badge, and deadline control.
+- Turn the checklist SVG on the left side of each task card into a Task Center shortcut while preserving its original shape, color, size, and layout.
 - Edit the task title, URL, status, and deadline from source cards or the Task Center while preserving the original creation timestamp.
 - Restore the original block presentation when card enhancement is removed, and keep cards synchronized with Protyle rendering and edit-mode changes.
 
@@ -26,7 +27,7 @@ This is the first planned release. The entries below summarize all development o
 
 ### Workspace Task Center
 
-- Add a singleton Task Center tab opened from the SiYuan top bar without maintaining a second task database.
+- Add a singleton Task Center tab opened from either the SiYuan top bar or a document task-card icon without maintaining a second task database.
 - Dynamically aggregate validated tasks across the workspace and provide Active, Closed, and All filters.
 - Add localized search across task titles, source documents, source paths, and status labels.
 - Add task statistics, stable updated-time sorting, source-block navigation, safe TickTick links, and explicit manual refresh.

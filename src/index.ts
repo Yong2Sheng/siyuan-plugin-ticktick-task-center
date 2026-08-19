@@ -44,6 +44,9 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 onEditTask: (blockId, { focus }) => {
                     void this.taskEditController?.open(blockId, { focus });
                 },
+                onOpenTaskCenter: () => {
+                    void this.taskCenterTab?.open();
+                },
             },
         });
         this.taskEditController = new TaskEditController({

@@ -7,6 +7,7 @@ export const TASK_CARD_BLOCK_ID_ATTRIBUTE = "data-ticktick-task-block-id";
 
 export type TaskCardActions = {
     onEditTask(blockId: string, options: { focus: "status" | "work-mode" | "deadline" }): void;
+    onOpenTaskCenter?(): void;
 };
 
 export function enhanceTaskBlock(
@@ -47,7 +48,22 @@ export function enhanceTaskBlock(
 
     const identity = document.createElement("span");
     identity.className = "ticktick-task-card__identity";
-    identity.append(createTaskIdentityIcon(), viewModel.identity);
+
+    const taskCenterButton = document.createElement("button");
+    taskCenterButton.type = "button";
+    taskCenterButton.className = "ticktick-task-card__identity-button";
+    taskCenterButton.title = viewModel.translate("taskCenterView.openTooltip");
+    taskCenterButton.setAttribute(
+        "aria-label",
+        viewModel.translate("taskCenterView.openTooltip"),
+    );
+    taskCenterButton.append(createTaskIdentityIcon());
+    taskCenterButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        actions?.onOpenTaskCenter?.();
+    });
+    identity.append(taskCenterButton, viewModel.identity);
 
     const main = document.createElement("span");
     main.className = "ticktick-task-card__main";
