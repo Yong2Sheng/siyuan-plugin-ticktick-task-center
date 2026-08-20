@@ -24,6 +24,7 @@ The current version does not use the TickTick API, OAuth, or background synchron
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
 - Non-destructively enhance the block as a task card with an original checklist icon that opens the Task Center, a task link, a work-category button, a semantically colored status badge, and a Deadline button. The work category is stacked above the status.
 - Open the complete editor from the work-category, status, or Deadline button to change the title, URL, work category, status, or deadline. Work categories and statuses are both selected from directly visible button groups.
+- Right-click anywhere on a document task card or Task Center item to edit it or delete its SiYuan task card after confirmation. Deletion never affects the actual task in TickTick or Dida365.
 - Show the deadline as remaining days, an eight-segment urgency track, and the calendar date. An undated task keeps the same track layout and a clear setup entry point.
 - Keep the track empty outside the seven-day window, then fill one segment per day from seven days remaining. Due-today and overdue tasks use a full track.
 - Apply theme-adaptive low-saturation emphasis to active tasks inside the seven-day window, with warning emphasis for due-today tasks and error emphasis for overdue tasks while preserving readable theme contrast.
@@ -168,6 +169,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Select an item's work-category button to reuse the complete task editor with the work category focused.
 - Select an item's status badge to reuse the same complete task editor.
 - Select an item's Deadline button to edit or clear its deadline directly.
+- Right-click anywhere on an item to edit it or delete its task card. A successful Task Center deletion updates the current list immediately, while SiYuan removes the source block from any open source document.
 - After saving an edit from the Task Center, its list, filtered results, ordering, and statistics update immediately without a refresh.
 - **To progress today** prioritizes overdue and upcoming tasks, with undated tasks placed last.
 
@@ -258,9 +260,7 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 
 - Changes from ordinary documents, other tabs, or other clients are not pushed automatically to the Task Center; use manual Refresh.
 - No TickTick API, OAuth, or two-way synchronization.
-- No task deletion from the plugin.
 - No batch operations or batch status changes.
-- No task context menu.
 - No pagination or virtual scrolling; the Task Center is subject to SiYuan's SQL result-count limit.
 - No settings page.
 - Daily progress stores only the latest date; there is no history, streak, or trend reporting.

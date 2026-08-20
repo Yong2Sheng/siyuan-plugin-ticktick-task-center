@@ -49,6 +49,7 @@ export class TaskCenterController {
     private readonly listeners = new Set<(state: TaskCenterState) => void>();
     private readonly recentEdits = new Map<string, RecentTaskEdit>();
     private readonly recentDailyProgress = new Map<string, string | undefined>();
+    private readonly recentDeletions = new Set<string>();
     private generation = 0;
     private started = false;
     private hasLoaded = false;
@@ -129,6 +130,22 @@ export class TaskCenterController {
         return true;
     }
 
+    applyDeletedTask(blockId: string): boolean {
+        if (this.destroyed) {
+            return false;
+        }
+        const exists = this.state.items.some((item) => item.blockId === blockId);
+        this.recentEdits.delete(blockId);
+        this.recentDailyProgress.delete(blockId);
+        this.recentDeletions.add(blockId);
+        if (exists) {
+            this.update({
+                items: this.state.items.filter((item) => item.blockId !== blockId),
+            });
+        }
+        return exists;
+    }
+
     setFilter(filter: TaskCenterFilter): void {
         this.update({ filter });
     }
@@ -154,6 +171,7 @@ export class TaskCenterController {
         this.generation += 1;
         this.recentEdits.clear();
         this.recentDailyProgress.clear();
+        this.recentDeletions.clear();
         this.listeners.clear();
     }
 
@@ -214,6 +232,13 @@ export class TaskCenterController {
                 continue;
             }
             merged.set(blockId, applyRecentDailyProgress(sqlItem, date));
+        }
+        for (const blockId of this.recentDeletions) {
+            if (!merged.has(blockId)) {
+                this.recentDeletions.delete(blockId);
+                continue;
+            }
+            merged.delete(blockId);
         }
         return sortTaskCenterItems(Array.from(merged.values()));
     }

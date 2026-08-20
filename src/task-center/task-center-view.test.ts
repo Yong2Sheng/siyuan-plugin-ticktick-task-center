@@ -47,6 +47,8 @@ const dictionary: Record<string, string> = {
     "taskEdit.statusButtonAriaLabel": "Edit task, current status: ${status}",
     "taskEdit.workModeButtonTitle": "Click to edit work category",
     "taskEdit.workModeButtonAriaLabel": "Edit task, current work category: ${workMode}",
+    "taskActions.edit": "Edit task",
+    "taskActions.delete": "Delete task card",
     "workMode.review": "评审-Review",
     "workMode.unclassified": "未分类-Unclassified",
     "status.inProgress": "In progress",
@@ -100,6 +102,7 @@ async function createView(load = vi.fn().mockResolvedValue({
     const onEditTask = vi.fn();
     const onLocateTask = vi.fn();
     const onSaveDailyProgress = vi.fn().mockResolvedValue(undefined);
+    const onDeleteTask = vi.fn().mockResolvedValue(true);
     const onDailyProgressError = vi.fn();
     const view = new TaskCenterView(target, {
         controller,
@@ -107,6 +110,7 @@ async function createView(load = vi.fn().mockResolvedValue({
         locale: "en-US",
         onEditTask,
         onLocateTask,
+        onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
     });
@@ -118,6 +122,7 @@ async function createView(load = vi.fn().mockResolvedValue({
         load,
         onEditTask,
         onLocateTask,
+        onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
     };
@@ -194,6 +199,30 @@ describe("TaskCenterView", () => {
         expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId, "deadline");
     });
 
+    it("opens actions from any inner area and removes a confirmed deletion immediately", async () => {
+        const { target, controller, onEditTask, onDeleteTask } = await createView();
+        const article = target.querySelector<HTMLElement>(".ticktick-task-center__item")!;
+        const external = article.querySelector<HTMLAnchorElement>(".ticktick-task-center__external")!;
+        const contextMenu = new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+            clientX: 60,
+            clientY: 40,
+        });
+
+        external.dispatchEvent(contextMenu);
+
+        expect(contextMenu.defaultPrevented).toBe(true);
+        const items = Array.from(document.querySelectorAll<HTMLButtonElement>(".b3-menu__item"));
+        expect(items.map((item) => item.textContent)).toEqual(["Edit task", "Delete task card"]);
+        items[0]?.click();
+        expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId, "status");
+        items[1]?.click();
+        await vi.waitFor(() => expect(controller.getState().items).toHaveLength(1));
+        expect(onDeleteTask).toHaveBeenCalledWith(ACTIVE.blockId, ACTIVE.title);
+        expect(controller.getState().items[0]?.blockId).toBe(CLOSED.blockId);
+    });
+
     it("orders today's pending tasks by deadline and leaves undated tasks last", async () => {
         const undated = { ...ACTIVE, title: "Undated" };
         const later = {
@@ -230,6 +259,8 @@ describe("TaskCenterView", () => {
         expect(external.href).toBe(ACTIVE.url);
         expect(external.target).toBe("_blank");
         expect(external.rel).toBe("noopener noreferrer");
+        expect(external.classList.contains("b3-button--outline")).toBe(true);
+        expect(external.classList.contains("b3-button--text")).toBe(false);
         expect(time.dateTime).toBe(ACTIVE.updatedAt);
         expect(time.textContent).not.toBe(ACTIVE.updatedAt);
     });
@@ -264,6 +295,7 @@ describe("TaskCenterView", () => {
             translate,
             onEditTask: vi.fn(),
             onLocateTask: vi.fn(),
+            onDeleteTask: vi.fn().mockResolvedValue(true),
             onSaveDailyProgress: vi.fn().mockResolvedValue(undefined),
         });
 

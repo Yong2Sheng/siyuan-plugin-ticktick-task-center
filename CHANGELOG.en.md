@@ -15,6 +15,7 @@ This is the first planned release. The entries below summarize all development o
 - Non-destructively enhance marked blocks with a task identity icon, safe external task link, semantic status badge, and deadline control.
 - Turn the checklist SVG on the left side of each task card into a Task Center shortcut while preserving its original shape, color, size, and layout.
 - Edit the task title, URL, status, and deadline from source cards or the Task Center while preserving the original creation timestamp.
+- Right-click anywhere on a source-document task card to open its actions menu and delete the SiYuan task card after confirmation without deleting the actual task in TickTick or Dida365.
 - Restore the original block presentation when card enhancement is removed, and keep cards synchronized with Protyle rendering and edit-mode changes.
 
 ### Work categories and editing interaction
@@ -32,7 +33,8 @@ This is the first planned release. The entries below summarize all development o
 - Add localized search across task titles, source documents, source paths, and status labels.
 - Add task statistics, stable updated-time sorting, source-block navigation, safe TickTick links, and explicit manual refresh.
 - Update the current list, filters, ordering, and statistics immediately after edits made in the Task Center.
-- Protect recent in-tab edits from temporarily stale SQL refresh results with a tab-scoped in-memory overlay.
+- Right-click anywhere on a Task Center item to edit or delete its task card; successful deletion updates the list immediately and lets SiYuan remove the source block from any open source document.
+- Protect recent in-tab edits and deletions from temporarily stale SQL refresh results with a tab-scoped in-memory overlay.
 
 ### Daily progress and deadlines
 
@@ -59,6 +61,7 @@ This is the first planned release. The entries below summarize all development o
 - Add Chinese and English localization together with light- and dark-theme styling.
 - Add an original theme-aware checklist SVG for task cards and a marketplace-ready 160×160 plugin icon.
 - Tighten the Task Center SVG's internal whitespace so its top-bar and tab icons match the visual size of adjacent SiYuan and plugin icons.
+- Unify the subtle upward hover feedback across clickable card and Task Center controls; give Open task, Locate source, and Open TickTick actions theme-adaptive button styling while stabilizing task-link text and border rendering throughout the animation.
 - Initialize the TypeScript, Vite, and Svelte project; remove template sample features and the unused kernel-plugin example.
 - Add automated domain, persistence, card, editing, query, filtering, daily-progress, deadline, and Task Center tests.
 - Add CI checks, production packaging, GitHub Release workflow configuration, development documentation, and the MIT License.

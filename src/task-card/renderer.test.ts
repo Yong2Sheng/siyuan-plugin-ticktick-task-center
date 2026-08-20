@@ -28,6 +28,8 @@ const VIEW_MODEL = {
         "deadline.editTitle": "Click to edit the deadline",
         "deadline.editAriaLabel": "Edit deadline: ${summary}, ${date}",
         "taskCenterView.openTooltip": "Open TickTick Task Center",
+        "taskActions.edit": "Edit task",
+        "taskActions.delete": "Delete task card",
     })[key] ?? key,
     identity: "TickTick task",
     linkText: "Open task: DS9 Adaptor ↗️",
@@ -199,6 +201,36 @@ describe("task card renderer", () => {
         expect(onEditTask).toHaveBeenNthCalledWith(1, block.dataset.nodeId, { focus: "deadline" });
         expect(onEditTask).toHaveBeenCalledWith(block.dataset.nodeId, { focus: "work-mode" });
         expect(onEditTask).toHaveBeenCalledWith(block.dataset.nodeId, { focus: "status" });
+    });
+
+    it("opens task actions when right-clicking an inner card button", () => {
+        const block = createBlock();
+        document.body.append(block);
+        const onEditTask = vi.fn();
+        const onDeleteTask = vi.fn();
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL, {
+            onEditTask,
+            onDeleteTask,
+        });
+        const status = getTaskCardDecoration(block)!
+            .querySelector<HTMLButtonElement>(".ticktick-task-card__status")!;
+        const contextMenu = new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+            clientX: 120,
+            clientY: 80,
+        });
+
+        status.dispatchEvent(contextMenu);
+
+        expect(contextMenu.defaultPrevented).toBe(true);
+        const items = Array.from(document.querySelectorAll<HTMLButtonElement>(".b3-menu__item"));
+        expect(items.map((item) => item.textContent)).toEqual(["Edit task", "Delete task card"]);
+        items[0]?.click();
+        items[1]?.click();
+        expect(onEditTask).toHaveBeenCalledWith(block.dataset.nodeId, { focus: "status" });
+        expect(onDeleteTask).toHaveBeenCalledWith(block.dataset.nodeId, VIEW_MODEL.title);
     });
 
     it("refreshes an existing card without duplicating it", async () => {

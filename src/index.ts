@@ -1,4 +1,4 @@
-import { Dialog, openTab, Plugin, showMessage, type Protyle } from "siyuan";
+import { confirm, Dialog, openTab, Plugin, showMessage, type Protyle } from "siyuan";
 
 import { createTranslator, escapeHtml } from "./i18n";
 import {
@@ -26,16 +26,30 @@ import { getEditableRootDocumentId } from "./task-card/context";
 import { TaskEditController } from "./task-card/edit-controller";
 import { TaskCardLifecycle } from "./task-card/lifecycle";
 import { showCreateTaskDialog } from "./task-card/task-form";
+import { TaskDeleteController } from "./task-card/delete-controller";
 import "./index.scss";
 
 export default class TickTickTaskCenterPlugin extends Plugin {
     private readonly activeDialogs = new Set<Dialog>();
     private taskCardLifecycle?: TaskCardLifecycle;
     private taskEditController?: TaskEditController;
+    private taskDeleteController?: TaskDeleteController;
     private taskCenterTab?: TaskCenterTabService;
 
     onload(): void {
         const translate = createTranslator(this.i18n);
+        this.taskDeleteController = new TaskDeleteController({
+            translate,
+            deleteBlock,
+            confirm: (title, message) => new Promise((resolve) => {
+                confirm(title, message, () => resolve(true), () => resolve(false));
+            }),
+            onDeleted: () => showMessage(translate("taskActions.deleted")),
+            onError: (error, blockId) => {
+                console.error(`Failed to delete TickTick task block ${blockId}`, error);
+                showMessage(translate("taskActions.deleteFailed"), 7000, "error");
+            },
+        });
         this.taskCardLifecycle = new TaskCardLifecycle(this.eventBus, {
             translate,
             loadAttributes: getBlockAttributes,
@@ -43,6 +57,9 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             actions: {
                 onEditTask: (blockId, { focus }) => {
                     void this.taskEditController?.open(blockId, { focus });
+                },
+                onDeleteTask: (blockId, title) => {
+                    void this.taskDeleteController?.request(blockId, title);
                 },
                 onOpenTaskCenter: () => {
                     void this.taskCenterTab?.open();
@@ -90,6 +107,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         this.taskCenterTab = undefined;
         this.taskEditController?.stop();
         this.taskEditController = undefined;
+        this.taskDeleteController = undefined;
         this.taskCardLifecycle?.stop();
         this.taskCardLifecycle = undefined;
         for (const dialog of this.activeDialogs) {
@@ -181,6 +199,8 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 { blockId, rootId, notebookId },
                 translate,
             ),
+            onDeleteTask: (blockId, title) => this.taskDeleteController?.request(blockId, title)
+                ?? Promise.resolve(false),
             onSaveDailyProgress: (blockId, date) => saveDailyProgress(
                 { setBlockAttributes },
                 blockId,

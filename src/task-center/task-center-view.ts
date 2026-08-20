@@ -17,6 +17,7 @@ import {
 import { getDeadlineState } from "../domain/deadline";
 import { createDeadlineButton } from "../task-card/deadline-button";
 import { TASK_WORK_MODE_CONFIG } from "../domain/work-mode";
+import { openTaskActionsMenu } from "../task-card/task-actions-menu";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
@@ -24,6 +25,7 @@ export type TaskCenterViewOptions = {
     locale?: string;
     onEditTask(blockId: string, focus: "status" | "work-mode" | "deadline"): void;
     onLocateTask(blockId: string, rootId: string, notebookId?: string): void;
+    onDeleteTask(blockId: string, title: string): Promise<boolean>;
     onSaveDailyProgress(blockId: string, date: string | undefined): Promise<void>;
     onDailyProgressError?(error: unknown): void;
 };
@@ -320,6 +322,13 @@ export class TaskCenterView {
         article.setAttribute("data-status-tone", status.tone);
         article.setAttribute("data-deadline-state", getDeadlineState(item.deadline, today).kind);
         article.setAttribute("role", "listitem");
+        article.addEventListener("contextmenu", (event) => {
+            openTaskActionsMenu(event, {
+                translate,
+                onEdit: () => this.options.onEditTask(item.blockId, "status"),
+                onDelete: () => void this.deleteTask(item),
+            });
+        });
 
         const statusButton = document.createElement("button");
         statusButton.type = "button";
@@ -399,7 +408,7 @@ export class TaskCenterView {
             item.notebookId,
         ));
         const external = document.createElement("a");
-        external.className = "b3-button b3-button--text ticktick-task-center__external";
+        external.className = "b3-button b3-button--outline ticktick-task-center__external";
         external.href = item.url;
         external.target = "_blank";
         external.rel = "noopener noreferrer";
@@ -408,6 +417,13 @@ export class TaskCenterView {
 
         article.append(deadlineButton, classification, content, actions);
         return article;
+    }
+
+    private async deleteTask(item: TaskCenterItem): Promise<void> {
+        const deleted = await this.options.onDeleteTask(item.blockId, item.title);
+        if (deleted) {
+            this.options.controller.applyDeletedTask(item.blockId);
+        }
     }
 
     private createDailyCompletedBadge(): HTMLSpanElement {

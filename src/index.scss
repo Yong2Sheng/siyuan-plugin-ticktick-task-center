@@ -191,22 +191,51 @@
     }
 
     &__link {
+        --ticktick-task-link-border: color-mix(
+            in srgb,
+            var(--b3-theme-primary) 64%,
+            var(--b3-border-color)
+        );
+        --ticktick-task-link-background: color-mix(
+            in srgb,
+            var(--b3-theme-primary) 18%,
+            var(--b3-theme-background)
+        );
+
         box-sizing: border-box;
         display: inline-block;
         max-width: 100%;
         padding: 3px 8px;
+        border: 1px solid transparent;
         border-radius: 6px;
-        background: var(--b3-theme-primary);
-        color: var(--b3-theme-on-primary);
+        background: var(--ticktick-task-link-background);
+        box-shadow: inset 0 0 0 1px var(--ticktick-task-link-border);
+        color: var(--b3-theme-on-background) !important;
         font-weight: 700;
-        text-decoration: none;
+        text-decoration: none !important;
+        text-decoration-line: none !important;
         overflow-wrap: anywhere;
         cursor: pointer;
+        transform: translateY(0);
+        transition: transform 120ms ease;
+        will-change: transform;
 
         &:hover,
         &:focus-visible {
-            filter: brightness(1.06);
-            text-decoration: none;
+            background: var(--ticktick-task-link-background);
+            box-shadow: inset 0 0 0 1px var(--ticktick-task-link-border);
+            color: var(--b3-theme-on-background) !important;
+            text-decoration: none !important;
+            text-decoration-line: none !important;
+        }
+
+        &:hover {
+            transform: translateY(-1px);
+        }
+
+        &:active {
+            box-shadow: inset 0 0 0 1px var(--ticktick-task-link-border);
+            transform: translateY(0);
         }
 
         &:focus-visible {
@@ -787,7 +816,9 @@
         margin-left: auto;
     }
 
-    &__daily-progress {
+    &__daily-progress,
+    &__locate,
+    &__external {
         border-color: var(--ticktick-daily-pending-color);
         background: color-mix(
             in srgb,
@@ -802,7 +833,22 @@
             filter: brightness(1.05);
             transform: translateY(-1px);
         }
+    }
 
+    &__external {
+        color: var(--ticktick-daily-pending-color) !important;
+        text-decoration: none !important;
+        text-decoration-line: none !important;
+
+        &:hover,
+        &:focus-visible {
+            color: var(--ticktick-daily-pending-color) !important;
+            text-decoration: none !important;
+            text-decoration-line: none !important;
+        }
+    }
+
+    &__daily-progress {
         &[data-progressed-today="true"] {
             border-color: var(--ticktick-daily-progressed-color);
             background: var(--ticktick-daily-progressed-color);
@@ -836,9 +882,6 @@
         line-height: 1.4;
     }
 
-    &__external {
-        text-decoration: none;
-    }
 }
 
 .ticktick-task-card__deadline,
@@ -1051,6 +1094,70 @@
         var(--b3-theme-error, #cf222e) 10%,
         var(--b3-theme-surface)
     );
+}
+
+:is(
+    .ticktick-task-form__choice,
+    .ticktick-task-form .b3-dialog__action .b3-button,
+    .ticktick-task-card__identity-button,
+    .ticktick-task-card__work-mode,
+    .ticktick-task-card__status,
+    .ticktick-task-card__deadline,
+    .ticktick-task-center__refresh,
+    .ticktick-task-center__retry,
+    .ticktick-task-center__filter,
+    .ticktick-task-center__work-mode,
+    .ticktick-task-center__status,
+    .ticktick-task-center__deadline,
+    .ticktick-task-center__daily-progress,
+    .ticktick-task-center__locate,
+    .ticktick-task-center__external
+) {
+    transition-property: transform, filter, border-color, background-color, color, box-shadow;
+    transition-duration: 120ms;
+    transition-timing-function: ease;
+
+    &:hover:not(:disabled) {
+        transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :is(
+        .ticktick-task-form__choice,
+        .ticktick-task-form .b3-dialog__action .b3-button,
+        .ticktick-task-card__identity-button,
+        .ticktick-task-card__work-mode,
+        .ticktick-task-card__status,
+        .ticktick-task-card__deadline,
+        .ticktick-task-center__refresh,
+        .ticktick-task-center__retry,
+        .ticktick-task-center__filter,
+        .ticktick-task-center__work-mode,
+        .ticktick-task-center__status,
+        .ticktick-task-center__deadline,
+        .ticktick-task-center__daily-progress,
+        .ticktick-task-center__locate,
+        .ticktick-task-center__external
+    ) {
+        transition-duration: 0ms;
+
+        &:hover:not(:disabled) {
+            transform: none;
+        }
+    }
+
+    .ticktick-task-card__link {
+        transition-duration: 0ms;
+
+        &:hover {
+            transform: translateY(0);
+        }
+    }
 }
 
 @media (max-width: 520px) {

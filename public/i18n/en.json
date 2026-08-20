@@ -61,6 +61,14 @@
     "openTask": "Open task",
     "status": "Status"
   },
+  "taskActions": {
+    "edit": "Edit task",
+    "delete": "Delete task card",
+    "deleteConfirmTitle": "Delete task card?",
+    "deleteConfirmMessage": "Delete the SiYuan task card “${title}”?<br><br>This will not delete the actual task in TickTick.",
+    "deleted": "Task card deleted",
+    "deleteFailed": "The task card could not be deleted. Please try again."
+  },
   "deadline": {
     "none": "No deadline",
     "setAction": "Set deadline",

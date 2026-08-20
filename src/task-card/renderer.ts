@@ -1,12 +1,14 @@
 import type { TaskCardViewModel } from "./card-view-model";
 import { getDeadlineState } from "../domain/deadline";
 import { createDeadlineButton } from "./deadline-button";
+import { openTaskActionsMenu } from "./task-actions-menu";
 
 export const TASK_CARD_CONTAINER_ATTRIBUTE = "data-ticktick-task-enhancement";
 export const TASK_CARD_BLOCK_ID_ATTRIBUTE = "data-ticktick-task-block-id";
 
 export type TaskCardActions = {
     onEditTask(blockId: string, options: { focus: "status" | "work-mode" | "deadline" }): void;
+    onDeleteTask?(blockId: string, title: string): void;
     onOpenTaskCenter?(): void;
 };
 
@@ -45,6 +47,15 @@ export function enhanceTaskBlock(
     card.setAttribute("data-status-tone", viewModel.statusTone);
     card.setAttribute("data-deadline-state", getDeadlineState(viewModel.deadline).kind);
     card.setAttribute("contenteditable", "false");
+    if (actions?.onDeleteTask) {
+        card.addEventListener("contextmenu", (event) => {
+            openTaskActionsMenu(event, {
+                translate: viewModel.translate,
+                onEdit: () => actions.onEditTask(blockId, { focus: "status" }),
+                onDelete: () => actions.onDeleteTask?.(blockId, viewModel.title),
+            });
+        });
+    }
 
     const identity = document.createElement("span");
     identity.className = "ticktick-task-card__identity";

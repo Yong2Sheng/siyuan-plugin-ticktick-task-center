@@ -61,6 +61,14 @@
     "openTask": "打开任务",
     "status": "状态"
   },
+  "taskActions": {
+    "edit": "编辑任务",
+    "delete": "删除任务卡片",
+    "deleteConfirmTitle": "删除任务卡片？",
+    "deleteConfirmMessage": "确定要删除思源中的任务卡片“${title}”吗？<br><br>这不会删除 TickTick／滴答清单中的实际任务。",
+    "deleted": "任务卡片已删除",
+    "deleteFailed": "无法删除任务卡片，请重试。"
+  },
   "deadline": {
     "none": "无截止日期",
     "setAction": "点击设置",

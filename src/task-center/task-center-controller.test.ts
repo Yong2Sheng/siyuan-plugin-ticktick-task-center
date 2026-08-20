@@ -198,6 +198,27 @@ describe("TaskCenterController", () => {
         expect(controller.getState().items[0]?.lastProgressedDate).toBeUndefined();
     });
 
+    it("removes a deleted task immediately and suppresses stale SQL until deletion is indexed", async () => {
+        const original = item("Original");
+        const load = vi.fn()
+            .mockResolvedValueOnce(result(original))
+            .mockResolvedValueOnce(result(original))
+            .mockResolvedValueOnce(result())
+            .mockResolvedValueOnce(result(item("New task with reused fixture ID")));
+        const controller = new TaskCenterController({ load });
+        await controller.start();
+
+        expect(controller.applyDeletedTask(FIRST_ID)).toBe(true);
+        expect(controller.getState().items).toEqual([]);
+
+        await controller.refresh();
+        expect(controller.getState().items).toEqual([]);
+
+        await controller.refresh();
+        await controller.refresh();
+        expect(controller.getState().items[0]?.title).toBe("New task with reused fixture ID");
+    });
+
     it("warns and does not invent an item when the edited block is absent", async () => {
         const onWarning = vi.fn();
         const controller = new TaskCenterController({ load: vi.fn().mockResolvedValue(result()), onWarning });
