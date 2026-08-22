@@ -11,6 +11,8 @@ import { TaskCenterView } from "./task-center-view";
 
 const dictionary: Record<string, string> = {
     "taskCenterView.title": "Task Center",
+    "taskCenterView.switchLanguage": "切换为中文",
+    "taskCenterView.switchLanguageTitle": "Switch to Chinese",
     "taskCenterView.refresh": "Refresh",
     "taskCenterView.refreshing": "Refreshing",
     "taskCenterView.filterActive": "Active",
@@ -56,8 +58,10 @@ const dictionary: Record<string, string> = {
     "status.completed": "Completed",
     "deadline.none": "No deadline",
     "deadline.setAction": "Set deadline",
+    "deadline.remainingDay": "1 day left",
     "deadline.remainingDays": "${count} days left",
     "deadline.dueToday": "Due today",
+    "deadline.overdueDay": "1 day overdue",
     "deadline.overdueDays": "${count} days overdue",
     "deadline.editTitle": "Edit deadline",
     "deadline.editAriaLabel": "Edit deadline: ${summary}, ${date}",
@@ -104,10 +108,12 @@ async function createView(load = vi.fn().mockResolvedValue({
     const onSaveDailyProgress = vi.fn().mockResolvedValue(undefined);
     const onDeleteTask = vi.fn().mockResolvedValue(true);
     const onDailyProgressError = vi.fn();
+    const onToggleLanguage = vi.fn().mockResolvedValue(undefined);
     const view = new TaskCenterView(target, {
         controller,
         translate,
         locale: "en-US",
+        onToggleLanguage,
         onEditTask,
         onLocateTask,
         onDeleteTask,
@@ -125,6 +131,7 @@ async function createView(load = vi.fn().mockResolvedValue({
         onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
+        onToggleLanguage,
     };
 }
 
@@ -293,6 +300,7 @@ describe("TaskCenterView", () => {
         const view = new TaskCenterView(target, {
             controller,
             translate,
+            onToggleLanguage: vi.fn().mockResolvedValue(undefined),
             onEditTask: vi.fn(),
             onLocateTask: vi.fn(),
             onDeleteTask: vi.fn().mockResolvedValue(true),
@@ -318,6 +326,20 @@ describe("TaskCenterView", () => {
         await Promise.resolve();
         expect(load).toHaveBeenCalledTimes(2);
         expect(target.querySelector("[style*='width']")).toBeNull();
+    });
+
+    it("places the language switch before refresh and delegates the persisted change", async () => {
+        const { target, onToggleLanguage } = await createView();
+        const actions = target.querySelector(".ticktick-task-center__header-actions")!;
+        const language = target.querySelector<HTMLButtonElement>(".ticktick-task-center__language")!;
+        const refresh = target.querySelector<HTMLButtonElement>(".ticktick-task-center__refresh")!;
+
+        expect(Array.from(actions.children)).toEqual([language, refresh]);
+        expect(language.textContent).toBe("切换为中文");
+        expect(language.title).toBe("Switch to Chinese");
+
+        language.click();
+        await vi.waitFor(() => expect(onToggleLanguage).toHaveBeenCalledOnce());
     });
 
     it("keeps a task completed today in the active view's progress area", async () => {

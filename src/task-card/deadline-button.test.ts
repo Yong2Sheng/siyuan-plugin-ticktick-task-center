@@ -7,8 +7,10 @@ import { createDeadlineButton } from "./deadline-button";
 const translate = (key: string): string => ({
     "deadline.none": "No deadline",
     "deadline.setAction": "Set deadline",
+    "deadline.remainingDay": "1 day left",
     "deadline.remainingDays": "${count} days left",
     "deadline.dueToday": "Due today",
+    "deadline.overdueDay": "1 day overdue",
     "deadline.overdueDays": "${count} days overdue",
     "deadline.editTitle": "Edit deadline",
     "deadline.editAriaLabel": "Edit deadline: ${summary}, ${date}",
@@ -45,5 +47,27 @@ describe("deadline button", () => {
         expect(button.querySelectorAll('.deadline-segment[data-filled="false"]')).toHaveLength(3);
         button.click();
         expect(onClick).toHaveBeenCalledOnce();
+    });
+
+    it("uses singular English labels for one day", () => {
+        const upcoming = createDeadlineButton({
+            className: "deadline",
+            deadline: "2026-08-13",
+            today: "2026-08-12",
+            locale: "en-US",
+            translate,
+            onClick: vi.fn(),
+        });
+        const overdue = createDeadlineButton({
+            className: "deadline",
+            deadline: "2026-08-11",
+            today: "2026-08-12",
+            locale: "en-US",
+            translate,
+            onClick: vi.fn(),
+        });
+
+        expect(upcoming.querySelector(".deadline-summary")?.textContent).toBe("1 day left");
+        expect(overdue.querySelector(".deadline-summary")?.textContent).toBe("1 day overdue");
     });
 });

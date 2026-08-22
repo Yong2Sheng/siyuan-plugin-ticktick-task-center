@@ -10,7 +10,7 @@ import { parseTaskBlockAttributes } from "./task-data";
 
 export type TaskEditControllerOptions = {
     translate: Translate;
-    taskLabel: string;
+    taskLabel: string | (() => string);
     api: TaskEditApi;
     refreshBlock(blockId: string): Promise<boolean>;
     warn?: (message: string, detail?: unknown) => void;
@@ -66,7 +66,9 @@ export class TaskEditController {
                         const result = await editTask(this.options.api, {
                             blockId,
                             original: parsed.data,
-                            taskLabel: this.options.taskLabel,
+                            taskLabel: typeof this.options.taskLabel === "function"
+                                ? this.options.taskLabel()
+                                : this.options.taskLabel,
                             next,
                         });
                         if (result.changed) {

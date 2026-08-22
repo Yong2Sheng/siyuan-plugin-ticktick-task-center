@@ -72,8 +72,10 @@ function getDeadlineLabel(
         return translate("deadline.dueToday");
     }
     if (kind === "overdue") {
-        return translate("deadline.overdueDays")
-            .replace("${count}", String(Math.abs(daysRemaining ?? 0)));
+        const count = Math.abs(daysRemaining ?? 0);
+        return translate(count === 1 ? "deadline.overdueDay" : "deadline.overdueDays")
+            .replace("${count}", String(count));
     }
-    return translate("deadline.remainingDays").replace("${count}", String(daysRemaining));
+    return translate(daysRemaining === 1 ? "deadline.remainingDay" : "deadline.remainingDays")
+        .replace("${count}", String(daysRemaining));
 }

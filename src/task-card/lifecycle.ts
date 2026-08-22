@@ -13,6 +13,7 @@ import { TaskCardEnhancer, type TaskCardEnhancerOptions } from "./enhancer";
 import { isTaskCardDecoration, restoreTaskBlock } from "./renderer";
 
 const STARTUP_FINAL_DISCOVERY_DELAY_MS = 200;
+const TASK_CANDIDATE_SELECTOR = `[data-node-id][${TASK_BLOCK_ATTRIBUTES.card}="true"]`;
 
 type ObserverState = {
     root: HTMLElement;
@@ -120,6 +121,19 @@ export class TaskCardLifecycle {
 
         await Promise.all(Array.from(blocks, (block) => this.enhancer.enhanceKnownBlock(block, true)));
         return blocks.size > 0;
+    }
+
+    async refreshAll(): Promise<void> {
+        const blocks = new Set<HTMLElement>();
+        for (const { root } of this.observers.values()) {
+            for (const block of root.querySelectorAll<HTMLElement>(TASK_CANDIDATE_SELECTOR)) {
+                blocks.add(block);
+            }
+        }
+        await Promise.all(Array.from(
+            blocks,
+            (block) => this.enhancer.enhanceKnownBlock(block, true),
+        ));
     }
 
     stop(): void {

@@ -1,6 +1,15 @@
 import { confirm, Dialog, openTab, Plugin, showMessage, type Protyle } from "siyuan";
 
-import { createTranslator, escapeHtml } from "./i18n";
+import en from "../public/i18n/en.json";
+import zhCN from "../public/i18n/zh-CN.json";
+import {
+    createLanguageTranslator,
+    DEFAULT_INTERFACE_LANGUAGE,
+    escapeHtml,
+    isInterfaceLanguage,
+    type InterfaceLanguage,
+    type Translate,
+} from "./i18n";
 import {
     deleteBlock,
     getBlockAttributes,
@@ -29,15 +38,22 @@ import { showCreateTaskDialog } from "./task-card/task-form";
 import { TaskDeleteController } from "./task-card/delete-controller";
 import "./index.scss";
 
+const LANGUAGE_PREFERENCE_FILE = "language.json";
+
 export default class TickTickTaskCenterPlugin extends Plugin {
     private readonly activeDialogs = new Set<Dialog>();
     private taskCardLifecycle?: TaskCardLifecycle;
     private taskEditController?: TaskEditController;
     private taskDeleteController?: TaskDeleteController;
     private taskCenterTab?: TaskCenterTabService;
+    private interfaceLanguage: InterfaceLanguage = DEFAULT_INTERFACE_LANGUAGE;
+    private readonly translate = createLanguageTranslator(
+        { "zh-CN": zhCN, en },
+        () => this.interfaceLanguage,
+    );
 
     onload(): void {
-        const translate = createTranslator(this.i18n);
+        const { translate } = this;
         this.taskDeleteController = new TaskDeleteController({
             translate,
             deleteBlock,
@@ -68,7 +84,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         });
         this.taskEditController = new TaskEditController({
             translate,
-            taskLabel: translate("taskCard"),
+            taskLabel: () => translate("taskCard"),
             api: {
                 loadAttributes: getBlockAttributes,
                 updateMarkdownBlock,
@@ -95,6 +111,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 void this.openCreateTaskDialog(protyle);
             },
         }];
+        void this.loadLanguagePreference();
     }
 
     onLayoutReady(): void {
@@ -117,7 +134,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
     }
 
     private async openCreateTaskDialog(protyle: Protyle): Promise<void> {
-        const translate = createTranslator(this.i18n);
+        const { translate } = this;
         const rootDocumentId = getEditableRootDocumentId(protyle);
         if (rootDocumentId === null) {
             showMessage(translate("taskCreate.errors.documentUnavailable"), 7000, "error");
@@ -161,7 +178,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
 
     private createTaskCenterInstance(
         target: HTMLElement,
-        translate: ReturnType<typeof createTranslator>,
+        translate: Translate,
     ): TaskCenterTabInstance {
         const controller = new TaskCenterController({
             load: async () => {
@@ -188,7 +205,8 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         const view = new TaskCenterView(target, {
             controller,
             translate,
-            locale: document.documentElement.lang || navigator.language,
+            locale: () => this.interfaceLanguage === "zh-CN" ? "zh-CN" : "en-US",
+            onToggleLanguage: () => this.toggleInterfaceLanguage(),
             onEditTask: (blockId, focus) => void this.taskEditController?.open(blockId, {
                 focus,
                 onSaved: ({ result }) => {
@@ -225,12 +243,13 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 view.destroy();
                 controller.destroy();
             },
+            refreshLanguage: () => view.refreshLanguage(),
         };
     }
 
     private async locateTask(
         location: { blockId: string; rootId: string; notebookId?: string },
-        translate: ReturnType<typeof createTranslator>,
+        translate: Translate,
     ): Promise<void> {
         try {
             await locateSiYuanBlock(this.app, location);
@@ -238,5 +257,45 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             console.error(`Failed to locate TickTick task block ${location.blockId}`, error);
             showMessage(translate("taskCenterView.locateFailed"), 5000, "error");
         }
+    }
+
+    private async loadLanguagePreference(): Promise<void> {
+        try {
+            const stored: unknown = await this.loadData(LANGUAGE_PREFERENCE_FILE);
+            const language = typeof stored === "object" && stored !== null
+                ? (stored as { language?: unknown }).language
+                : stored;
+            if (isInterfaceLanguage(language)) {
+                this.applyInterfaceLanguage(language);
+            }
+        } catch (error) {
+            console.warn("Failed to load TickTick Task Center language preference", error);
+        }
+    }
+
+    private async toggleInterfaceLanguage(): Promise<void> {
+        const nextLanguage: InterfaceLanguage = this.interfaceLanguage === "zh-CN"
+            ? "en"
+            : "zh-CN";
+        try {
+            await this.saveData(LANGUAGE_PREFERENCE_FILE, { language: nextLanguage });
+            this.applyInterfaceLanguage(nextLanguage);
+        } catch (error) {
+            console.error("Failed to save TickTick Task Center language preference", error);
+            showMessage(this.translate("taskCenterView.switchLanguageFailed"), 5000, "error");
+        }
+    }
+
+    private applyInterfaceLanguage(language: InterfaceLanguage): void {
+        if (language === this.interfaceLanguage) {
+            return;
+        }
+        this.interfaceLanguage = language;
+        const slashCommand = this.protyleSlash.find(({ id }) => id === "insertTickTickTaskCard");
+        if (slashCommand) {
+            slashCommand.html = `<div class="b3-list-item__first"><span class="b3-list-item__text">${escapeHtml(this.translate("taskCreate.slashName"))}</span></div>`;
+        }
+        this.taskCenterTab?.refreshLanguage();
+        void this.taskCardLifecycle?.refreshAll();
     }
 }

@@ -30,12 +30,13 @@ function createHarness() {
         addTopBar,
         addTab,
     } as unknown as Plugin;
-    const instance = { start: vi.fn(), destroy: vi.fn() };
+    const instance = { start: vi.fn(), destroy: vi.fn(), refreshLanguage: vi.fn() };
     const createInstance = vi.fn(() => instance);
     const openTab = vi.fn(async () => {
         const tab = {
             parent: { switchTab },
             headElement: document.createElement("div"),
+            updateTitle: vi.fn(),
             close,
         } as unknown as Tab;
         const custom = {
@@ -96,6 +97,20 @@ describe("TaskCenterTabService", () => {
         expect(harness.createInstance).toHaveBeenCalledOnce();
         expect(harness.switchTab).toHaveBeenCalledOnce();
         expect(harness.instance.start).toHaveBeenCalledOnce();
+    });
+
+    it("updates the mounted task center labels when the language changes", async () => {
+        const harness = createHarness();
+        harness.service.mountTopBar();
+        await harness.service.open();
+
+        harness.service.refreshLanguage();
+
+        expect(harness.topBar.title).toBe("taskCenterView.openTooltip");
+        expect(harness.topBar.getAttribute("aria-label")).toBe("taskCenterView.openTooltip");
+        expect(harness.instance.refreshLanguage).toHaveBeenCalledOnce();
+        const tab = await harness.openTab.mock.results[0]?.value;
+        expect(tab?.updateTitle).toHaveBeenCalledWith("taskCenterView.title");
     });
 
     it("coalesces simultaneous open requests", async () => {

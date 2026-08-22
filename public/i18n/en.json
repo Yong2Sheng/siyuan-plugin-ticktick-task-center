@@ -20,11 +20,11 @@
     "cancelled": "Cancelled"
   },
   "workMode": {
-    "explore": "探索-Explore",
-    "build": "构建-Build",
-    "execute": "执行-Execute",
-    "review": "评审-Review",
-    "unclassified": "未分类-Unclassified"
+    "explore": "Explore",
+    "build": "Build",
+    "execute": "Execute",
+    "review": "Review",
+    "unclassified": "Unclassified"
   },
   "validation": {
     "titleRequired": "Task title is required.",
@@ -72,8 +72,10 @@
   "deadline": {
     "none": "No deadline",
     "setAction": "Set deadline",
+    "remainingDay": "1 day left",
     "remainingDays": "${count} days left",
     "dueToday": "Due today",
+    "overdueDay": "1 day overdue",
     "overdueDays": "${count} days overdue",
     "editTitle": "Click to edit the deadline",
     "editAriaLabel": "Edit deadline: ${summary}, ${date}"
@@ -101,6 +103,9 @@
   "taskCenterView": {
     "title": "TickTick Task Center",
     "openTooltip": "Open TickTick Task Center",
+    "switchLanguage": "切换为中文",
+    "switchLanguageTitle": "Switch the plugin interface to Chinese",
+    "switchLanguageFailed": "The language setting could not be saved. Please try again.",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
     "filterActive": "Active",

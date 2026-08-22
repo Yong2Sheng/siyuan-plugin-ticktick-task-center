@@ -304,6 +304,7 @@ describe("TaskCardLifecycle startup discovery", () => {
 
         lifecycle.refresh(asProtyle(root));
         await lifecycle.refreshBlockById(FIRST_ID);
+        await lifecycle.refreshAll();
         eventBus.emit("switch-protyle", asProtyle(root));
         block.setAttribute(TASK_BLOCK_ATTRIBUTES.status, "in-progress");
         await settleMutations();

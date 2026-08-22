@@ -31,6 +31,7 @@ The current version does not use the TickTick API, OAuth, or background synchron
 - Preserve `created-at` and update `updated-at` only when task data actually changes.
 - Check `updated-at` for edit conflicts before saving, and attempt to roll back Markdown when a title or URL double-write fails.
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
+- Use Chinese by default on first launch, with a persistent Chinese/English switch to the left of Refresh in the Task Center.
 - Filter Active, Closed, or All tasks and search task titles, source documents, source paths, and localized status names.
 - Display All, Active, Closed, and today's progress statistics. Ordinary lists use a stable descending sort based on the task attribute `updated-at`.
 - Show **🌤️ To progress today** and **✨ Today's progress** in the Active view. Today's progress is further divided into **🚀 Advanced** and **🏆 Completed today**.
@@ -92,7 +93,7 @@ Published builds will be provided through [GitHub Releases](https://github.com/Y
 
 ### Development installation
 
-The development environment follows the project CI configuration: Node.js 20, pnpm 11.7.0, and SiYuan Desktop 3.7.0 or later. Development and real-world acceptance currently focus on SiYuan Desktop for macOS. The core workflow has also received basic verification on a Huawei tablet running HarmonyOS 6, but HarmonyOS native-mobile support remains experimental. Android, iOS, and browser-based mobile clients have not been verified.
+The development environment follows the project CI configuration: Node.js 24, pnpm 11.7.0, and SiYuan Desktop 3.7.0 or later. Development and real-world acceptance currently focus on SiYuan Desktop for macOS. The core workflow has also received basic verification on a Huawei tablet running HarmonyOS 6, but HarmonyOS native-mobile support remains experimental. Android, iOS, and browser-based mobile clients have not been verified.
 
 Make sure SiYuan is running, then execute:
 
@@ -161,6 +162,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 
 ### 5. Use the Task Center
 
+- Click `Switch to English` to the left of Refresh to use the English interface; the button then changes to “切换为中文” so you can switch back.
 - View counts for All, Active, Closed, and today's progress.
 - Switch between the Active, Closed, and All tasks filters.
 - Search task titles, source document titles, source paths, or localized status names.

@@ -72,8 +72,10 @@
   "deadline": {
     "none": "无截止日期",
     "setAction": "点击设置",
+    "remainingDay": "剩余 1 天",
     "remainingDays": "剩余 ${count} 天",
     "dueToday": "今天截止",
+    "overdueDay": "逾期 1 天",
     "overdueDays": "逾期 ${count} 天",
     "editTitle": "点击修改截止日期",
     "editAriaLabel": "修改截止日期，${summary}，${date}"
@@ -101,6 +103,9 @@
   "taskCenterView": {
     "title": "滴答任务中心",
     "openTooltip": "打开滴答任务中心",
+    "switchLanguage": "Switch to English",
+    "switchLanguageTitle": "将插件界面切换为英文",
+    "switchLanguageFailed": "无法保存语言设置，请重试。",
     "refresh": "刷新",
     "refreshing": "正在刷新……",
     "filterActive": "活跃任务",

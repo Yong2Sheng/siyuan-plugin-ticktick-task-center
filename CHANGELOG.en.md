@@ -44,6 +44,7 @@ This is the first planned release. The entries below summarize all development o
 - Reevaluate daily groups after local midnight without a background job that rewrites task attributes.
 - Add an optional local deadline to task creation, editing, validation, persistence, cards, and Task Center aggregation.
 - Display remaining days, the exact date, and an eight-segment urgency track with theme-adaptive upcoming, due-today, and overdue emphasis.
+- Widen Deadline controls with an internal wrapping fallback for long localized labels, and distinguish singular `1 day` from plural `days` so overdue text stays inside its border.
 - Sort tasks awaiting progress by nearest deadline, with overdue tasks first and undated tasks last.
 
 ### Data integrity and reliability
@@ -58,7 +59,7 @@ This is the first planned release. The entries below summarize all development o
 
 ### Interface, packaging, and compatibility
 
-- Add Chinese and English localization together with light- and dark-theme styling.
+- Add light- and dark-theme styling plus persistent Chinese/English interface switching, with Chinese as the first-launch default.
 - Add an original theme-aware checklist SVG for task cards and a marketplace-ready 160×160 plugin icon.
 - Tighten the Task Center SVG's internal whitespace so its top-bar and tab icons match the visual size of adjacent SiYuan and plugin icons.
 - Unify the subtle upward hover feedback across clickable card and Task Center controls; give Open task, Locate source, and Open TickTick actions theme-adaptive button styling while stabilizing task-link text and border rendering throughout the animation.

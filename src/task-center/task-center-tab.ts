@@ -13,6 +13,7 @@ let nextTabInstanceId = 1;
 export type TaskCenterTabInstance = {
     start(): void | Promise<void>;
     destroy(): void;
+    refreshLanguage(): void;
 };
 
 export type OpenCustomTab = (options: {
@@ -90,6 +91,18 @@ export class TaskCenterTabService {
             position: "right",
             callback: () => void this.open(),
         });
+    }
+
+    refreshLanguage(): void {
+        const title = this.options.translate("taskCenterView.openTooltip");
+        if (this.topBarElement) {
+            this.topBarElement.title = title;
+            this.topBarElement.setAttribute("aria-label", title);
+        }
+        this.currentTab?.updateTitle(this.options.translate("taskCenterView.title"));
+        for (const instance of this.instances.values()) {
+            instance.refreshLanguage();
+        }
     }
 
     async open(): Promise<void> {

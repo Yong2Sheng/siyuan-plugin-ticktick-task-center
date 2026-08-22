@@ -22,7 +22,8 @@ import { openTaskActionsMenu } from "../task-card/task-actions-menu";
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
     translate: Translate;
-    locale?: string;
+    locale?: string | (() => string);
+    onToggleLanguage(): Promise<void>;
     onEditTask(blockId: string, focus: "status" | "work-mode" | "deadline"): void;
     onLocateTask(blockId: string, rootId: string, notebookId?: string): void;
     onDeleteTask(blockId: string, title: string): Promise<boolean>;
@@ -34,6 +35,8 @@ type DailyTaskAction = false | "toggle" | "completed";
 
 export class TaskCenterView {
     private readonly root = document.createElement("section");
+    private readonly heading = document.createElement("h1");
+    private readonly languageButton = document.createElement("button");
     private readonly refreshButton = document.createElement("button");
     private readonly summary = document.createElement("div");
     private readonly filterButtons = new Map<TaskCenterFilter, HTMLButtonElement>();
@@ -44,6 +47,7 @@ export class TaskCenterView {
     private readonly pendingDailyProgress = new Set<string>();
     private readonly unsubscribe: () => void;
     private dayBoundaryTimer?: number;
+    private switchingLanguage = false;
     private destroyed = false;
     private readonly handleWindowFocus = (): void => {
         if (!this.destroyed) {
@@ -57,13 +61,17 @@ export class TaskCenterView {
 
         const header = document.createElement("header");
         header.className = "ticktick-task-center__header";
-        const heading = document.createElement("h1");
-        heading.className = "ticktick-task-center__heading";
-        heading.textContent = options.translate("taskCenterView.title");
+        this.heading.className = "ticktick-task-center__heading";
+        const headerActions = document.createElement("div");
+        headerActions.className = "ticktick-task-center__header-actions";
+        this.languageButton.type = "button";
+        this.languageButton.className = "b3-button b3-button--outline ticktick-task-center__language";
+        this.languageButton.addEventListener("click", () => void this.toggleLanguage());
         this.refreshButton.type = "button";
         this.refreshButton.className = "b3-button b3-button--outline ticktick-task-center__refresh";
         this.refreshButton.addEventListener("click", () => void options.controller.refresh());
-        header.append(heading, this.refreshButton);
+        headerActions.append(this.languageButton, this.refreshButton);
+        header.append(this.heading, headerActions);
 
         this.summary.className = "ticktick-task-center__summary";
 
@@ -81,7 +89,6 @@ export class TaskCenterView {
         }
         this.searchInput.type = "search";
         this.searchInput.className = "b3-text-field ticktick-task-center__search";
-        this.searchInput.placeholder = options.translate("taskCenterView.searchPlaceholder");
         this.searchInput.addEventListener("input", () => options.controller.setSearch(this.searchInput.value));
         controls.append(filters, this.searchInput);
 
@@ -108,6 +115,12 @@ export class TaskCenterView {
         this.root.remove();
     }
 
+    refreshLanguage(): void {
+        if (!this.destroyed) {
+            this.render(this.options.controller.getState());
+        }
+    }
+
     private render(state: TaskCenterState): void {
         const { translate } = this.options;
         const statistics = countTaskCenterItems(state.items);
@@ -123,11 +136,16 @@ export class TaskCenterView {
         const dailyProgressCount = activeProgressedToday + completedToday;
         const dailyPendingCount = statistics.active - activeProgressedToday;
         const dailyTaskCount = dailyPendingCount + dailyProgressCount;
+        this.heading.textContent = translate("taskCenterView.title");
+        this.languageButton.textContent = translate("taskCenterView.switchLanguage");
+        this.languageButton.title = translate("taskCenterView.switchLanguageTitle");
+        this.languageButton.disabled = this.switchingLanguage;
         this.refreshButton.textContent = translate(
             state.refreshing ? "taskCenterView.refreshing" : "taskCenterView.refresh",
         );
         this.refreshButton.disabled = state.loading || state.refreshing;
         this.searchInput.value = state.search;
+        this.searchInput.placeholder = translate("taskCenterView.searchPlaceholder");
 
         this.summary.replaceChildren(
             createSummaryItem(translate("taskCenterView.summaryAll"), statistics.all),
@@ -364,7 +382,7 @@ export class TaskCenterView {
             className: "ticktick-task-center__deadline",
             deadline: item.deadline,
             today,
-            locale: this.options.locale,
+            locale: this.getLocale(),
             translate,
             onClick: () => this.options.onEditTask(item.blockId, "deadline"),
         });
@@ -388,7 +406,7 @@ export class TaskCenterView {
         path.textContent = item.documentPath;
         const updated = document.createElement("div");
         updated.className = "ticktick-task-center__updated";
-        updated.append(`${translate("taskCenterView.updated")}: `, createTime(item.updatedAt, this.options.locale));
+        updated.append(`${translate("taskCenterView.updated")}: `, createTime(item.updatedAt, this.getLocale()));
         content.append(title, source, path, updated);
 
         const actions = document.createElement("div");
@@ -424,6 +442,26 @@ export class TaskCenterView {
         if (deleted) {
             this.options.controller.applyDeletedTask(item.blockId);
         }
+    }
+
+    private async toggleLanguage(): Promise<void> {
+        if (this.switchingLanguage) {
+            return;
+        }
+        this.switchingLanguage = true;
+        this.render(this.options.controller.getState());
+        try {
+            await this.options.onToggleLanguage();
+        } finally {
+            this.switchingLanguage = false;
+            this.refreshLanguage();
+        }
+    }
+
+    private getLocale(): string | undefined {
+        return typeof this.options.locale === "function"
+            ? this.options.locale()
+            : this.options.locale;
     }
 
     private createDailyCompletedBadge(): HTMLSpanElement {
