@@ -2,9 +2,9 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.1.0 - 2026-08-22
 
-This is the first planned release. The entries below summarize all development on the current branch by capability rather than listing individual commits or pushes.
+This is the first official release. The entries below summarize the version by capability rather than listing individual commits or pushes.
 
 ### Task cards
 

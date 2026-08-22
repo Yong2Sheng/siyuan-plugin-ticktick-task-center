@@ -71,9 +71,9 @@
 ## 开发状态与更新日志
 
 > [!NOTE]
-> 本项目尚未创建 GitHub Release，也尚未上架思源集市。当前的 `0.1.0` 是计划中的首个版本号，不代表该版本已经正式发布。
+> `v0.1.0` 已于 2026-08-22 作为首个正式版本发布。本项目目前尚未上架思源集市。
 
-### 0.1.0（开发中，未发布）
+### 0.1.0（2026-08-22）
 
 - 完成任务卡片创建与编辑、七种本地状态、四种工作分类、截止日期和每日推进记录。
 - 完成全工作空间任务中心、筛选与搜索、来源定位、任务编辑和手动刷新。
@@ -81,15 +81,15 @@
 - 适配浅色与深色主题、中英文界面和插件图标。
 - 增加 HarmonyOS 原生移动端试用声明，并在运行 HarmonyOS 6 的华为平板上完成核心功能基础验证；移动端支持目前仍属于实验性质。
 
-完整的逐项开发记录见 [CHANGELOG.md](CHANGELOG.md)。正式发布时，再为该版本补充发布日期并创建对应的 Git tag 与 GitHub Release。
+完整的逐项开发记录见 [CHANGELOG.md](CHANGELOG.md)，安装包见 [v0.1.0 GitHub Release](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.1.0)。
 
 ## 安装
 
 ### 普通用户安装
 
-本插件目前尚未上架思源集市，GitHub 仓库也尚未发布可供普通用户下载的 Release。
+本插件目前尚未上架思源集市，可从 GitHub Release 手动下载安装。
 
-发布版本将通过 [GitHub Releases](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases) 提供；在首个 Release 发布前，可使用下面的开发安装方式。请不要把 GitHub 自动生成的 Source code 压缩包当作思源插件包。
+请从 [v0.1.0 发布页](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.1.0) 下载 `package.zip`。请不要把 GitHub 自动生成的 Source code 压缩包当作思源插件包；开发者仍可使用下面的开发安装方式。
 
 ### 开发安装
 

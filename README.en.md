@@ -71,9 +71,9 @@ The work category describes how a task is approached and remains independent of 
 ## Development status and changelog
 
 > [!NOTE]
-> This project does not yet have a GitHub Release and is not listed in the SiYuan Marketplace. The current `0.1.0` is the planned first version number; it does not mean that the version has been formally released.
+> `v0.1.0` was published on 2026-08-22 as the first official release. The project is not yet listed in the SiYuan Marketplace.
 
-### 0.1.0 (in development, unreleased)
+### 0.1.0 (2026-08-22)
 
 - Implement task-card creation and editing, seven local statuses, four work categories, deadlines, and daily progress tracking.
 - Implement the workspace-wide Task Center, filtering and search, source navigation, task editing, and manual refresh.
@@ -81,15 +81,15 @@ The work category describes how a task is approached and remains independent of 
 - Support light and dark themes, Chinese and English interfaces, and a dedicated plugin icon.
 - Declare experimental HarmonyOS native-mobile support after basic verification of the core workflow on a Huawei tablet running HarmonyOS 6.
 
-See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record. When the version is formally published, its release date and corresponding Git tag and GitHub Release will be added.
+See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record and the [v0.1.0 GitHub Release](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.1.0) for the installable package.
 
 ## Installation
 
 ### Installation for users
 
-The plugin is not currently listed in the SiYuan Marketplace, and this repository does not yet have a downloadable GitHub Release for end users.
+The plugin is not currently listed in the SiYuan Marketplace, but it can be installed manually from GitHub Releases.
 
-Published builds will be provided through [GitHub Releases](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases). Before the first Release, use the development installation below. Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages.
+Download `package.zip` from the [v0.1.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.1.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
 
 ### Development installation
 
