@@ -4,6 +4,8 @@ English | [简体中文](CHANGELOG.md)
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-26
+
 ### Task targets and security validation
 
 - Expand task links from TickTick / Dida365 only to four target types: TickTick, Dida365, a SiYuan document or block, and an ordinary HTTPS resource.

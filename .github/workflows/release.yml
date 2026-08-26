@@ -105,6 +105,7 @@ jobs:
           allowUpdates: true
           artifactErrorsFailBuild: true
           artifacts: "package.zip"
+          bodyFile: "RELEASE_NOTES.md"
           draft: false
           token: ${{ secrets.GITHUB_TOKEN }}
           prerelease: false
