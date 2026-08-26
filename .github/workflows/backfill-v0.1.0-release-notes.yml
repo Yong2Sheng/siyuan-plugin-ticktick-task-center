@@ -1,0 +1,32 @@
+name: Backfill v0.1.0 Release Notes
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/release-notes/v0.1.0.md"
+      - ".github/workflows/backfill-v0.1.0-release-notes.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Update v0.1.0 release notes
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          bodyFile: ".github/release-notes/v0.1.0.md"
+          makeLatest: false
+          omitDraftDuringUpdate: true
+          omitNameDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          tag: "v0.1.0"
+          token: ${{ secrets.GITHUB_TOKEN }}
