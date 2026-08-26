@@ -211,7 +211,9 @@
         background: var(--ticktick-task-link-background);
         box-shadow: inset 0 0 0 1px var(--ticktick-task-link-border);
         color: var(--b3-theme-on-background) !important;
+        font: inherit;
         font-weight: 700;
+        text-align: left;
         text-decoration: none !important;
         text-decoration-line: none !important;
         overflow-wrap: anywhere;

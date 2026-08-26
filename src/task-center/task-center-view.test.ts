@@ -35,7 +35,10 @@ const dictionary: Record<string, string> = {
     "taskCenterView.source": "Source",
     "taskCenterView.updated": "Updated",
     "taskCenterView.locate": "Locate",
-    "taskCenterView.openTickTick": "Open TickTick",
+    "taskTarget.openTickTick": "Open TickTick",
+    "taskTarget.openDida365": "Open Dida365",
+    "taskTarget.openSiYuan": "Open SiYuan document",
+    "taskTarget.openResource": "Open resource",
     "taskCenterView.loading": "Loading tasks",
     "taskCenterView.loadFailed": "Load failed",
     "taskCenterView.retry": "Retry",
@@ -105,6 +108,7 @@ async function createView(load = vi.fn().mockResolvedValue({
     const controller = new TaskCenterController({ load });
     const onEditTask = vi.fn();
     const onLocateTask = vi.fn();
+    const onOpenSiYuanTarget = vi.fn();
     const onSaveDailyProgress = vi.fn().mockResolvedValue(undefined);
     const onDeleteTask = vi.fn().mockResolvedValue(true);
     const onDailyProgressError = vi.fn();
@@ -116,6 +120,7 @@ async function createView(load = vi.fn().mockResolvedValue({
         onToggleLanguage,
         onEditTask,
         onLocateTask,
+        onOpenSiYuanTarget,
         onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
@@ -128,6 +133,7 @@ async function createView(load = vi.fn().mockResolvedValue({
         load,
         onEditTask,
         onLocateTask,
+        onOpenSiYuanTarget,
         onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
@@ -268,8 +274,27 @@ describe("TaskCenterView", () => {
         expect(external.rel).toBe("noopener noreferrer");
         expect(external.classList.contains("b3-button--outline")).toBe(true);
         expect(external.classList.contains("b3-button--text")).toBe(false);
+        expect(external.textContent).toBe("Open TickTick ↗️");
         expect(time.dateTime).toBe(ACTIVE.updatedAt);
         expect(time.textContent).not.toBe(ACTIVE.updatedAt);
+    });
+
+    it("uses an internal button for a SiYuan target", async () => {
+        const blockId = "20260825232625-2gpb83i";
+        const internal = { ...ACTIVE, url: `siyuan://blocks/${blockId}` };
+        const { target, onOpenSiYuanTarget } = await createView(vi.fn().mockResolvedValue({
+            items: [internal],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        const control = target.querySelector<HTMLButtonElement>(".ticktick-task-center__external")!;
+        expect(control.tagName).toBe("BUTTON");
+        expect(control.type).toBe("button");
+        expect(control.textContent).toBe("Open SiYuan document ↗️");
+        expect(control.getAttribute("href")).toBeNull();
+        control.click();
+        expect(onOpenSiYuanTarget).toHaveBeenCalledWith(blockId);
     });
 
     it("shows incomplete and invalid task notices together with empty states", async () => {

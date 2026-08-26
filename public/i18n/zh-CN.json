@@ -1,6 +1,6 @@
 {
-  "pluginName": "滴答任务中心",
-  "taskCard": "滴答任务",
+  "pluginName": "思源任务中心",
+  "taskCard": "思源任务",
   "taskCenter": "任务中心",
   "openTaskCenter": "打开任务中心",
   "common": {
@@ -28,27 +28,28 @@
   },
   "validation": {
     "titleRequired": "请输入任务名称。",
-    "urlRequired": "请输入 TickTick 任务链接。",
-    "urlInvalid": "请输入合法的 URL。",
-    "urlHttpsRequired": "仅支持 HTTPS 链接。",
-    "urlHostInvalid": "仅支持 dida365.com 或 ticktick.com 的 TickTick 链接。",
+    "urlRequired": "请输入任务链接。",
+    "urlInvalid": "请输入格式合法的任务链接。",
+    "urlProtocolUnsupported": "仅支持 HTTPS 链接或思源块链接。",
+    "urlCredentialsUnsupported": "不支持包含用户名或密码的链接。",
+    "urlSiYuanInvalid": "思源链接必须为 siyuan://blocks/<合法块 ID>。",
     "statusInvalid": "任务状态无效。",
     "workModeInvalid": "请选择工作分类。",
     "deadlineInvalid": "截止日期无效。"
   },
   "taskCreate": {
-    "slashName": "滴答任务卡片",
-    "dialogTitle": "创建滴答任务",
+    "slashName": "任务卡片",
+    "dialogTitle": "创建任务",
     "titleLabel": "任务标题",
-    "urlLabel": "TickTick 链接",
+    "urlLabel": "任务链接（TickTick、思源块或 HTTPS 资源）",
     "statusLabel": "任务状态",
     "workModeLabel": "工作分类",
     "deadlineLabel": "截止日期（可选）",
     "create": "创建",
     "creating": "创建中…",
-    "created": "滴答任务已创建",
+    "created": "任务已创建",
     "errors": {
-      "createFailed": "滴答任务创建失败。",
+      "createFailed": "任务创建失败。",
       "documentUnavailable": "无法确定当前文档，请在普通可编辑文档中重试。",
       "titleUnavailable": "无法获取文档标题，请手动输入任务标题。",
       "insertFailed": "插入任务块失败。",
@@ -57,7 +58,7 @@
     }
   },
   "taskCardView": {
-    "identity": "滴答清单任务",
+    "identity": "思源任务",
     "openTask": "打开任务",
     "status": "状态"
   },
@@ -65,7 +66,7 @@
     "edit": "编辑任务",
     "delete": "删除任务卡片",
     "deleteConfirmTitle": "删除任务卡片？",
-    "deleteConfirmMessage": "确定要删除思源中的任务卡片“${title}”吗？<br><br>这不会删除 TickTick／滴答清单中的实际任务。",
+    "deleteConfirmMessage": "确定要删除思源中的任务卡片“${title}”吗？<br><br>这不会删除链接目标中的任务、文档或其他数据。",
     "deleted": "任务卡片已删除",
     "deleteFailed": "无法删除任务卡片，请重试。"
   },
@@ -81,17 +82,17 @@
     "editAriaLabel": "修改截止日期，${summary}，${date}"
   },
   "taskEdit": {
-    "dialogTitle": "编辑滴答任务",
+    "dialogTitle": "编辑任务",
     "save": "保存",
     "saving": "保存中…",
-    "updated": "滴答任务已更新",
+    "updated": "任务已更新",
     "statusButtonTitle": "点击编辑任务",
     "statusButtonAriaLabel": "编辑任务，当前状态：${status}",
     "workModeButtonTitle": "点击编辑工作分类",
     "workModeButtonAriaLabel": "编辑任务，当前工作分类：${workMode}",
     "noChanges": "没有需要保存的更改。",
     "errors": {
-      "updateFailed": "滴答任务更新失败。",
+      "updateFailed": "任务更新失败。",
       "blockUnavailable": "无法读取当前任务。",
       "currentDataInvalid": "当前任务数据无效，无法编辑。",
       "conflict": "任务已在其他位置更新，请关闭编辑窗口后重新打开。",
@@ -101,8 +102,8 @@
     }
   },
   "taskCenterView": {
-    "title": "滴答任务中心",
-    "openTooltip": "打开滴答任务中心",
+    "title": "思源任务中心",
+    "openTooltip": "打开思源任务中心",
     "switchLanguage": "Switch to English",
     "switchLanguageTitle": "将插件界面切换为英文",
     "switchLanguageFailed": "无法保存语言设置，请重试。",
@@ -129,17 +130,24 @@
     "source": "来源",
     "updated": "更新于",
     "locate": "定位原块",
-    "openTickTick": "打开滴答任务",
+    "openTickTick": "打开任务链接",
     "loading": "正在加载任务……",
     "loadFailed": "无法加载任务，请重试。",
     "retry": "重试",
     "emptyActive": "目前没有活跃任务。",
     "emptyClosed": "目前没有已结束任务。",
-    "emptyAll": "还没有滴答任务。请在文档中使用斜杠菜单创建任务。",
+    "emptyAll": "还没有任务卡片。请在文档中使用斜杠菜单创建任务。",
     "emptySearch": "没有匹配当前搜索条件的任务。",
     "incompleteRead": "有 ${count} 个任务块暂时无法完整读取，请稍后刷新。",
     "invalidSkipped": "已跳过 ${count} 个属性无效的任务块。",
     "localUpdateUnavailable": "任务已保存，请手动刷新任务中心。",
     "locateFailed": "无法定位原任务块。"
+  },
+  "taskTarget": {
+    "openTickTick": "打开 TickTick",
+    "openDida365": "打开滴答清单",
+    "openSiYuan": "打开思源文档",
+    "openResource": "打开网络资源",
+    "openSiYuanFailed": "无法打开思源链接，请确认目标块或文档仍然存在。"
   }
 }

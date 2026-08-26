@@ -4,8 +4,11 @@ import { TASK_STATUS_CONFIG, TASK_STATUS_IDS } from "../domain/status";
 import { createTaskCardViewModel } from "./card-view-model";
 
 const translate = (key: string): string => ({
-    "taskCardView.identity": "TickTick task",
-    "taskCardView.openTask": "Open task",
+    "taskCardView.identity": "SiYuan task",
+    "taskTarget.openTickTick": "Open TickTick",
+    "taskTarget.openDida365": "Open Dida365",
+    "taskTarget.openSiYuan": "Open SiYuan document",
+    "taskTarget.openResource": "Open resource",
     "taskCardView.status": "Status",
     "taskEdit.statusButtonTitle": "Click to edit task",
     "taskEdit.statusButtonAriaLabel": "Edit task, current status: ${status}",
@@ -51,8 +54,9 @@ describe("createTaskCardViewModel", () => {
             updatedAt: "2026-07-12T08:30:00.000Z",
         }, translate);
 
-        expect(viewModel.identity).toBe("TickTick task");
-        expect(viewModel.linkText).toBe("Open task: DS9 Adaptor ↗️");
+        expect(viewModel.identity).toBe("SiYuan task");
+        expect(viewModel.linkText).toBe("Open TickTick: DS9 Adaptor ↗️");
+        expect(viewModel.target.kind).toBe("ticktick");
         expect(viewModel.statusTitle).toBe("Click to edit task");
         expect(viewModel.statusAriaLabel).toBe("Edit task, current status: In progress");
         expect(viewModel.workModeText).toBe("🔎 评审-Review");
@@ -60,5 +64,23 @@ describe("createTaskCardViewModel", () => {
         expect(viewModel.title).toBe("DS9 Adaptor");
         expect(viewModel.url).toBe("https://ticktick.com/task/1");
         expect(viewModel.deadline).toBe("2026-08-31");
+    });
+
+    it("uses a target-specific label for SiYuan links", () => {
+        const viewModel = createTaskCardViewModel({
+            version: 1,
+            title: "Writing project",
+            url: "siyuan://blocks/20260825232625-2gpb83i",
+            status: "in-progress",
+            createdAt: "2026-07-12T08:30:00.000Z",
+            updatedAt: "2026-07-12T08:30:00.000Z",
+        }, translate);
+
+        expect(viewModel.linkText).toBe("Open SiYuan document: Writing project ↗️");
+        expect(viewModel.target).toEqual({
+            kind: "siyuan-block",
+            url: "siyuan://blocks/20260825232625-2gpb83i",
+            blockId: "20260825232625-2gpb83i",
+        });
     });
 });

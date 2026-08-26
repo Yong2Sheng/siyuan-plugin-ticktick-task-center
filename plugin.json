@@ -17,12 +17,12 @@
     "mobile"
   ],
   "displayName": {
-    "default": "TickTick Task Center",
-    "zh-CN": "滴答任务中心"
+    "default": "SiYuan Task Center",
+    "zh-CN": "思源任务中心"
   },
   "description": {
-    "default": "Manage TickTick task cards and a workspace-wide task center in SiYuan.",
-    "zh-CN": "在思源中管理滴答清单任务卡片，并通过全工作空间任务中心集中查看任务。"
+    "default": "Manage linked task cards and a workspace-wide task center in SiYuan.",
+    "zh-CN": "在思源中管理带目标链接的任务卡片，并通过全工作空间任务中心集中查看任务。"
   },
   "readme": {
     "default": "README.en.md",
@@ -39,7 +39,9 @@
     "tasks",
     "task center",
     "productivity",
+    "links",
     "滴答清单",
+    "链接",
     "任务管理",
     "任务中心"
   ]

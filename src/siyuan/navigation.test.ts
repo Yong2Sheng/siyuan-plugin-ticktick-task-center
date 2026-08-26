@@ -11,7 +11,7 @@ const siyuanMocks = vi.hoisted(() => ({
 
 vi.mock("siyuan", () => siyuanMocks);
 
-import { locateSiYuanBlock } from "./navigation";
+import { locateSiYuanBlock, openSiYuanBlock } from "./navigation";
 
 const APP = {} as App;
 const LOCATION = {
@@ -61,6 +61,36 @@ describe("SiYuan block navigation", () => {
         expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "auto" });
         expect(target.card.classList.contains("protyle-wysiwyg--hl")).toBe(true);
         expect(siyuanMocks.openMobileFileById).not.toHaveBeenCalled();
+    });
+
+    it("opens a SiYuan target block directly on desktop", async () => {
+        siyuanMocks.getFrontend.mockReturnValue("desktop");
+        siyuanMocks.openTab.mockResolvedValue({} as Tab);
+
+        await openSiYuanBlock(APP, LOCATION.blockId);
+
+        expect(siyuanMocks.openTab).toHaveBeenCalledWith({
+            app: APP,
+            doc: {
+                id: LOCATION.blockId,
+                action: ["cb-get-focus", "cb-get-hl"],
+            },
+            keepCursor: false,
+        });
+        expect(siyuanMocks.openMobileFileById).not.toHaveBeenCalled();
+    });
+
+    it("opens a SiYuan target block directly on mobile", async () => {
+        siyuanMocks.getFrontend.mockReturnValue("mobile");
+
+        await openSiYuanBlock(APP, LOCATION.blockId);
+
+        expect(siyuanMocks.openMobileFileById).toHaveBeenCalledWith(
+            APP,
+            LOCATION.blockId,
+            ["cb-get-hl"],
+        );
+        expect(siyuanMocks.openTab).not.toHaveBeenCalled();
     });
 
     it("reveals the task card after the root document opens on mobile", async () => {

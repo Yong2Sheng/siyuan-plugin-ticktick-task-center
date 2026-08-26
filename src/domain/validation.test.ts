@@ -1,32 +1,39 @@
 import { describe, expect, it } from "vitest";
 
-import { isAllowedTickTickUrl, normalizeTaskData, validateTaskData } from "./validation";
+import { normalizeTaskData, validateTaskData } from "./validation";
 
-describe("TickTick task validation", () => {
-    it("accepts an HTTPS dida365.com URL", () => {
-        expect(isAllowedTickTickUrl("https://dida365.com/webapp/#p/1/tasks/2")).toBe(true);
-    });
-
-    it("accepts an HTTPS ticktick.com URL", () => {
-        expect(isAllowedTickTickUrl("https://ticktick.com/webapp/#p/1/tasks/2")).toBe(true);
-    });
-
+describe("task validation", () => {
     it("rejects HTTP URLs", () => {
         expect(validateTaskData({
             title: "Task",
             url: "http://ticktick.com/t/1",
             status: "in-progress",
             workMode: "explore",
-        })).toContain("url-https-required");
+        })).toContain("url-protocol-unsupported");
     });
 
-    it("rejects non-TickTick hosts", () => {
+    it("accepts ordinary HTTPS resources", () => {
         expect(validateTaskData({
             title: "Task",
             url: "https://example.com/t/1",
             status: "in-progress",
             workMode: "explore",
-        })).toContain("url-host-invalid");
+        })).toEqual([]);
+    });
+
+    it("accepts SiYuan block links and rejects malformed ones", () => {
+        expect(validateTaskData({
+            title: "Task",
+            url: "siyuan://blocks/20260825232625-yidddf2",
+            status: "in-progress",
+            workMode: "explore",
+        })).toEqual([]);
+        expect(validateTaskData({
+            title: "Task",
+            url: "siyuan://blocks/not-a-block-id",
+            status: "in-progress",
+            workMode: "explore",
+        })).toContain("url-siyuan-invalid");
     });
 
     it("rejects an empty title", () => {

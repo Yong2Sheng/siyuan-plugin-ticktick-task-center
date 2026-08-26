@@ -18,11 +18,11 @@ describe("plugin interface language", () => {
         let language: InterfaceLanguage = DEFAULT_INTERFACE_LANGUAGE;
         const translate = createLanguageTranslator({ "zh-CN": zhCN, en }, () => language);
 
-        expect(translate("taskCenterView.title")).toBe("滴答任务中心");
+        expect(translate("taskCenterView.title")).toBe("思源任务中心");
         expect(translate("taskCenterView.switchLanguage")).toBe("Switch to English");
 
         language = "en";
-        expect(translate("taskCenterView.title")).toBe("TickTick Task Center");
+        expect(translate("taskCenterView.title")).toBe("SiYuan Task Center");
         expect(translate("taskCenterView.switchLanguage")).toBe("切换为中文");
     });
 

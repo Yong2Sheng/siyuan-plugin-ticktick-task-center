@@ -14,6 +14,8 @@ const DESKTOP_OPEN_DOCUMENT_ACTIONS: TProtyleAction[] = [
     "cb-get-scroll",
 ];
 const MOBILE_OPEN_DOCUMENT_ACTIONS: TProtyleAction[] = ["cb-get-scroll"];
+const DESKTOP_OPEN_TARGET_ACTIONS: TProtyleAction[] = ["cb-get-focus", "cb-get-hl"];
+const MOBILE_OPEN_TARGET_ACTIONS: TProtyleAction[] = ["cb-get-hl"];
 const HIGHLIGHT_DURATION_MS = 1024;
 const CARD_WAIT_TIMEOUT_MS = 1000;
 const CARD_WAIT_INTERVAL_MS = 50;
@@ -32,6 +34,24 @@ export type SiYuanBlockLocation = {
     rootId: string;
     notebookId?: string;
 };
+
+export async function openSiYuanBlock(app: App, blockId: string): Promise<void> {
+    const frontend = getFrontend();
+    if (frontend === "mobile" || frontend === "browser-mobile") {
+        const openMobileFile = openMobileFileById as MobileFileOpener;
+        openMobileFile(app, blockId, [...MOBILE_OPEN_TARGET_ACTIONS]);
+        return;
+    }
+
+    await openTab({
+        app,
+        doc: {
+            id: blockId,
+            action: [...DESKTOP_OPEN_TARGET_ACTIONS],
+        },
+        keepCursor: false,
+    });
+}
 
 export async function locateSiYuanBlock(
     app: App,

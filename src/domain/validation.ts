@@ -1,16 +1,16 @@
 import { isTickTickTaskStatus } from "./status";
 import type { TickTickTaskStatus } from "./status";
 import { readLocalDate } from "./local-date";
+import { parseTaskTarget } from "./task-target";
 import { isTickTickTaskWorkMode, type TickTickTaskWorkMode } from "./work-mode";
-
-const ALLOWED_TICKTICK_HOSTS = new Set(["dida365.com", "ticktick.com"]);
 
 export type TaskValidationError =
     | "title-required"
     | "url-required"
     | "url-invalid"
-    | "url-https-required"
-    | "url-host-invalid"
+    | "url-protocol-unsupported"
+    | "url-credentials-unsupported"
+    | "url-siyuan-invalid"
     | "status-invalid"
     | "work-mode-invalid"
     | "deadline-invalid";
@@ -35,15 +35,6 @@ export type TaskNormalizationResult =
     | { valid: true; data: NormalizedTaskData }
     | { valid: false; errors: TaskValidationError[] };
 
-export function isAllowedTickTickUrl(value: string): boolean {
-    try {
-        const url = new URL(value);
-        return url.protocol === "https:" && ALLOWED_TICKTICK_HOSTS.has(url.hostname);
-    } catch {
-        return false;
-    }
-}
-
 export function validateTaskData(data: TaskDataCandidate): TaskValidationError[] {
     const result = normalizeTaskData(data);
     return result.valid ? [] : result.errors;
@@ -62,16 +53,16 @@ export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationRes
     if (rawUrl.length === 0) {
         errors.push("url-required");
     } else {
-        try {
-            const url = new URL(rawUrl);
-            if (url.protocol !== "https:") {
-                errors.push("url-https-required");
-            } else if (!ALLOWED_TICKTICK_HOSTS.has(url.hostname)) {
-                errors.push("url-host-invalid");
-            } else {
-                normalizedUrl = url.toString();
-            }
-        } catch {
+        const target = parseTaskTarget(rawUrl);
+        if (target.valid) {
+            normalizedUrl = target.target.url;
+        } else if (target.reason === "unsupported-protocol") {
+            errors.push("url-protocol-unsupported");
+        } else if (target.reason === "embedded-credentials") {
+            errors.push("url-credentials-unsupported");
+        } else if (target.reason === "invalid-siyuan-block") {
+            errors.push("url-siyuan-invalid");
+        } else {
             errors.push("url-invalid");
         }
     }

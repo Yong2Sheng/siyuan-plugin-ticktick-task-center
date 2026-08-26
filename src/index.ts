@@ -18,7 +18,7 @@ import {
     setBlockAttributes,
     updateMarkdownBlock,
 } from "./siyuan/blocks";
-import { locateSiYuanBlock } from "./siyuan/navigation";
+import { locateSiYuanBlock, openSiYuanBlock } from "./siyuan/navigation";
 import {
     createTaskCenterEditSession,
     TaskCenterController,
@@ -80,6 +80,9 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 onOpenTaskCenter: () => {
                     void this.taskCenterTab?.open();
                 },
+                onOpenSiYuanTarget: (blockId) => {
+                    void this.openSiYuanTarget(blockId, translate);
+                },
             },
         });
         this.taskEditController = new TaskEditController({
@@ -105,7 +108,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
 
         this.protyleSlash = [{
             id: "insertTickTickTaskCard",
-            filter: ["滴答", "任务", "TickTick", "task"],
+            filter: ["思源", "滴答", "链接", "任务", "SiYuan", "TickTick", "link", "task"],
             html: `<div class="b3-list-item__first"><span class="b3-list-item__text">${escapeHtml(translate("taskCreate.slashName"))}</span></div>`,
             callback: (protyle: Protyle) => {
                 void this.openCreateTaskDialog(protyle);
@@ -196,7 +199,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 }
                 return result;
             },
-            onError: (error) => console.error("Failed to load TickTick task center", error),
+            onError: (error) => console.error("Failed to load SiYuan Task Center", error),
             onWarning: (message, detail) => console.warn(message, detail),
         });
         const editSession = createTaskCenterEditSession(controller, () => {
@@ -217,6 +220,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 { blockId, rootId, notebookId },
                 translate,
             ),
+            onOpenSiYuanTarget: (blockId) => void this.openSiYuanTarget(blockId, translate),
             onDeleteTask: (blockId, title) => this.taskDeleteController?.request(blockId, title)
                 ?? Promise.resolve(false),
             onSaveDailyProgress: (blockId, date) => saveDailyProgress(
@@ -259,6 +263,15 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         }
     }
 
+    private async openSiYuanTarget(blockId: string, translate: Translate): Promise<void> {
+        try {
+            await openSiYuanBlock(this.app, blockId);
+        } catch (error) {
+            console.error(`Failed to open SiYuan task target ${blockId}`, error);
+            showMessage(translate("taskTarget.openSiYuanFailed"), 5000, "error");
+        }
+    }
+
     private async loadLanguagePreference(): Promise<void> {
         try {
             const stored: unknown = await this.loadData(LANGUAGE_PREFERENCE_FILE);
@@ -269,7 +282,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 this.applyInterfaceLanguage(language);
             }
         } catch (error) {
-            console.warn("Failed to load TickTick Task Center language preference", error);
+            console.warn("Failed to load SiYuan Task Center language preference", error);
         }
     }
 
@@ -281,7 +294,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             await this.saveData(LANGUAGE_PREFERENCE_FILE, { language: nextLanguage });
             this.applyInterfaceLanguage(nextLanguage);
         } catch (error) {
-            console.error("Failed to save TickTick Task Center language preference", error);
+            console.error("Failed to save SiYuan Task Center language preference", error);
             showMessage(this.translate("taskCenterView.switchLanguageFailed"), 5000, "error");
         }
     }

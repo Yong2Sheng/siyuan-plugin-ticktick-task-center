@@ -32,7 +32,7 @@ describe("parseTaskBlockAttributes", () => {
         [TASK_BLOCK_ATTRIBUTES.card, "false", "not-task-card"],
         [TASK_BLOCK_ATTRIBUTES.version, "2", "unsupported-version"],
         [TASK_BLOCK_ATTRIBUTES.title, "", "missing-title"],
-        [TASK_BLOCK_ATTRIBUTES.url, "https://example.com/task", "invalid-url"],
+        [TASK_BLOCK_ATTRIBUTES.url, "file:///tmp/task", "invalid-url"],
         [TASK_BLOCK_ATTRIBUTES.status, "done", "invalid-status"],
         [TASK_BLOCK_ATTRIBUTES.createdAt, "not-a-date", "invalid-created-at"],
         [TASK_BLOCK_ATTRIBUTES.updatedAt, "2026-07-12", "invalid-updated-at"],

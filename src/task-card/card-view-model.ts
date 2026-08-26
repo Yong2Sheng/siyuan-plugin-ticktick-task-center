@@ -2,6 +2,11 @@ import { TASK_STATUS_CONFIG, type TaskStatusTone } from "../domain/status";
 import type { PersistedTickTickTaskData } from "../domain/task";
 import type { Translate } from "../i18n";
 import { TASK_WORK_MODE_CONFIG } from "../domain/work-mode";
+import {
+    parseTaskTarget,
+    TASK_TARGET_OPEN_LABEL_KEYS,
+    type TaskTarget,
+} from "../domain/task-target";
 
 export type TaskCardViewModel = {
     translate: Translate;
@@ -9,6 +14,7 @@ export type TaskCardViewModel = {
     linkText: string;
     title: string;
     url: string;
+    target: TaskTarget;
     deadline?: string;
     workModeText: string;
     workModeTitle: string;
@@ -23,6 +29,11 @@ export function createTaskCardViewModel(
     task: PersistedTickTickTaskData,
     translate: Translate,
 ): TaskCardViewModel {
+    const parsedTarget = parseTaskTarget(task.url);
+    if (!parsedTarget.valid) {
+        throw new Error(`Cannot render invalid task target: ${parsedTarget.reason}`);
+    }
+    const target = parsedTarget.target;
     const status = TASK_STATUS_CONFIG[task.status];
     const statusLabel = translate(status.labelKey);
     const workModeLabel = task.workMode
@@ -32,9 +43,10 @@ export function createTaskCardViewModel(
     return {
         translate,
         identity: translate("taskCardView.identity"),
-        linkText: `${translate("taskCardView.openTask")}: ${task.title} ↗️`,
+        linkText: `${translate(TASK_TARGET_OPEN_LABEL_KEYS[target.kind])}: ${task.title} ↗️`,
         title: task.title,
         url: task.url,
+        target,
         ...(task.deadline ? { deadline: task.deadline } : {}),
         workModeText: workModeLabel,
         workModeTitle: translate("taskEdit.workModeButtonTitle"),

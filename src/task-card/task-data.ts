@@ -5,7 +5,7 @@ import {
     TASK_DATA_VERSION,
     type PersistedTickTickTaskData,
 } from "../domain/task";
-import { isAllowedTickTickUrl } from "../domain/validation";
+import { isAllowedTaskTarget } from "../domain/task-target";
 import { readLocalDate } from "../domain/local-date";
 import { isTickTickTaskWorkMode } from "../domain/work-mode";
 
@@ -40,7 +40,7 @@ export function parseTaskBlockAttributes(
     }
 
     const url = attributes[TASK_BLOCK_ATTRIBUTES.url];
-    if (typeof url !== "string" || !isAllowedTickTickUrl(url)) {
+    if (typeof url !== "string" || !isAllowedTaskTarget(url)) {
         return { valid: false, reason: "invalid-url" };
     }
 

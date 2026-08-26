@@ -1,9 +1,9 @@
 English | [简体中文](README.md)
 
-# TickTick Task Center for SiYuan
+# SiYuan Task Center
 
 <p align="center">
-  <img src="icon.png" width="96" height="96" alt="TickTick Task Center plugin icon">
+  <img src="icon.png" width="96" height="96" alt="SiYuan Task Center plugin icon">
 </p>
 
 > [!IMPORTANT]
@@ -11,20 +11,20 @@ English | [简体中文](README.md)
 >
 > Project requirements, feature decisions, real-world SiYuan testing, acceptance, and release decisions were handled by Yong Sheng.
 
-TickTick Task Center for SiYuan is a SiYuan plugin that associates ordinary SiYuan document blocks with TickTick / Dida365 tasks. The task block in the source document is the only persistent source of data. The plugin adds enhanced task cards, seven local statuses, four work categories, deadline reminders, daily progress tracking, and a workspace-wide task center without maintaining a second task database.
+SiYuan Task Center is a SiYuan plugin for creating task cards with target links in ordinary SiYuan document blocks. A target can be a TickTick / Dida365 task, a SiYuan document or block, or an ordinary HTTPS resource. The task block in the source document is the only persistent source of data. The plugin adds enhanced task cards, seven local statuses, four work categories, deadline reminders, daily progress tracking, and a workspace-wide task center without maintaining a second task database.
 
-The current version does not use the TickTick API, OAuth, or background synchronization. A task is associated with TickTick / Dida365 only through the HTTPS task URL supplied by the user.
+The current version does not call any target-service API, handle OAuth, or perform background synchronization. It stores only a validated target link and opens the corresponding task, SiYuan content, or HTTPS resource when selected by the user.
 
 **This is an unofficial community-developed plugin and is not affiliated with TickTick, Dida365 (滴答清单), or SiYuan.**
 
 ## Core features
 
-- Create a TickTick task block from the slash menu in an editable SiYuan document. The default status is `in-progress`, and the new block is inserted at the top of the current root document.
-- Store the task title, a validated TickTick URL, seven required attributes, and optional work-category, deadline, and daily-progress date attributes in one ordinary SiYuan block.
+- Create a task card from the slash menu in an editable SiYuan document. The default status is `in-progress`, and the new block is inserted at the top of the current root document.
+- Store the task title, a validated target link, seven required attributes, and optional work-category, deadline, and daily-progress date attributes in one ordinary SiYuan block.
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
 - Non-destructively enhance the block as a task card with an original checklist icon that opens the Task Center, a task link, a work-category button, a semantically colored status badge, and a Deadline button. The work category is stacked above the status.
 - Open the complete editor from the work-category, status, or Deadline button to change the title, URL, work category, status, or deadline. Work categories and statuses are both selected from directly visible button groups.
-- Right-click anywhere on a document task card or Task Center item to edit it or delete its SiYuan task card after confirmation. Deletion never affects the actual task in TickTick or Dida365.
+- Right-click anywhere on a document task card or Task Center item to edit it or delete its SiYuan task card after confirmation. Deletion never affects the linked task, document, or resource.
 - Show the deadline as remaining days, an eight-segment urgency track, and the calendar date. An undated task keeps the same track layout and a clear setup entry point.
 - Keep the track empty outside the seven-day window, then fill one segment per day from seven days remaining. Due-today and overdue tasks use a full track.
 - Apply theme-adaptive low-saturation emphasis to active tasks inside the seven-day window, with warning emphasis for due-today tasks and error emphasis for overdue tasks while preserving readable theme contrast.
@@ -39,9 +39,20 @@ The current version does not use the TickTick API, OAuth, or background synchron
 - To do, In progress, Waiting for response, and Blocked tasks all participate in daily progress. Moving a task to Completed automatically records it as progress for the day.
 - Use **🚀 Progress today** and **✨ Progressed today** to mark or undo today's record without changing the task status or its existing `updated-at`.
 - Determine “today” from the system's local timezone and regroup automatically after local midnight without a background attribute-reset job.
-- Locate the original SiYuan task block and safely open the corresponding TickTick task URL in a new tab.
+- Locate the original SiYuan task block; open TickTick, Dida365, and ordinary HTTPS resources safely in a new tab, or use SiYuan internal navigation for SiYuan block and document links.
 - Immediately update the current list, filtered results, ordering, and statistics after an edit made inside the Task Center.
 - Read changes made in ordinary documents or other clients when the user presses **Refresh** in the Task Center.
+
+## Supported task links
+
+| Type | Accepted format | UI action |
+| --- | --- | --- |
+| TickTick | `https://ticktick.com/...` | Open TickTick |
+| Dida365 | `https://dida365.com/...` | Open Dida365 |
+| SiYuan document or block | `siyuan://blocks/<valid SiYuan block ID>` | Open SiYuan document |
+| Ordinary HTTPS resource | Any other well-formed `https://...` URL | Open resource |
+
+The plugin rejects `http:`, `javascript:`, `data:`, `file:`, URLs containing embedded usernames or passwords, and any unsupported or malformed custom scheme. TickTick and Dida365 hostnames must match exactly. A SiYuan link must contain exactly one valid block ID, without extra path segments, query parameters, or fragments. Validation checks syntax and security boundaries only; it does not verify that a remote resource exists.
 
 ## Seven task statuses
 
@@ -72,6 +83,8 @@ The work category describes how a task is approached and remains independent of 
 
 > [!NOTE]
 > `v0.1.0` was published on 2026-08-22 as the first official release. The project is not yet listed in the SiYuan Marketplace.
+>
+> The current `main` branch also contains unreleased generalized-link support, SiYuan internal links, and the SiYuan Task Center interface update. See the `Unreleased` section in [CHANGELOG.en.md](CHANGELOG.en.md).
 
 ### 0.1.0 (2026-08-22)
 
@@ -124,9 +137,9 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 
 1. Open a regular editable SiYuan document.
 2. Type `/` to open the Protyle slash menu.
-3. Search for and select **TickTick task card** (shown as “滴答任务卡片” in Chinese).
+3. Search for and select **Task card** (shown as “任务卡片” in Chinese).
 4. Confirm or edit the task title. The plugin attempts to use the current root document title as the initial value.
-5. Paste a valid TickTick / Dida365 HTTPS URL. The hostname must be exactly `ticktick.com` or `dida365.com`.
+5. Paste a valid task link. TickTick, Dida365, `siyuan://blocks/<block ID>`, and ordinary HTTPS resources are supported.
 6. Select a task status. The default is `in-progress` (▶️ In progress).
 7. Select one work category from the four directly visible buttons. New tasks require an explicit choice and are not categorized automatically.
 8. Optionally set a deadline. It can be left empty, added later, or cleared.
@@ -139,7 +152,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Select the status badge below it to open the same editor with the task status focused.
 - Select the rightmost Deadline button to open the same editor with the deadline field focused.
 - Work categories and task statuses both expose all choices as buttons instead of dropdown menus.
-- Change the task title, TickTick URL, work category, status, or deadline, then save.
+- Change the task title, target link, work category, status, or deadline, then save.
 - The card in the current document updates immediately after a successful save.
 - When the title or URL changes, the fallback Markdown is updated as well.
 - Status is not written to Markdown; its stable ID is stored in structured attributes.
@@ -151,11 +164,11 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - The first button row shows “N days left,” “Due today,” “N days overdue,” or “No deadline.” The second row always contains eight track segments, and the third row shows the date or setup action.
 - The track remains low-contrast and empty when more than seven days remain or no deadline is configured.
 - The first segment fills at seven days remaining, then one more segment fills each day. One day remaining shows seven filled segments; due-today and overdue tasks show all eight.
-- Deadlines are stored only in SiYuan task-block attributes. They are not written to TickTick and do not create system notifications or background reminders.
+- Deadlines are stored only in SiYuan task-block attributes. They are not written to the linked target and do not create system notifications or background reminders.
 
 ### 4. Open the Task Center
 
-- Select the checklist icon on the left side of any document task card, or select the TickTick Task Center button in the SiYuan top bar.
+- Select the checklist icon on the left side of any document task card, or select the SiYuan Task Center button in the SiYuan top bar.
 - The Task Center opens as an independent custom tab.
 - Only one Task Center tab exists at a time. Selecting either entry again focuses the existing tab instead of creating another one.
 - The workspace is queried once when the tab first opens.
@@ -167,7 +180,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Switch between the Active, Closed, and All tasks filters.
 - Search task titles, source document titles, source paths, or localized status names.
 - Select a task title or **Locate source block** to open and locate the original SiYuan block.
-- Select **Open TickTick task** to open the validated external task URL in a new tab.
+- Select the target-specific Open button. TickTick, Dida365, and ordinary HTTPS resources open in a new tab; SiYuan links use internal navigation to open the corresponding document or block.
 - Select an item's work-category button to reuse the complete task editor with the work category focused.
 - Select an item's status badge to reuse the same complete task editor.
 - Select an item's Deadline button to edit or clear its deadline directly.
@@ -213,12 +226,12 @@ If Refresh is selected immediately after an edit or daily-progress update inside
 
 ## Data model and privacy
 
-- One ordinary SiYuan block corresponds to one TickTick task.
+- One ordinary SiYuan block corresponds to one local task card and its target link.
 - The original SiYuan task block is the only persistent source of task data.
 - The Task Center is a dynamic view and does not persist a second task list.
 - Ordinary Markdown keeps the task title and link as fallback content while the plugin is disabled or unavailable.
-- The plugin does not require a TickTick login, use OAuth, or call the TickTick API.
-- It does not upload or synchronize task data to TickTick in the background. External links open only when selected by the user.
+- The plugin does not require a target-service login, use OAuth, or call a target-service API.
+- It does not upload or synchronize task data to linked services in the background. A target opens only when selected by the user.
 
 The seven required structured attributes are:
 
@@ -250,6 +263,8 @@ The work category stores a stable category ID in another optional attribute:
 custom-ticktick-work-mode = explore | build | execute | review
 ```
 
+The `custom-ticktick-*` attribute names are retained as legacy internal identifiers for backward compatibility. They do not limit the supported target-link types, and existing task cards require no data migration.
+
 Older tasks require no migration when these optional attributes are absent. A missing daily-progress date is treated as pending today; a missing deadline is displayed as “No deadline” and sorted after dated tasks; a missing work category is displayed as “未分类-Unclassified”. Editing a legacy task again requires an explicit work-category choice. The plugin compares stored dates with the system-local date instead of rewriting every task block at midnight.
 
 ## Task Center query
@@ -261,14 +276,14 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 ## Known limitations
 
 - Changes from ordinary documents, other tabs, or other clients are not pushed automatically to the Task Center; use manual Refresh.
-- No TickTick API, OAuth, or two-way synchronization.
+- No target-service API, OAuth, or two-way synchronization.
 - No batch operations or batch status changes.
 - No pagination or virtual scrolling; the Task Center is subject to SiYuan's SQL result-count limit.
 - No settings page.
 - Daily progress stores only the latest date; there is no history, streak, or trend reporting.
 - The daily date follows the current system timezone. When traveling across timezones, tasks are reevaluated using the local date at the current location.
-- Deadlines are local SiYuan metadata. The plugin does not read or synchronize existing TickTick deadlines and does not issue system notifications.
-- Work categories are local SiYuan metadata and do not automatically create or synchronize TickTick / Dida365 tags.
+- Deadlines are local SiYuan metadata. The plugin does not read or synchronize deadlines from linked services and does not issue system notifications.
+- Work categories are local SiYuan metadata and do not automatically create or synchronize tags in linked services.
 - HarmonyOS native-mobile support has passed basic core-workflow verification on a Huawei tablet running HarmonyOS 6, but remains experimental. Android, iOS, and browser-based mobile clients have not been verified.
 - Cross-app links on mobile depend on the operating system, browser, and target app. TickTick / Dida365 links may open on the web first, and `siyuan://blocks/...` links in external apps may not launch SiYuan and locate the block directly.
 
@@ -287,7 +302,7 @@ pnpm build
 - `pnpm run check`: runs Svelte / TypeScript static checks.
 - `pnpm build`: creates the production bundle, `dist/`, and `package.zip` in the repository root.
 
-The current verification suite contains 23 test files and 225 tests.
+The current verification suite contains 26 test files and 260 tests.
 
 ## License
 

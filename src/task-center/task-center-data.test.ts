@@ -112,7 +112,7 @@ describe("aggregateTaskCenterRows", () => {
     it.each([
         [TASK_BLOCK_ATTRIBUTES.version, "2", "unsupported-version"],
         [TASK_BLOCK_ATTRIBUTES.title, "", "missing-title"],
-        [TASK_BLOCK_ATTRIBUTES.url, "https://example.com/task", "invalid-url"],
+        [TASK_BLOCK_ATTRIBUTES.url, "file:///tmp/task", "invalid-url"],
         [TASK_BLOCK_ATTRIBUTES.status, "unknown", "invalid-status"],
         [TASK_BLOCK_ATTRIBUTES.createdAt, "not-a-time", "invalid-created-at"],
         [TASK_BLOCK_ATTRIBUTES.updatedAt, "not-a-time", "invalid-updated-at"],

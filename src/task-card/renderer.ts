@@ -2,6 +2,7 @@ import type { TaskCardViewModel } from "./card-view-model";
 import { getDeadlineState } from "../domain/deadline";
 import { createDeadlineButton } from "./deadline-button";
 import { openTaskActionsMenu } from "./task-actions-menu";
+import type { TaskTarget } from "../domain/task-target";
 
 export const TASK_CARD_CONTAINER_ATTRIBUTE = "data-ticktick-task-enhancement";
 export const TASK_CARD_BLOCK_ID_ATTRIBUTE = "data-ticktick-task-block-id";
@@ -10,6 +11,7 @@ export type TaskCardActions = {
     onEditTask(blockId: string, options: { focus: "status" | "work-mode" | "deadline" }): void;
     onDeleteTask?(blockId: string, title: string): void;
     onOpenTaskCenter?(): void;
+    onOpenSiYuanTarget?(blockId: string): void;
 };
 
 export function enhanceTaskBlock(
@@ -79,14 +81,7 @@ export function enhanceTaskBlock(
     const main = document.createElement("span");
     main.className = "ticktick-task-card__main";
 
-    const link = document.createElement("a");
-    link.className = "ticktick-task-card__link";
-    link.href = viewModel.url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.title = viewModel.title;
-    link.textContent = viewModel.linkText;
-    main.append(link);
+    main.append(createTargetControl(viewModel, actions));
 
     const deadline = createDeadlineButton({
         className: "ticktick-task-card__deadline",
@@ -126,6 +121,43 @@ export function enhanceTaskBlock(
     card.append(identity, main, classification, deadline);
     blockElement.before(card);
     return true;
+}
+
+function createTargetControl(
+    viewModel: TaskCardViewModel,
+    actions?: TaskCardActions,
+): HTMLAnchorElement | HTMLButtonElement {
+    if (viewModel.target.kind === "siyuan-block") {
+        const { blockId } = viewModel.target;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ticktick-task-card__link";
+        button.title = viewModel.title;
+        button.textContent = viewModel.linkText;
+        button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            actions?.onOpenSiYuanTarget?.(blockId);
+        });
+        return button;
+    }
+
+    return createExternalTargetLink(viewModel.target, viewModel.title, viewModel.linkText);
+}
+
+function createExternalTargetLink(
+    target: Exclude<TaskTarget, { kind: "siyuan-block" }>,
+    title: string,
+    text: string,
+): HTMLAnchorElement {
+    const link = document.createElement("a");
+    link.className = "ticktick-task-card__link";
+    link.href = target.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.title = title;
+    link.textContent = text;
+    return link;
 }
 
 export function restoreTaskBlock(blockElement: HTMLElement): void {

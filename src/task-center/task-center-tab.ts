@@ -139,11 +139,11 @@ export class TaskCenterTabService {
                 },
                 keepCursor: false,
             }).catch((error: unknown) => {
-                console.error("Failed to open TickTick Task Center tab", error);
+                console.error("Failed to open SiYuan Task Center tab", error);
                 return undefined;
             });
         } catch (error) {
-            console.error("Failed to open TickTick Task Center tab", error);
+            console.error("Failed to open SiYuan Task Center tab", error);
             return;
         }
         this.opening = opening;

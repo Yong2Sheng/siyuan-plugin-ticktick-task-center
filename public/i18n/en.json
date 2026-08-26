@@ -1,6 +1,6 @@
 {
-  "pluginName": "TickTick Task Center",
-  "taskCard": "TickTick task",
+  "pluginName": "SiYuan Task Center",
+  "taskCard": "SiYuan task",
   "taskCenter": "Task Center",
   "openTaskCenter": "Open Task Center",
   "common": {
@@ -28,27 +28,28 @@
   },
   "validation": {
     "titleRequired": "Task title is required.",
-    "urlRequired": "TickTick URL is required.",
-    "urlInvalid": "Enter a valid URL.",
-    "urlHttpsRequired": "Only HTTPS links are supported.",
-    "urlHostInvalid": "Only TickTick links from dida365.com or ticktick.com are supported.",
+    "urlRequired": "Enter a task target link.",
+    "urlInvalid": "Enter a correctly formatted task target link.",
+    "urlProtocolUnsupported": "Only HTTPS links and SiYuan block links are supported.",
+    "urlCredentialsUnsupported": "Links containing a username or password are not supported.",
+    "urlSiYuanInvalid": "A SiYuan link must use siyuan://blocks/<valid block ID>.",
     "statusInvalid": "The task status is invalid.",
     "workModeInvalid": "Select a work category.",
     "deadlineInvalid": "The deadline is invalid."
   },
   "taskCreate": {
-    "slashName": "TickTick task card",
-    "dialogTitle": "Create TickTick task",
+    "slashName": "Task card",
+    "dialogTitle": "Create task",
     "titleLabel": "Task title",
-    "urlLabel": "TickTick URL",
+    "urlLabel": "Task link (TickTick, SiYuan block, or HTTPS resource)",
     "statusLabel": "Task status",
     "workModeLabel": "Work category",
     "deadlineLabel": "Deadline (optional)",
     "create": "Create",
     "creating": "Creating…",
-    "created": "TickTick task created",
+    "created": "Task created",
     "errors": {
-      "createFailed": "Failed to create the TickTick task.",
+      "createFailed": "Failed to create the task.",
       "documentUnavailable": "The current document cannot be determined. Try again in a regular editable document.",
       "titleUnavailable": "The document title could not be loaded. Enter a task title manually.",
       "insertFailed": "Failed to insert the task block.",
@@ -57,7 +58,7 @@
     }
   },
   "taskCardView": {
-    "identity": "TickTick task",
+    "identity": "SiYuan task",
     "openTask": "Open task",
     "status": "Status"
   },
@@ -65,7 +66,7 @@
     "edit": "Edit task",
     "delete": "Delete task card",
     "deleteConfirmTitle": "Delete task card?",
-    "deleteConfirmMessage": "Delete the SiYuan task card “${title}”?<br><br>This will not delete the actual task in TickTick.",
+    "deleteConfirmMessage": "Delete the SiYuan task card “${title}”?<br><br>This will not delete any task, document, or other data at the linked target.",
     "deleted": "Task card deleted",
     "deleteFailed": "The task card could not be deleted. Please try again."
   },
@@ -81,17 +82,17 @@
     "editAriaLabel": "Edit deadline: ${summary}, ${date}"
   },
   "taskEdit": {
-    "dialogTitle": "Edit TickTick task",
+    "dialogTitle": "Edit task",
     "save": "Save",
     "saving": "Saving…",
-    "updated": "TickTick task updated",
+    "updated": "Task updated",
     "statusButtonTitle": "Click to edit task",
     "statusButtonAriaLabel": "Edit task, current status: ${status}",
     "workModeButtonTitle": "Click to edit the work category",
     "workModeButtonAriaLabel": "Edit task, current work category: ${workMode}",
     "noChanges": "There are no changes to save.",
     "errors": {
-      "updateFailed": "Failed to update the TickTick task.",
+      "updateFailed": "Failed to update the task.",
       "blockUnavailable": "The current task could not be loaded.",
       "currentDataInvalid": "The current task data is invalid and cannot be edited.",
       "conflict": "This task was updated elsewhere. Close and reopen the editor before saving.",
@@ -101,8 +102,8 @@
     }
   },
   "taskCenterView": {
-    "title": "TickTick Task Center",
-    "openTooltip": "Open TickTick Task Center",
+    "title": "SiYuan Task Center",
+    "openTooltip": "Open SiYuan Task Center",
     "switchLanguage": "切换为中文",
     "switchLanguageTitle": "Switch the plugin interface to Chinese",
     "switchLanguageFailed": "The language setting could not be saved. Please try again.",
@@ -129,17 +130,24 @@
     "source": "Source",
     "updated": "Updated",
     "locate": "Locate source block",
-    "openTickTick": "Open TickTick task",
+    "openTickTick": "Open task link",
     "loading": "Loading tasks…",
     "loadFailed": "Tasks could not be loaded. Try again.",
     "retry": "Retry",
     "emptyActive": "There are no active tasks.",
     "emptyClosed": "There are no closed tasks.",
-    "emptyAll": "No TickTick tasks yet. Create one from a document using the slash menu.",
+    "emptyAll": "No task cards yet. Create one from a document using the slash menu.",
     "emptySearch": "No tasks match the current search.",
     "incompleteRead": "${count} task blocks could not be read completely. Refresh again later.",
     "invalidSkipped": "${count} task blocks with invalid attributes were skipped.",
     "localUpdateUnavailable": "The task was saved. Refresh the task center manually.",
     "locateFailed": "The source task block could not be located."
+  },
+  "taskTarget": {
+    "openTickTick": "Open TickTick",
+    "openDida365": "Open Dida365",
+    "openSiYuan": "Open SiYuan document",
+    "openResource": "Open resource",
+    "openSiYuanFailed": "Unable to open the SiYuan link. Confirm that the target block or document still exists."
   }
 }

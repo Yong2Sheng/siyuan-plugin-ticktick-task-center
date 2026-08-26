@@ -130,7 +130,7 @@ describe("TaskCenterTabService", () => {
 
         expect(harness.openTab).toHaveBeenCalledTimes(2);
         expect(harness.createInstance).toHaveBeenCalledOnce();
-        expect(consoleError).toHaveBeenCalledWith("Failed to open TickTick Task Center tab", error);
+        expect(consoleError).toHaveBeenCalledWith("Failed to open SiYuan Task Center tab", error);
         consoleError.mockRestore();
     });
 

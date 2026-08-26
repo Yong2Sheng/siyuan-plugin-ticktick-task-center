@@ -2,6 +2,29 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
+## Unreleased
+
+### Task targets and security validation
+
+- Expand task links from TickTick / Dida365 only to four target types: TickTick, Dida365, a SiYuan document or block, and an ordinary HTTPS resource.
+- Detect and normalize the target by link type. TickTick and Dida365 hostnames use exact matching, while ordinary HTTPS links may use any valid host.
+- Strictly validate `siyuan://blocks/<block ID>` links: the block ID must be valid, with no extra path segments, query parameters, fragments, or surplus slashes.
+- Reject `http:`, `javascript:`, `data:`, `file:`, URLs with embedded usernames or passwords, and every unsupported or malformed custom scheme.
+- Validate only syntax and security boundaries without contacting a remote service to verify resource existence.
+
+### SiYuan internal navigation and generalized interface
+
+- Open `siyuan://blocks/...` links through SiYuan's official internal navigation; continue opening external HTTPS targets in a new tab with `noopener` and `noreferrer`.
+- Rename the user-facing plugin from TickTick Task Center for SiYuan to SiYuan Task Center, and generalize TickTick-specific wording in the slash menu, create/edit dialogs, and deletion warnings.
+- Change the Open action dynamically by target type: Open TickTick, Open Dida365, Open SiYuan document, or Open resource.
+- Share one target-classification result across source cards and the Task Center so labels, navigation, and security validation remain consistent.
+
+### Data compatibility and verification
+
+- Retain the released `custom-ticktick-*` block attributes as compatibility identifiers. Existing tasks require no migration, and no second attribute set or task-data copy is introduced.
+- Add tests for task-target classification, security validation, SiYuan navigation, interface labels, card rendering, and Task Center behavior.
+- The verification suite now contains 26 test files and 260 tests and passes Svelte / TypeScript static checks and the production build.
+
 ## 0.1.0 - 2026-08-22
 
 This is the first official release. The entries below summarize the version by capability rather than listing individual commits or pushes.

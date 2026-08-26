@@ -27,14 +27,15 @@ const VIEW_MODEL = {
         "deadline.setAction": "Set deadline",
         "deadline.editTitle": "Click to edit the deadline",
         "deadline.editAriaLabel": "Edit deadline: ${summary}, ${date}",
-        "taskCenterView.openTooltip": "Open TickTick Task Center",
+        "taskCenterView.openTooltip": "Open SiYuan Task Center",
         "taskActions.edit": "Edit task",
         "taskActions.delete": "Delete task card",
     })[key] ?? key,
-    identity: "TickTick task",
-    linkText: "Open task: DS9 Adaptor ↗️",
+    identity: "SiYuan task",
+    linkText: "Open TickTick: DS9 Adaptor ↗️",
     title: "DS9 Adaptor",
     url: "https://ticktick.com/task/1",
+    target: { kind: "ticktick" as const, url: "https://ticktick.com/task/1" },
     workModeText: "🔎 评审-Review",
     workModeTitle: "Click to edit work category",
     workModeAriaLabel: "Edit task, current work category: 评审-Review",
@@ -89,10 +90,10 @@ describe("task card renderer", () => {
         expect(link?.textContent).toBe(VIEW_MODEL.linkText);
         expect(link?.target).toBe("_blank");
         expect(link?.rel).toBe("noopener noreferrer");
-        expect(identity?.textContent).toBe("TickTick task");
+        expect(identity?.textContent).toBe("SiYuan task");
         expect(identityButton?.type).toBe("button");
-        expect(identityButton?.title).toBe("Open TickTick Task Center");
-        expect(identityButton?.getAttribute("aria-label")).toBe("Open TickTick Task Center");
+        expect(identityButton?.title).toBe("Open SiYuan Task Center");
+        expect(identityButton?.getAttribute("aria-label")).toBe("Open SiYuan Task Center");
         expect(identityIcon?.getAttribute("viewBox")).toBe("0 0 20 20");
         expect(identityIcon?.getAttribute("aria-hidden")).toBe("true");
         expect(identityIcon?.querySelectorAll("rect, path")).toHaveLength(2);
@@ -102,6 +103,31 @@ describe("task card renderer", () => {
             "ticktick-task-card__classification",
             "ticktick-task-card__deadline",
         ]);
+    });
+
+    it("uses an internal button for SiYuan targets", () => {
+        const block = createBlock();
+        document.body.append(block);
+        const onOpenSiYuanTarget = vi.fn();
+        const blockId = "20260825232625-2gpb83i";
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, {
+            ...VIEW_MODEL,
+            url: `siyuan://blocks/${blockId}`,
+            target: { kind: "siyuan-block", url: `siyuan://blocks/${blockId}`, blockId },
+            linkText: "Open SiYuan document: Writing project ↗️",
+        }, {
+            onEditTask: vi.fn(),
+            onOpenSiYuanTarget,
+        });
+
+        const target = getTaskCardDecoration(block)!
+            .querySelector<HTMLButtonElement>(".ticktick-task-card__link")!;
+        expect(target.tagName).toBe("BUTTON");
+        expect(target.type).toBe("button");
+        expect(target.getAttribute("href")).toBeNull();
+        target.click();
+        expect(onOpenSiYuanTarget).toHaveBeenCalledWith(blockId);
     });
 
     it("keeps the visual card completely outside the persisted block DOM", () => {

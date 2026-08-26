@@ -18,6 +18,7 @@ import { getDeadlineState } from "../domain/deadline";
 import { createDeadlineButton } from "../task-card/deadline-button";
 import { TASK_WORK_MODE_CONFIG } from "../domain/work-mode";
 import { openTaskActionsMenu } from "../task-card/task-actions-menu";
+import { parseTaskTarget, TASK_TARGET_OPEN_LABEL_KEYS } from "../domain/task-target";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
@@ -26,6 +27,7 @@ export type TaskCenterViewOptions = {
     onToggleLanguage(): Promise<void>;
     onEditTask(blockId: string, focus: "status" | "work-mode" | "deadline"): void;
     onLocateTask(blockId: string, rootId: string, notebookId?: string): void;
+    onOpenSiYuanTarget?(blockId: string): void;
     onDeleteTask(blockId: string, title: string): Promise<boolean>;
     onSaveDailyProgress(blockId: string, date: string | undefined): Promise<void>;
     onDailyProgressError?(error: unknown): void;
@@ -425,16 +427,27 @@ export class TaskCenterView {
             item.rootId,
             item.notebookId,
         ));
-        const external = document.createElement("a");
-        external.className = "b3-button b3-button--outline ticktick-task-center__external";
-        external.href = item.url;
-        external.target = "_blank";
-        external.rel = "noopener noreferrer";
-        external.textContent = `${translate("taskCenterView.openTickTick")} ↗️`;
-        actions.append(locate, external);
+        const parsedTarget = parseTaskTarget(item.url);
+        if (!parsedTarget.valid) {
+            throw new Error(`Cannot render invalid task target: ${parsedTarget.reason}`);
+        }
+        const targetLabel = `${translate(TASK_TARGET_OPEN_LABEL_KEYS[parsedTarget.target.kind])} ↗️`;
+        const targetControl = parsedTarget.target.kind === "siyuan-block"
+            ? this.createSiYuanTargetButton(parsedTarget.target.blockId, targetLabel)
+            : createExternalTargetLink(parsedTarget.target.url, targetLabel);
+        actions.append(locate, targetControl);
 
         article.append(deadlineButton, classification, content, actions);
         return article;
+    }
+
+    private createSiYuanTargetButton(blockId: string, label: string): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--outline ticktick-task-center__external";
+        button.textContent = label;
+        button.addEventListener("click", () => this.options.onOpenSiYuanTarget?.(blockId));
+        return button;
     }
 
     private async deleteTask(item: TaskCenterItem): Promise<void> {
@@ -529,6 +542,16 @@ export class TaskCenterView {
             this.scheduleDayBoundary();
         }, millisecondsUntilNextLocalDay());
     }
+}
+
+function createExternalTargetLink(url: string, label: string): HTMLAnchorElement {
+    const link = document.createElement("a");
+    link.className = "b3-button b3-button--outline ticktick-task-center__external";
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = label;
+    return link;
 }
 
 function createSummaryItem(
