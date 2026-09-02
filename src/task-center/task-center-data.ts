@@ -10,6 +10,7 @@ export type TaskCenterItem = {
     rootId: string;
     notebookId?: string;
     documentTitle: string;
+    documentFilePath: string;
     documentPath: string;
     title: string;
     url: string;
@@ -47,6 +48,7 @@ type Aggregate = {
     rootId: unknown;
     notebookId: unknown;
     documentTitle: unknown;
+    documentFilePath: unknown;
     documentPath: unknown;
 };
 
@@ -74,6 +76,7 @@ export function aggregateTaskCenterRows(
                 rootId: row.root_id,
                 notebookId: row.notebook_id,
                 documentTitle: row.document_title,
+                documentFilePath: row.document_file_path,
                 documentPath: row.document_path,
             };
             aggregates.set(blockId, aggregate);
@@ -91,6 +94,10 @@ export function aggregateTaskCenterRows(
         aggregate.rootId = preferValue(aggregate.rootId, row.root_id);
         aggregate.notebookId = preferValue(aggregate.notebookId, row.notebook_id);
         aggregate.documentTitle = preferValue(aggregate.documentTitle, row.document_title);
+        aggregate.documentFilePath = preferValue(
+            aggregate.documentFilePath,
+            row.document_file_path,
+        );
         aggregate.documentPath = preferValue(aggregate.documentPath, row.document_path);
     }
 
@@ -125,6 +132,7 @@ export function aggregateTaskCenterRows(
         }
 
         const documentPath = readString(aggregate.documentPath);
+        const documentFilePath = readString(aggregate.documentFilePath);
         const rawDocumentTitle = readString(aggregate.documentTitle).trim();
         const notebookId = readString(aggregate.notebookId);
         const lastProgressedDate = readLocalDate(
@@ -138,6 +146,7 @@ export function aggregateTaskCenterRows(
             rootId,
             ...(isSiYuanId(notebookId) ? { notebookId } : {}),
             documentTitle: rawDocumentTitle || lastPathSegment(documentPath) || rootId,
+            documentFilePath,
             documentPath,
             title: parsed.data.title,
             url: parsed.data.url,

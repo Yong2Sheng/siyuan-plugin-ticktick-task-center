@@ -8,8 +8,9 @@ describe("task center SQL query", () => {
         expect(TASK_CENTER_SQL).toContain("FROM attributes AS marker");
         expect(TASK_CENTER_SQL).toContain("JOIN blocks AS task");
         expect(TASK_CENTER_SQL).toContain(
-            "GROUP BY task.id, task.root_id, task.box, task.hpath, document.content",
+            "GROUP BY task.id, task.root_id, task.box, task.path, task.hpath, document.content",
         );
+        expect(TASK_CENTER_SQL).toContain("task.path AS document_file_path");
         expect(TASK_CENTER_SQL).not.toContain("attribute.name AS attribute_name");
         expect(TASK_CENTER_SQL).not.toContain("attribute.value AS attribute_value");
         for (const attribute of Object.values(TASK_BLOCK_ATTRIBUTES)) {

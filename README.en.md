@@ -31,6 +31,9 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Preserve `created-at` and update `updated-at` only when task data actually changes.
 - Check `updated-at` for edit conflicts before saving, and attempt to roll back Markdown when a title or URL double-write fails.
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
+- Add a Knowledge documents section to the Task Center. A manual scan discovers child documents under task documents and writes and verifies `custom-task-center-knowledge = true` only for newly discovered documents.
+- Load the Knowledge section from a rebuildable cache without scanning, polling, or live listening. The document tree is read only when the user selects Initialize knowledge index or Scan for new knowledge documents.
+- Review knowledge through Today, Random, or Relearning entry points and use five feedback levels to schedule the next review dynamically.
 - Use Chinese by default on first launch, with a persistent Chinese/English switch to the left of Refresh in the Task Center.
 - Filter Active, Closed, or All tasks and search task titles, source documents, source paths, and localized status names.
 - Display All, Active, Closed, and today's progress statistics. Ordinary lists use a stable descending sort based on the task attribute `updated-at`.
@@ -205,6 +208,24 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Daily progress stores only the latest progressed date. It does not complete the task or change its `updated-at` and existing sort order.
 - “Today” follows the computer's current system timezone. The view automatically treats yesterday's marks as pending after local midnight and rechecks the date when the SiYuan window regains focus.
 
+### 7. Build the knowledge document index
+
+1. Open the Task Center and switch to **Knowledge documents**.
+2. On first use, select **Initialize knowledge index**. The plugin manually refreshes tasks, then traverses child documents under each task document.
+3. A nested task document becomes a new task root. It is not marked as knowledge under its ancestor task, and its own descendants belong to it.
+4. The scan writes `custom-task-center-knowledge = true` only to documents absent from the cache, then immediately reads the block attribute back for verification.
+5. Later, select **Scan for new knowledge documents** whenever you want to discover recent work. The plugin never polls or scans in the background.
+6. Search by knowledge title, path, or source task, and open either the original knowledge document or its task document.
+
+### 8. Review knowledge documents
+
+1. Due today includes available documents that have never been reviewed or whose next-review date has arrived. Select **Start today's review** to process them one at a time.
+2. **Random review** draws from available documents not yet shown in the current round, so a document does not repeat within that round.
+3. Recall the core content first, open the knowledge document when needed, then choose No impression, Looks familiar, Remembered but not understood, Partially mastered, or Mastered.
+4. Remembered but not understood means the content is remembered but was never understood. It enters a separate relearning queue used by the **Relearn** entry point.
+5. Initial intervals are 1, 3, 1, 7, and 30 days. Weak feedback resets the interval; repeated partial or full mastery grows it; dropping from Mastered to Partially mastered shortens it.
+6. Each response is saved to the knowledge index before the next document appears. A failed save leaves the current document and previous progress unchanged for a safe retry.
+
 ## Refresh and synchronization behavior
 
 > [!WARNING]
@@ -223,6 +244,8 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 | Open the Task Center for the first time | One query runs automatically |
 | Search or change a filter | Only the current list is processed; no SQL query runs |
 | Leave the Task Center idle | No background query runs |
+| Switch to Knowledge documents | Show the last cache only; do not scan the document tree |
+| Select Scan for new knowledge documents | Refresh tasks, then manually scan task subdocuments |
 
 The **Refresh** button is not merely an error-recovery button. It is the explicit entry point for synchronizing changes made outside the Task Center.
 
@@ -269,6 +292,14 @@ custom-ticktick-work-mode = explore | build | execute | review
 
 The `custom-ticktick-*` attribute names are retained as legacy internal identifiers for backward compatibility. They do not limit the supported target-link types, and existing task cards require no data migration.
 
+Knowledge documents use a neutral attribute unrelated to the legacy TickTick namespace:
+
+```text
+custom-task-center-knowledge = true
+```
+
+The plugin also stores a rebuildable knowledge-index cache for fast list loading and review count, feedback, interval, and next-review time. It contains no document content and never replaces SiYuan documents or block attributes.
+
 Older tasks require no migration when these optional attributes are absent. A missing daily-progress date is treated as pending today; a missing deadline is displayed as “No deadline” and sorted after dated tasks; a missing work category is displayed as “未分类-Unclassified”. Editing a legacy task again requires an explicit work-category choice. The plugin compares stored dates with the system-local date instead of rewriting every task block at midnight.
 
 ## Task Center query
@@ -280,6 +311,7 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 ## Known limitations
 
 - Changes from ordinary documents, other tabs, or other clients are not pushed automatically to the Task Center; use manual Refresh.
+- Knowledge documents are not watched, polled, or scanned automatically. After a task subtree changes, manually select **Scan for new knowledge documents**.
 - No target-service API, OAuth, or two-way synchronization.
 - No batch operations or batch status changes.
 - No pagination or virtual scrolling; the Task Center is subject to SiYuan's SQL result-count limit.
@@ -306,7 +338,7 @@ pnpm build
 - `pnpm run check`: runs Svelte / TypeScript static checks.
 - `pnpm build`: creates the production bundle, `dist/`, and `package.zip` in the repository root.
 
-The current verification suite contains 26 test files and 260 tests.
+The current verification suite contains 31 test files and 279 tests.
 
 ## License
 

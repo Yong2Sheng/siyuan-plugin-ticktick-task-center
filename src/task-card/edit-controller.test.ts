@@ -23,6 +23,7 @@ const CENTER_ITEM: TaskCenterItem = {
     rootId: "20260713110000-hijklmn",
     notebookId: "20260713100000-opqrstu",
     documentTitle: "Photozpy",
+    documentFilePath: "/20260713110000-hijklmn.sy",
     documentPath: "/Research/Photozpy",
     ...INITIAL,
 };

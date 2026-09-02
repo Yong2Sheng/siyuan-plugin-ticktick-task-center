@@ -8,9 +8,13 @@ import { getLocalDate } from "./daily-progress";
 import type { TaskCenterItem } from "./task-center-data";
 import { TaskCenterController } from "./task-center-controller";
 import { TaskCenterView } from "./task-center-view";
+import { KnowledgeCenterController } from "../knowledge/knowledge-controller";
+import { createEmptyKnowledgeIndex } from "../knowledge/knowledge-index";
 
 const dictionary: Record<string, string> = {
     "taskCenterView.title": "Task Center",
+    "knowledgeCenter.tabTasks": "Tasks",
+    "knowledgeCenter.tabKnowledge": "Knowledge documents",
     "taskCenterView.switchLanguage": "切换为中文",
     "taskCenterView.switchLanguageTitle": "Switch to Chinese",
     "taskCenterView.refresh": "Refresh",
@@ -76,6 +80,7 @@ function item(status: TickTickTaskStatus, title: string, id: string): TaskCenter
         blockId: id,
         rootId: "20260713110000-hijklmn",
         documentTitle: "Photozpy",
+        documentFilePath: "/20260713110000-hijklmn.sy",
         documentPath: "/Research/Photozpy",
         title,
         url: `https://ticktick.com/task/${id}`,
@@ -113,6 +118,9 @@ async function createView(load = vi.fn().mockResolvedValue({
     const onDeleteTask = vi.fn().mockResolvedValue(true);
     const onDailyProgressError = vi.fn();
     const onToggleLanguage = vi.fn().mockResolvedValue(undefined);
+    const knowledgeController = createKnowledgeController();
+    const onOpenKnowledgeDocument = vi.fn().mockResolvedValue(undefined);
+    const onOpenKnowledgeSource = vi.fn().mockResolvedValue(undefined);
     const view = new TaskCenterView(target, {
         controller,
         translate,
@@ -124,8 +132,11 @@ async function createView(load = vi.fn().mockResolvedValue({
         onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
+        knowledgeController,
+        onOpenKnowledgeDocument,
+        onOpenKnowledgeSource,
     });
-    await controller.start();
+    await Promise.all([controller.start(), knowledgeController.start()]);
     return {
         target,
         controller,
@@ -138,7 +149,19 @@ async function createView(load = vi.fn().mockResolvedValue({
         onSaveDailyProgress,
         onDailyProgressError,
         onToggleLanguage,
+        knowledgeController,
+        onOpenKnowledgeDocument,
+        onOpenKnowledgeSource,
     };
+}
+
+function createKnowledgeController(): KnowledgeCenterController {
+    return new KnowledgeCenterController({
+        loadIndex: vi.fn().mockResolvedValue(createEmptyKnowledgeIndex()),
+        saveIndex: vi.fn().mockResolvedValue(undefined),
+        loadTasks: vi.fn().mockResolvedValue([]),
+        scan: vi.fn(),
+    });
 }
 
 describe("TaskCenterView", () => {
@@ -154,6 +177,24 @@ describe("TaskCenterView", () => {
             .find((button) => button.textContent === "Closed");
         closed?.click();
         expect(target.querySelector(".ticktick-task-center__title")?.textContent).toBe("Published");
+    });
+
+    it("switches to the knowledge section without scanning automatically", async () => {
+        const { target, knowledgeController } = await createView();
+        const scan = vi.spyOn(knowledgeController, "scan");
+        const knowledge = Array.from(target.querySelectorAll<HTMLButtonElement>(
+            ".ticktick-task-center__section-button",
+        )).find((button) => button.textContent === "Knowledge documents");
+
+        knowledge?.click();
+
+        expect(scan).not.toHaveBeenCalled();
+        expect(target.querySelector(".ticktick-task-center__task-panel")?.classList)
+            .toContain("fn__none");
+        expect(target.querySelector(".ticktick-task-center__knowledge-panel")?.classList)
+            .not.toContain("fn__none");
+        expect(target.querySelector(".ticktick-task-center__refresh")?.classList)
+            .toContain("fn__none");
     });
 
     it("filters locally from search input without another load", async () => {
@@ -322,6 +363,7 @@ describe("TaskCenterView", () => {
         const target = document.createElement("div");
         document.body.append(target);
         const controller = new TaskCenterController({ load });
+        const knowledgeController = createKnowledgeController();
         const view = new TaskCenterView(target, {
             controller,
             translate,
@@ -330,6 +372,9 @@ describe("TaskCenterView", () => {
             onLocateTask: vi.fn(),
             onDeleteTask: vi.fn().mockResolvedValue(true),
             onSaveDailyProgress: vi.fn().mockResolvedValue(undefined),
+            knowledgeController,
+            onOpenKnowledgeDocument: vi.fn().mockResolvedValue(undefined),
+            onOpenKnowledgeSource: vi.fn().mockResolvedValue(undefined),
         });
 
         const start = controller.start();

@@ -32,6 +32,7 @@ function item(
         blockId,
         rootId: "20260713110000-hijklmn",
         documentTitle: title === "DS9 Adaptor" ? "Photozpy" : "Meeting Notes",
+        documentFilePath: `/${blockId}.sy`,
         documentPath: title === "DS9 Adaptor" ? "/Research/Photozpy" : "/Work/Meetings",
         title,
         url: "https://ticktick.com/task/1",

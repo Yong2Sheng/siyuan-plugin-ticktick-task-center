@@ -25,6 +25,7 @@ function rowsFor(
         root_id: ROOT_ID,
         notebook_id: "20260713100000-opqrstu",
         document_title: "Photozpy",
+        document_file_path: "/20260713110000-hijklmn.sy",
         document_path: "/科研项目/Photozpy",
         ...attributes,
     }];
@@ -40,6 +41,7 @@ describe("aggregateTaskCenterRows", () => {
             blockId: BLOCK_ID,
             rootId: ROOT_ID,
             documentTitle: "Photozpy",
+            documentFilePath: "/20260713110000-hijklmn.sy",
             documentPath: "/科研项目/Photozpy",
             title: "DS9 Adaptor",
             status: "in-progress",

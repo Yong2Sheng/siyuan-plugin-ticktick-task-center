@@ -2,7 +2,25 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
-## Unreleased
+## 0.3.0 - 2026-09-01
+
+### Knowledge document index
+
+- Add consistent Tasks / Knowledge documents section tabs to the Task Center using the existing SiYuan-theme statistics, controls, and card language.
+- Add an explicit manual Initialize knowledge index / Scan for new knowledge documents workflow. Startup, section switching, and window focus never scan automatically, and no polling or live-change listener is introduced.
+- Refresh tasks on demand, then traverse descendants through the SiYuan document-tree API. A nested task document becomes a new task root instead of being marked as knowledge under its ancestor task.
+- Write `custom-task-center-knowledge = true` only for documents absent from the cache and immediately verify every write through the block-attribute API. Failed documents remain uncached so a later scan can retry them.
+- Load the Knowledge section from a rebuildable plugin index cache without storing document content. The document attribute remains the persistent identity marker.
+- Add knowledge statistics, local search, last-scan time, scan reports, source navigation, and non-destructive warnings for cached documents that may have moved or been deleted.
+- Add tests for cache parsing, recursive scanning, nested-task boundaries, bounded concurrent attribute verification, manual-only triggering, and the Knowledge section UI.
+
+### Knowledge review
+
+- Add Today, Random, and Relearning review entry points with a focused one-document panel for recall, source checking, and feedback.
+- Use five explicit feedback levels: No impression, Looks familiar, Remembered but not understood, Partially mastered, and Mastered, each with an in-product definition.
+- Route Remembered but not understood into a separate relearning queue. Other feedback starts from 1-, 3-, 7-, or 30-day intervals and grows, shrinks, or resets with later reviews.
+- Store review count, latest feedback, current interval, and next-review time in the knowledge-index cache without changing document content or adding background polling.
+- Add tests for scheduling, cache compatibility, scan-time progress preservation, failed-save rollback, and the complete review interaction.
 
 ## 0.2.0 - 2026-08-26
 

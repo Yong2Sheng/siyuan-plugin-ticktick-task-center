@@ -149,5 +149,71 @@
     "openSiYuan": "打开思源文档",
     "openResource": "打开网络资源",
     "openSiYuanFailed": "无法打开思源链接，请确认目标块或文档仍然存在。"
+  },
+  "knowledgeCenter": {
+    "tabTasks": "任务",
+    "tabKnowledge": "知识文档",
+    "summaryAll": "全部知识文档",
+    "summaryAvailable": "可用",
+    "summarySources": "关联任务文档",
+    "summaryDue": "今日待复习",
+    "summaryRelearning": "需要重新学习",
+    "summaryUnavailable": "可能已移动或删除",
+    "startDueReview": "开始今日复习",
+    "startRandomReview": "随机复习",
+    "startRelearning": "重新学习",
+    "reviewHeading": "知识复习",
+    "stopReview": "结束复习",
+    "openForReview": "打开并复习文档",
+    "reviewPrompt": "先尝试回忆文档的核心内容，再打开核对；然后选择最符合当前状态的反馈。",
+    "dueReviewComplete": "今天到期的知识文档已经全部复习完成。",
+    "randomReviewComplete": "本轮已经浏览了所有可用知识文档。",
+    "relearningComplete": "本轮需要重新学习的知识文档已经处理完成。",
+    "reviewSaveFailed": "无法保存复习反馈，当前文档仍保留在复习面板中，请重试。",
+    "lastReviewed": "上次复习",
+    "nextReview": "下次复习",
+    "feedbackLabel": "当前反馈",
+    "neverReviewed": "尚未复习",
+    "relearningBadge": "需要重新学习",
+    "initialize": "初始化知识索引",
+    "scanNew": "扫描新增知识文档",
+    "scanning": "正在扫描……",
+    "searchPlaceholder": "搜索知识文档或所属任务……",
+    "lastScanned": "上次扫描",
+    "scanReport": "扫描完成：${tasks} 个任务文档，检查 ${examined} 个子文档，新增 ${added}，已有 ${existing}，可能失效 ${unavailable}，失败 ${failed}。",
+    "loading": "正在加载知识索引……",
+    "loadFailed": "无法加载知识索引，可以重新扫描建立。",
+    "scanFailed": "知识文档扫描失败，原有索引未变更。",
+    "emptyInitial": "尚未建立知识索引。点击“初始化知识索引”，手动扫描任务文档下的子文档。",
+    "emptyScanned": "没有发现任务文档下的知识子文档。",
+    "emptySearch": "没有匹配当前搜索条件的知识文档。",
+    "badge": "📚 知识文档",
+    "unavailableBadge": "⚠️ 可能已移动或删除",
+    "sourceTask": "所属任务",
+    "openDocument": "打开知识文档",
+    "openSource": "打开任务文档",
+    "openFailed": "无法打开文档，请扫描后重试。",
+    "rating": {
+      "no-impression": {
+        "label": "毫无印象",
+        "description": "完全想不起这个主题或文档；1 天后再次复习。"
+      },
+      "familiar": {
+        "label": "似曾相识",
+        "description": "记得见过，但说不出具体内容；3 天后再次复习。"
+      },
+      "remembered-not-understood": {
+        "label": "记得但不懂",
+        "description": "记得内容，但没有真正理解；进入重新学习队列。"
+      },
+      "partially-mastered": {
+        "label": "部分掌握",
+        "description": "理解主要内容，但仍有缺口；至少 7 天后再次复习。"
+      },
+      "mastered": {
+        "label": "已经掌握",
+        "description": "可以脱离文档解释或应用；至少 30 天后再次复习。"
+      }
+    }
   }
 }

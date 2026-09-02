@@ -19,6 +19,7 @@ export const TASK_CENTER_SQL = `SELECT
     task.id AS block_id,
     task.root_id AS root_id,
     task.box AS notebook_id,
+    task.path AS document_file_path,
     task.hpath AS document_path,
     document.content AS document_title,
 ${attributeColumns}
@@ -29,7 +30,7 @@ LEFT JOIN blocks AS document ON document.id = task.root_id
 WHERE marker.name = '${TASK_BLOCK_ATTRIBUTES.card}'
   AND marker.value = 'true'
   AND attribute.name IN (${attributeNames})
-GROUP BY task.id, task.root_id, task.box, task.hpath, document.content
+GROUP BY task.id, task.root_id, task.box, task.path, task.hpath, document.content
 ORDER BY task.id`;
 
 export type TaskCenterQuery = (statement: string) => Promise<SiYuanSqlRow[]>;

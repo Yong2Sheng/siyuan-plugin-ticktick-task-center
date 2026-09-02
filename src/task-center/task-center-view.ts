@@ -19,6 +19,10 @@ import { createDeadlineButton } from "../task-card/deadline-button";
 import { TASK_WORK_MODE_CONFIG } from "../domain/work-mode";
 import { openTaskActionsMenu } from "../task-card/task-actions-menu";
 import { parseTaskTarget, TASK_TARGET_OPEN_LABEL_KEYS } from "../domain/task-target";
+import type { KnowledgeCenterController } from "../knowledge/knowledge-controller";
+import { KnowledgeCenterView } from "../knowledge/knowledge-view";
+
+type TaskCenterSection = "tasks" | "knowledge";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
@@ -31,6 +35,10 @@ export type TaskCenterViewOptions = {
     onDeleteTask(blockId: string, title: string): Promise<boolean>;
     onSaveDailyProgress(blockId: string, date: string | undefined): Promise<void>;
     onDailyProgressError?(error: unknown): void;
+    knowledgeController: KnowledgeCenterController;
+    onOpenKnowledgeDocument(documentId: string): Promise<void>;
+    onOpenKnowledgeSource(documentId: string): Promise<void>;
+    onKnowledgeOpenError?(error: unknown): void;
 };
 
 type DailyTaskAction = false | "toggle" | "completed";
@@ -40,6 +48,10 @@ export class TaskCenterView {
     private readonly heading = document.createElement("h1");
     private readonly languageButton = document.createElement("button");
     private readonly refreshButton = document.createElement("button");
+    private readonly sectionButtons = new Map<TaskCenterSection, HTMLButtonElement>();
+    private readonly taskPanel = document.createElement("section");
+    private readonly knowledgePanel = document.createElement("section");
+    private readonly knowledgeView: KnowledgeCenterView;
     private readonly summary = document.createElement("div");
     private readonly filterButtons = new Map<TaskCenterFilter, HTMLButtonElement>();
     private readonly searchInput = document.createElement("input");
@@ -50,10 +62,12 @@ export class TaskCenterView {
     private readonly unsubscribe: () => void;
     private dayBoundaryTimer?: number;
     private switchingLanguage = false;
+    private section: TaskCenterSection = "tasks";
     private destroyed = false;
     private readonly handleWindowFocus = (): void => {
         if (!this.destroyed) {
             this.render(this.options.controller.getState());
+            this.knowledgeView?.refreshLanguage();
             this.scheduleDayBoundary();
         }
     };
@@ -74,6 +88,18 @@ export class TaskCenterView {
         this.refreshButton.addEventListener("click", () => void options.controller.refresh());
         headerActions.append(this.languageButton, this.refreshButton);
         header.append(this.heading, headerActions);
+
+        const sectionNavigation = document.createElement("nav");
+        sectionNavigation.className = "ticktick-task-center__section-navigation";
+        sectionNavigation.setAttribute("aria-label", "Task center sections");
+        for (const section of ["tasks", "knowledge"] as const) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "ticktick-task-center__section-button";
+            button.addEventListener("click", () => this.setSection(section));
+            this.sectionButtons.set(section, button);
+            sectionNavigation.append(button);
+        }
 
         this.summary.className = "ticktick-task-center__summary";
 
@@ -100,8 +126,19 @@ export class TaskCenterView {
         this.list.className = "ticktick-task-center__list";
         this.list.setAttribute("role", "list");
 
-        this.root.append(header, this.summary, controls, this.notice, this.feedback, this.list);
+        this.taskPanel.className = "ticktick-task-center__task-panel";
+        this.taskPanel.append(this.summary, controls, this.notice, this.feedback, this.list);
+        this.knowledgePanel.className = "ticktick-task-center__knowledge-panel fn__none";
+        this.root.append(header, sectionNavigation, this.taskPanel, this.knowledgePanel);
         target.append(this.root);
+        this.knowledgeView = new KnowledgeCenterView(this.knowledgePanel, {
+            controller: options.knowledgeController,
+            translate: options.translate,
+            locale: options.locale,
+            onOpenDocument: options.onOpenKnowledgeDocument,
+            onOpenSource: options.onOpenKnowledgeSource,
+            onOpenError: options.onKnowledgeOpenError,
+        });
         this.unsubscribe = options.controller.subscribe((state) => this.render(state));
         window.addEventListener("focus", this.handleWindowFocus);
         this.scheduleDayBoundary();
@@ -114,12 +151,14 @@ export class TaskCenterView {
         }
         window.removeEventListener("focus", this.handleWindowFocus);
         this.unsubscribe();
+        this.knowledgeView.destroy();
         this.root.remove();
     }
 
     refreshLanguage(): void {
         if (!this.destroyed) {
             this.render(this.options.controller.getState());
+            this.knowledgeView.refreshLanguage();
         }
     }
 
@@ -146,8 +185,25 @@ export class TaskCenterView {
             state.refreshing ? "taskCenterView.refreshing" : "taskCenterView.refresh",
         );
         this.refreshButton.disabled = state.loading || state.refreshing;
+        this.refreshButton.classList.toggle("fn__none", this.section !== "tasks");
         this.searchInput.value = state.search;
         this.searchInput.placeholder = translate("taskCenterView.searchPlaceholder");
+        const sectionLabels: Record<TaskCenterSection, string> = {
+            tasks: translate("knowledgeCenter.tabTasks"),
+            knowledge: translate("knowledgeCenter.tabKnowledge"),
+        };
+        for (const [section, button] of this.sectionButtons) {
+            button.textContent = sectionLabels[section];
+            button.classList.toggle(
+                "ticktick-task-center__section-button--active",
+                section === this.section,
+            );
+            if (section === this.section) {
+                button.setAttribute("aria-current", "page");
+            } else {
+                button.removeAttribute("aria-current");
+            }
+        }
 
         this.summary.replaceChildren(
             createSummaryItem(translate("taskCenterView.summaryAll"), statistics.all),
@@ -252,6 +308,19 @@ export class TaskCenterView {
         if (!hasVisibleItems) {
             const key = getEmptyStateKey(state);
             this.feedback.append(createFeedback(translate(key), "empty"));
+        }
+    }
+
+    private setSection(section: TaskCenterSection): void {
+        if (this.section === section) {
+            return;
+        }
+        this.section = section;
+        this.taskPanel.classList.toggle("fn__none", section !== "tasks");
+        this.knowledgePanel.classList.toggle("fn__none", section !== "knowledge");
+        this.render(this.options.controller.getState());
+        if (section === "knowledge") {
+            this.knowledgeView.refreshLanguage();
         }
     }
 
@@ -539,6 +608,7 @@ export class TaskCenterView {
                 return;
             }
             this.render(this.options.controller.getState());
+            this.knowledgeView.refreshLanguage();
             this.scheduleDayBoundary();
         }, millisecondsUntilNextLocalDay());
     }

@@ -26,6 +26,7 @@ function item(
         rootId: "20260713110000-opqrstu",
         notebookId: "20260713100000-vwxyz12",
         documentTitle: "Document",
+        documentFilePath: "/20260713110000-opqrstu.sy",
         documentPath: "/Projects/Document",
         title,
         url: `https://ticktick.com/task/${blockId}`,

@@ -149,5 +149,71 @@
     "openSiYuan": "Open SiYuan document",
     "openResource": "Open resource",
     "openSiYuanFailed": "Unable to open the SiYuan link. Confirm that the target block or document still exists."
+  },
+  "knowledgeCenter": {
+    "tabTasks": "Tasks",
+    "tabKnowledge": "Knowledge documents",
+    "summaryAll": "All knowledge documents",
+    "summaryAvailable": "Available",
+    "summarySources": "Task documents",
+    "summaryDue": "Due today",
+    "summaryRelearning": "Needs relearning",
+    "summaryUnavailable": "Possibly moved or deleted",
+    "startDueReview": "Start today's review",
+    "startRandomReview": "Random review",
+    "startRelearning": "Relearn",
+    "reviewHeading": "Knowledge review",
+    "stopReview": "End review",
+    "openForReview": "Open and review document",
+    "reviewPrompt": "First recall the document's core ideas, then open it to check. Choose the feedback that best matches your current state.",
+    "dueReviewComplete": "All knowledge documents due today have been reviewed.",
+    "randomReviewComplete": "You have reviewed every available knowledge document in this round.",
+    "relearningComplete": "All knowledge documents in this relearning round have been handled.",
+    "reviewSaveFailed": "The review feedback could not be saved. The current document remains in the review panel so you can try again.",
+    "lastReviewed": "Last reviewed",
+    "nextReview": "Next review",
+    "feedbackLabel": "Current feedback",
+    "neverReviewed": "Not reviewed yet",
+    "relearningBadge": "Needs relearning",
+    "initialize": "Initialize knowledge index",
+    "scanNew": "Scan for new knowledge documents",
+    "scanning": "Scanning…",
+    "searchPlaceholder": "Search knowledge documents or source tasks…",
+    "lastScanned": "Last scanned",
+    "scanReport": "Scan complete: ${tasks} task documents, ${examined} child documents checked, ${added} added, ${existing} existing, ${unavailable} possibly unavailable, ${failed} failed.",
+    "loading": "Loading the knowledge index…",
+    "loadFailed": "The knowledge index could not be loaded. Rebuild it with a new scan.",
+    "scanFailed": "The knowledge document scan failed. The previous index was kept unchanged.",
+    "emptyInitial": "The knowledge index has not been initialized. Select “Initialize knowledge index” to manually scan child documents under task documents.",
+    "emptyScanned": "No knowledge child documents were found under task documents.",
+    "emptySearch": "No knowledge documents match the current search.",
+    "badge": "📚 Knowledge document",
+    "unavailableBadge": "⚠️ Possibly moved or deleted",
+    "sourceTask": "Source task",
+    "openDocument": "Open knowledge document",
+    "openSource": "Open task document",
+    "openFailed": "The document could not be opened. Scan and try again.",
+    "rating": {
+      "no-impression": {
+        "label": "No impression",
+        "description": "You cannot recall the topic or document at all. Review again in 1 day."
+      },
+      "familiar": {
+        "label": "Looks familiar",
+        "description": "You remember seeing it but cannot describe the content. Review again in 3 days."
+      },
+      "remembered-not-understood": {
+        "label": "Remembered, not understood",
+        "description": "You remember the content but never truly understood it. Add it to the relearning queue."
+      },
+      "partially-mastered": {
+        "label": "Partially mastered",
+        "description": "You understand the main ideas but still have gaps. Review again in at least 7 days."
+      },
+      "mastered": {
+        "label": "Mastered",
+        "description": "You can explain or apply it without the document. Review again in at least 30 days."
+      }
+    }
   }
 }

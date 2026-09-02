@@ -19,6 +19,7 @@ import {
     updateMarkdownBlock,
 } from "./siyuan/blocks";
 import { locateSiYuanBlock, openSiYuanBlock } from "./siyuan/navigation";
+import { listChildDocuments } from "./siyuan/documents";
 import {
     createTaskCenterEditSession,
     TaskCenterController,
@@ -36,6 +37,12 @@ import { TaskEditController } from "./task-card/edit-controller";
 import { TaskCardLifecycle } from "./task-card/lifecycle";
 import { showCreateTaskDialog } from "./task-card/task-form";
 import { TaskDeleteController } from "./task-card/delete-controller";
+import { KnowledgeCenterController } from "./knowledge/knowledge-controller";
+import {
+    KNOWLEDGE_INDEX_FILE,
+    parseKnowledgeIndex,
+} from "./knowledge/knowledge-index";
+import { scanKnowledgeDocuments } from "./knowledge/knowledge-scanner";
 import "./index.scss";
 
 const LANGUAGE_PREFERENCE_FILE = "language.json";
@@ -205,6 +212,26 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         const editSession = createTaskCenterEditSession(controller, () => {
             showMessage(translate("taskCenterView.localUpdateUnavailable"), 5000, "info");
         });
+        const knowledgeController = new KnowledgeCenterController({
+            loadIndex: async () => parseKnowledgeIndex(await this.loadData(KNOWLEDGE_INDEX_FILE)),
+            saveIndex: async (index) => {
+                await this.saveData(KNOWLEDGE_INDEX_FILE, index);
+            },
+            loadTasks: async () => {
+                await controller.refresh();
+                const state = controller.getState();
+                if (state.error) {
+                    throw new Error("Task refresh failed before knowledge scan");
+                }
+                return state.items;
+            },
+            scan: (tasks, previousIndex) => scanKnowledgeDocuments(tasks, previousIndex, {
+                listChildDocuments,
+                setBlockAttributes,
+                getBlockAttributes,
+            }),
+            onError: (error) => console.error("Failed to update the knowledge document index", error),
+        });
         const view = new TaskCenterView(target, {
             controller,
             translate,
@@ -232,6 +259,13 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 console.error("Failed to update daily TickTick task progress", error);
                 showMessage(translate("taskCenterView.dailyProgressFailed"), 5000, "error");
             },
+            knowledgeController,
+            onOpenKnowledgeDocument: (documentId) => openSiYuanBlock(this.app, documentId),
+            onOpenKnowledgeSource: (documentId) => openSiYuanBlock(this.app, documentId),
+            onKnowledgeOpenError: (error) => {
+                console.error("Failed to open a knowledge center document", error);
+                showMessage(translate("knowledgeCenter.openFailed"), 5000, "error");
+            },
         });
         let started = false;
         return {
@@ -240,11 +274,12 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                     return;
                 }
                 started = true;
-                await controller.start();
+                await Promise.all([controller.start(), knowledgeController.start()]);
             },
             destroy: () => {
                 editSession.dispose();
                 view.destroy();
+                knowledgeController.destroy();
                 controller.destroy();
             },
             refreshLanguage: () => view.refreshLanguage(),
