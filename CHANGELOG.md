@@ -2,6 +2,14 @@
 
 # 更新日志
 
+## 未发布
+
+### 开发流程
+
+- 扩充仓库级 `AGENTS.md`，记录任务块单一数据源、思源本地 API 访问边界、真实空间写入授权、测试分级、本机安装和 GitHub Actions 发布规则。
+- 增加 `.agents/skills/task-center-development` 项目 skill，为 DeepSeek Harness 和 Codex 提供按需加载的架构、测试、构建、自动安装、推送与发布指引。
+- 明确 `pnpm build` 同时生成 `dist/` 和 `package.zip`，并以 `pnpm run make-install` 将生产构建自动安装到用户选择的思源工作空间。
+
 ## 0.3.0 - 2026-09-01
 
 ### 知识文档索引

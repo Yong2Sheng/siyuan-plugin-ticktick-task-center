@@ -331,12 +331,16 @@ pnpm dev
 pnpm test
 pnpm run check
 pnpm build
+pnpm run make-install
 ```
 
 - `pnpm dev`：启动开发监听构建，需要持续运行。
 - `pnpm test`：运行 Vitest 自动测试。
 - `pnpm run check`：运行 Svelte / TypeScript 静态检查。
 - `pnpm build`：生成生产 bundle、`dist/` 和根目录下的 `package.zip`。
+- `pnpm run make-install`：生产构建并将 `dist/` 自动复制到所选思源工作空间的插件目录；安装后需要重新加载插件。
+
+仓库级开发约束位于 [AGENTS.md](AGENTS.md)，DeepSeek Harness 和 Codex 可自动发现的项目 skill 位于 [.agents/skills/task-center-development](.agents/skills/task-center-development)。其中包含思源 API 的读写边界、测试选择、安装包校验、本机自动安装以及 GitHub Actions 发布流程。
 
 当前验证规模为 31 个测试文件、279 项测试。
 

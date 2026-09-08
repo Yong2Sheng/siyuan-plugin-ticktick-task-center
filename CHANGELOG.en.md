@@ -2,6 +2,14 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
+## Unreleased
+
+### Development workflow
+
+- Expand the repository-level `AGENTS.md` with the task-block single-source rule, local SiYuan API boundaries, explicit authorization for live-workspace writes, risk-based testing, local installation, and GitHub Actions release rules.
+- Add the `.agents/skills/task-center-development` project skill with on-demand architecture, testing, build, automatic installation, push, and release guidance for DeepSeek Harness and Codex.
+- Document that `pnpm build` creates both `dist/` and `package.zip`, while `pnpm run make-install` installs the production build into the user-selected SiYuan workspace.
+
 ## 0.3.0 - 2026-09-01
 
 ### Knowledge document index

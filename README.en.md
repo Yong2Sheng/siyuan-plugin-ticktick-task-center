@@ -331,12 +331,16 @@ pnpm dev
 pnpm test
 pnpm run check
 pnpm build
+pnpm run make-install
 ```
 
 - `pnpm dev`: starts the long-running development watch build.
 - `pnpm test`: runs the Vitest test suite.
 - `pnpm run check`: runs Svelte / TypeScript static checks.
 - `pnpm build`: creates the production bundle, `dist/`, and `package.zip` in the repository root.
+- `pnpm run make-install`: creates a production build and automatically copies `dist/` into the selected SiYuan workspace plugin directory; reload the plugin afterward.
+
+Repository-wide development constraints live in [AGENTS.md](AGENTS.md). The project skill discovered by DeepSeek Harness and Codex lives in [.agents/skills/task-center-development](.agents/skills/task-center-development). Together they define SiYuan API read/write boundaries, test selection, package verification, local automatic installation, and the GitHub Actions release workflow.
 
 The current verification suite contains 31 test files and 279 tests.
 
