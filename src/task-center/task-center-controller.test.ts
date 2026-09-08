@@ -120,6 +120,10 @@ describe("TaskCenterController", () => {
             status: "completed",
             updatedAt: NEW_TIME,
             lastProgressedDate: getLocalDate(new Date(NEW_TIME)),
+            progressLog: {
+                version: 1,
+                dates: [getLocalDate(new Date(NEW_TIME))],
+            },
         });
         expect(controller.getState().items[0]?.createdAt).toBe(original.createdAt);
         expect(controller.getState().items[0]?.documentPath).toBe(original.documentPath);
@@ -165,6 +169,7 @@ describe("TaskCenterController", () => {
         expect(controller.getState().items.find(({ blockId }) => blockId === FIRST_ID)).toEqual({
             ...first,
             lastProgressedDate: "2026-08-11",
+            progressLog: { version: 1, dates: ["2026-08-11"] },
         });
     });
 
@@ -197,6 +202,50 @@ describe("TaskCenterController", () => {
 
         expect(controller.applyDailyProgress(FIRST_ID, undefined)).toBe(true);
         expect(controller.getState().items[0]?.lastProgressedDate).toBeUndefined();
+    });
+
+    it("applies a focus plan locally and retains it over stale SQL until indexing catches up", async () => {
+        const original = item("Focused");
+        const focusPlan = {
+            version: 1 as const,
+            entries: [{ date: "2026-08-12", plannedAt: "2026-08-11T20:00:00.000Z" }],
+        };
+        const caughtUp = { ...original, focusPlan };
+        const load = vi.fn()
+            .mockResolvedValueOnce(result(original))
+            .mockResolvedValueOnce(result(original))
+            .mockResolvedValueOnce(result(caughtUp));
+        const controller = new TaskCenterController({ load });
+        await controller.start();
+
+        expect(controller.applyFocusPlan(FIRST_ID, focusPlan)).toBe(true);
+        await controller.refresh();
+        expect(controller.getState().items[0]?.focusPlan).toEqual(focusPlan);
+        await controller.refresh();
+        expect(controller.getState().items[0]?.focusPlan).toEqual(focusPlan);
+    });
+
+    it("applies daily progress and focus fulfilment together", async () => {
+        const original = item("Focused");
+        const focusPlan = {
+            version: 1 as const,
+            entries: [{
+                date: "2026-08-11",
+                plannedAt: "2026-08-10T20:00:00.000Z",
+                completedOn: "2026-08-11",
+            }],
+        };
+        const controller = new TaskCenterController({
+            load: vi.fn().mockResolvedValue(result(original)),
+        });
+        await controller.start();
+
+        expect(controller.applyDailyProgressWithFocus(FIRST_ID, "2026-08-11", focusPlan))
+            .toBe(true);
+        expect(controller.getState().items[0]).toMatchObject({
+            lastProgressedDate: "2026-08-11",
+            focusPlan,
+        });
     });
 
     it("removes a deleted task immediately and suppresses stale SQL until deletion is indexed", async () => {

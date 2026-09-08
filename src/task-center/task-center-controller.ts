@@ -6,6 +6,17 @@ import {
     sortTaskCenterItems,
     type TaskCenterFilter,
 } from "./task-center-filter";
+import {
+    serializeFocusPlan,
+    setFocusPlanProgress,
+    type FocusPlan,
+} from "../domain/focus-plan";
+import {
+    includeLegacyProgressDate,
+    serializeProgressLog,
+    setProgressLogDate,
+    type ProgressLog,
+} from "../domain/progress-log";
 
 export type TaskCenterState = {
     items: readonly TaskCenterItem[];
@@ -49,6 +60,8 @@ export class TaskCenterController {
     private readonly listeners = new Set<(state: TaskCenterState) => void>();
     private readonly recentEdits = new Map<string, RecentTaskEdit>();
     private readonly recentDailyProgress = new Map<string, string | undefined>();
+    private readonly recentProgressLogs = new Map<string, ProgressLog>();
+    private readonly recentFocusPlans = new Map<string, FocusPlan>();
     private readonly recentDeletions = new Set<string>();
     private generation = 0;
     private started = false;
@@ -99,6 +112,23 @@ export class TaskCenterController {
             : undefined;
         if (completedDate) {
             this.recentDailyProgress.set(blockId, completedDate);
+            this.recentProgressLogs.set(
+                blockId,
+                setProgressLogDate(
+                    includeLegacyProgressDate(
+                        current.progressLog ?? { version: 1, dates: [] },
+                        current.lastProgressedDate,
+                    ),
+                    completedDate,
+                    true,
+                ),
+            );
+            if (current.focusPlan) {
+                this.recentFocusPlans.set(
+                    blockId,
+                    setFocusPlanProgress(current.focusPlan, completedDate, true),
+                );
+            }
         }
         const items = sortTaskCenterItems(this.state.items.map((item) => (
             item.blockId === blockId
@@ -109,7 +139,11 @@ export class TaskCenterController {
         return true;
     }
 
-    applyDailyProgress(blockId: string, date: string | undefined): boolean {
+    applyDailyProgress(
+        blockId: string,
+        date: string | undefined,
+        savedProgressLog?: ProgressLog,
+    ): boolean {
         if (this.destroyed) {
             return false;
         }
@@ -122,9 +156,61 @@ export class TaskCenterController {
         }
 
         this.recentDailyProgress.set(blockId, date);
+        const changedDate = date ?? current.lastProgressedDate;
+        const progressLog = savedProgressLog ?? (changedDate
+            ? setProgressLogDate(
+                includeLegacyProgressDate(
+                    current.progressLog ?? { version: 1, dates: [] },
+                    current.lastProgressedDate,
+                ),
+                changedDate,
+                date !== undefined,
+            )
+            : current.progressLog ?? { version: 1, dates: [] });
+        this.recentProgressLogs.set(blockId, progressLog);
         this.update({
             items: this.state.items.map((item) => (
-                item.blockId === blockId ? applyRecentDailyProgress(item, date) : item
+                item.blockId === blockId
+                    ? applyRecentProgressLog(applyRecentDailyProgress(item, date), progressLog)
+                    : item
+            )),
+        });
+        return true;
+    }
+
+    applyDailyProgressWithFocus(
+        blockId: string,
+        date: string | undefined,
+        focusPlan: FocusPlan | undefined,
+        progressLog?: ProgressLog,
+    ): boolean {
+        const applied = this.applyDailyProgress(blockId, date, progressLog);
+        if (applied && focusPlan) {
+            this.recentFocusPlans.set(blockId, focusPlan);
+            this.update({
+                items: this.state.items.map((item) => (
+                    item.blockId === blockId ? applyRecentFocusPlan(item, focusPlan) : item
+                )),
+            });
+        }
+        return applied;
+    }
+
+    applyFocusPlan(blockId: string, focusPlan: FocusPlan): boolean {
+        if (this.destroyed) {
+            return false;
+        }
+        const current = this.state.items.find((item) => item.blockId === blockId);
+        if (!current) {
+            this.options.onWarning?.(
+                `Updated focus plan for TickTick task ${blockId} was not found in the current task center`,
+            );
+            return false;
+        }
+        this.recentFocusPlans.set(blockId, focusPlan);
+        this.update({
+            items: this.state.items.map((item) => (
+                item.blockId === blockId ? applyRecentFocusPlan(item, focusPlan) : item
             )),
         });
         return true;
@@ -137,6 +223,8 @@ export class TaskCenterController {
         const exists = this.state.items.some((item) => item.blockId === blockId);
         this.recentEdits.delete(blockId);
         this.recentDailyProgress.delete(blockId);
+        this.recentProgressLogs.delete(blockId);
+        this.recentFocusPlans.delete(blockId);
         this.recentDeletions.add(blockId);
         if (exists) {
             this.update({
@@ -171,6 +259,8 @@ export class TaskCenterController {
         this.generation += 1;
         this.recentEdits.clear();
         this.recentDailyProgress.clear();
+        this.recentProgressLogs.clear();
+        this.recentFocusPlans.clear();
         this.recentDeletions.clear();
         this.listeners.clear();
     }
@@ -232,6 +322,32 @@ export class TaskCenterController {
                 continue;
             }
             merged.set(blockId, applyRecentDailyProgress(sqlItem, date));
+        }
+        for (const [blockId, progressLog] of this.recentProgressLogs) {
+            const sqlItem = merged.get(blockId);
+            if (!sqlItem) {
+                this.recentProgressLogs.delete(blockId);
+                continue;
+            }
+            if (serializeProgressLog(sqlItem.progressLog ?? { version: 1, dates: [] })
+                === serializeProgressLog(progressLog)) {
+                this.recentProgressLogs.delete(blockId);
+                continue;
+            }
+            merged.set(blockId, applyRecentProgressLog(sqlItem, progressLog));
+        }
+        for (const [blockId, focusPlan] of this.recentFocusPlans) {
+            const sqlItem = merged.get(blockId);
+            if (!sqlItem) {
+                this.recentFocusPlans.delete(blockId);
+                continue;
+            }
+            if (serializeFocusPlan(sqlItem.focusPlan ?? { version: 1, entries: [] })
+                === serializeFocusPlan(focusPlan)) {
+                this.recentFocusPlans.delete(blockId);
+                continue;
+            }
+            merged.set(blockId, applyRecentFocusPlan(sqlItem, focusPlan));
         }
         for (const blockId of this.recentDeletions) {
             if (!merged.has(blockId)) {
@@ -296,7 +412,28 @@ function applyEditedTask(
     completedDate: string | undefined,
 ): TaskCenterItem {
     const edited = applyRecentEdit(item, edit);
-    return completedDate ? applyRecentDailyProgress(edited, completedDate) : edited;
+    if (!completedDate) {
+        return edited;
+    }
+    const progressed = applyRecentDailyProgress(edited, completedDate);
+    const progressLog = setProgressLogDate(
+        includeLegacyProgressDate(
+            item.progressLog ?? { version: 1, dates: [] },
+            item.lastProgressedDate,
+        ),
+        completedDate,
+        true,
+    );
+    const withProgressLog = applyRecentProgressLog(progressed, progressLog);
+    return item.focusPlan
+        ? applyRecentFocusPlan(withProgressLog, setFocusPlanProgress(item.focusPlan, completedDate, true))
+        : withProgressLog;
+}
+
+function applyRecentFocusPlan(item: TaskCenterItem, focusPlan: FocusPlan): TaskCenterItem {
+    const next = { ...item };
+    delete next.focusPlan;
+    return focusPlan.entries.length > 0 ? { ...next, focusPlan } : next;
 }
 
 function applyRecentDailyProgress(
@@ -306,6 +443,12 @@ function applyRecentDailyProgress(
     const next = { ...item };
     delete next.lastProgressedDate;
     return date ? { ...next, lastProgressedDate: date } : next;
+}
+
+function applyRecentProgressLog(item: TaskCenterItem, progressLog: ProgressLog): TaskCenterItem {
+    const next = { ...item };
+    delete next.progressLog;
+    return progressLog.dates.length > 0 ? { ...next, progressLog } : next;
 }
 
 function isSqlAtLeastAsNew(sqlUpdatedAt: string, recentUpdatedAt: string): boolean {

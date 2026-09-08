@@ -73,7 +73,7 @@ describe("editTask", () => {
         expect(api.updateMarkdownBlock).not.toHaveBeenCalled();
         expect(api.setBlockAttributes).toHaveBeenCalledOnce();
         const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
-        expect(Object.keys(attributes)).toHaveLength(10);
+        expect(Object.keys(attributes)).toHaveLength(11);
         expect(attributes[TASK_BLOCK_ATTRIBUTES.card]).toBe("true");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.version]).toBe("1");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.title]).toBe(ORIGINAL.title);
@@ -85,6 +85,10 @@ describe("editTask", () => {
         expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]).toBe("");
         expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate])
             .toBe(getLocalDate(changedAt));
+        expect(JSON.parse(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog])).toEqual({
+            version: 1,
+            dates: [getLocalDate(changedAt)],
+        });
     });
 
     it("updates and clears the optional deadline without rewriting Markdown", async () => {
@@ -113,6 +117,78 @@ describe("editTask", () => {
         }, () => new Date("2026-07-12T10:30:00.000Z"));
         expect(vi.mocked(clearApi.setBlockAttributes).mock.calls[0][1][TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline])
             .toBe("");
+    });
+
+    it("rejects moving the deadline before an existing focus date", async () => {
+        const api = createApi();
+        vi.mocked(api.loadAttributes).mockResolvedValue({
+            ...CURRENT,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan]: JSON.stringify({
+                version: 1,
+                entries: [{
+                    date: "2026-08-20",
+                    plannedAt: "2026-08-10T20:00:00.000Z",
+                }],
+            }),
+        });
+
+        await expect(editTask(api, request({
+            title: ORIGINAL.title,
+            url: ORIGINAL.url,
+            status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
+            deadline: "2026-08-19",
+        }))).rejects.toMatchObject({ code: "focus-after-deadline", blockId: BLOCK_ID });
+        expect(api.updateMarkdownBlock).not.toHaveBeenCalled();
+        expect(api.setBlockAttributes).not.toHaveBeenCalled();
+    });
+
+    it("fulfils due focus entries when the task status becomes completed", async () => {
+        const api = createApi();
+        vi.mocked(api.loadAttributes).mockResolvedValue({
+            ...CURRENT,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate]: "2026-07-10",
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog]: JSON.stringify({
+                version: 1,
+                dates: ["2026-07-09"],
+            }),
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan]: JSON.stringify({
+                version: 1,
+                entries: [
+                    { date: "2026-07-11", plannedAt: "2026-07-10T20:00:00.000Z" },
+                    { date: "2026-07-13", plannedAt: "2026-07-10T20:01:00.000Z" },
+                ],
+            }),
+        });
+
+        await editTask(api, request({
+            title: ORIGINAL.title,
+            url: ORIGINAL.url,
+            status: "completed",
+            workMode: ORIGINAL.workMode,
+        }), () => new Date("2026-07-12T10:30:00.000Z"));
+
+        const serialized = vi.mocked(api.setBlockAttributes).mock.calls[0][1][
+            TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan
+        ];
+        expect(JSON.parse(serialized)).toEqual({
+            version: 1,
+            entries: [
+                {
+                    date: "2026-07-11",
+                    plannedAt: "2026-07-10T20:00:00.000Z",
+                    completedOn: "2026-07-12",
+                },
+                { date: "2026-07-13", plannedAt: "2026-07-10T20:01:00.000Z" },
+            ],
+        });
+        const progressLog = vi.mocked(api.setBlockAttributes).mock.calls[0][1][
+            TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog
+        ];
+        expect(JSON.parse(progressLog)).toEqual({
+            version: 1,
+            dates: ["2026-07-09", "2026-07-10", "2026-07-12"],
+        });
     });
 
     it("does not replace daily progress when editing a task that was already completed", async () => {

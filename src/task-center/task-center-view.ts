@@ -6,6 +6,7 @@ import {
     filterTaskCenterItems,
     TASK_CENTER_FILTERS,
     type TaskCenterFilter,
+    sortTaskCenterFocusItems,
     sortTaskCenterItemsByDeadline,
 } from "./task-center-filter";
 import { TaskCenterController, type TaskCenterState } from "./task-center-controller";
@@ -13,6 +14,7 @@ import {
     getLocalDate,
     isProgressedToday,
     millisecondsUntilNextLocalDay,
+    type DailyProgressSaveResult,
 } from "./daily-progress";
 import { getDeadlineState } from "../domain/deadline";
 import { createDeadlineButton } from "../task-card/deadline-button";
@@ -21,8 +23,23 @@ import { openTaskActionsMenu } from "../task-card/task-actions-menu";
 import { parseTaskTarget, TASK_TARGET_OPEN_LABEL_KEYS } from "../domain/task-target";
 import type { KnowledgeCenterController } from "../knowledge/knowledge-controller";
 import { KnowledgeCenterView } from "../knowledge/knowledge-view";
+import { addLocalCalendarDays } from "../domain/local-date";
+import {
+    getFocusDisposition,
+    getFocusEntryOrder,
+    isQuickFocusDateSelected,
+    type FocusPlan,
+} from "../domain/focus-plan";
+import {
+    calendarMonthFromDate,
+    formatCalendarMonthKey,
+    getCalendarMonthCells,
+    shiftCalendarMonth,
+} from "../domain/calendar-month";
+import { countTaskCenterActivityByDate, getActivityHeatLevel } from "./activity-calendar";
 
 type TaskCenterSection = "tasks" | "knowledge";
+type TaskViewMode = "list" | "calendar";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
@@ -33,8 +50,16 @@ export type TaskCenterViewOptions = {
     onLocateTask(blockId: string, rootId: string, notebookId?: string): void;
     onOpenSiYuanTarget?(blockId: string): void;
     onDeleteTask(blockId: string, title: string): Promise<boolean>;
-    onSaveDailyProgress(blockId: string, date: string | undefined): Promise<void>;
+    onSaveDailyProgress(blockId: string, date: string | undefined): Promise<DailyProgressSaveResult>;
     onDailyProgressError?(error: unknown): void;
+    onToggleFocusDate(
+        blockId: string,
+        targetDate: string,
+        today: string,
+        mode: "quick" | "exact",
+    ): Promise<FocusPlan>;
+    onSetFocusOrder(blockId: string, focusDate: string, order: number): Promise<FocusPlan>;
+    onFocusPlanError?(error: unknown): void;
     knowledgeController: KnowledgeCenterController;
     onOpenKnowledgeDocument(documentId: string): Promise<void>;
     onOpenKnowledgeSource(documentId: string): Promise<void>;
@@ -53,16 +78,22 @@ export class TaskCenterView {
     private readonly knowledgePanel = document.createElement("section");
     private readonly knowledgeView: KnowledgeCenterView;
     private readonly summary = document.createElement("div");
+    private readonly viewButtons = new Map<TaskViewMode, HTMLButtonElement>();
+    private readonly controls = document.createElement("div");
     private readonly filterButtons = new Map<TaskCenterFilter, HTMLButtonElement>();
     private readonly searchInput = document.createElement("input");
     private readonly notice = document.createElement("div");
     private readonly feedback = document.createElement("div");
     private readonly list = document.createElement("div");
     private readonly pendingDailyProgress = new Set<string>();
+    private readonly pendingFocusPlans = new Set<string>();
+    private readonly calendarMonths = new Map<string, string>();
     private readonly unsubscribe: () => void;
     private dayBoundaryTimer?: number;
     private switchingLanguage = false;
     private section: TaskCenterSection = "tasks";
+    private taskViewMode: TaskViewMode = "list";
+    private activityMonthKey = getLocalDate().slice(0, 7);
     private destroyed = false;
     private readonly handleWindowFocus = (): void => {
         if (!this.destroyed) {
@@ -103,8 +134,18 @@ export class TaskCenterView {
 
         this.summary.className = "ticktick-task-center__summary";
 
-        const controls = document.createElement("div");
-        controls.className = "ticktick-task-center__controls";
+        const viewNavigation = document.createElement("nav");
+        viewNavigation.className = "ticktick-task-center__view-navigation";
+        for (const mode of ["list", "calendar"] as const) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "ticktick-task-center__view-button";
+            button.addEventListener("click", () => this.setTaskViewMode(mode));
+            this.viewButtons.set(mode, button);
+            viewNavigation.append(button);
+        }
+
+        this.controls.className = "ticktick-task-center__controls";
         const filters = document.createElement("div");
         filters.className = "ticktick-task-center__filters";
         for (const filter of TASK_CENTER_FILTERS) {
@@ -118,7 +159,7 @@ export class TaskCenterView {
         this.searchInput.type = "search";
         this.searchInput.className = "b3-text-field ticktick-task-center__search";
         this.searchInput.addEventListener("input", () => options.controller.setSearch(this.searchInput.value));
-        controls.append(filters, this.searchInput);
+        this.controls.append(filters, this.searchInput);
 
         this.notice.className = "ticktick-task-center__notice fn__none";
         this.notice.setAttribute("role", "status");
@@ -127,7 +168,14 @@ export class TaskCenterView {
         this.list.setAttribute("role", "list");
 
         this.taskPanel.className = "ticktick-task-center__task-panel";
-        this.taskPanel.append(this.summary, controls, this.notice, this.feedback, this.list);
+        this.taskPanel.append(
+            this.summary,
+            viewNavigation,
+            this.controls,
+            this.notice,
+            this.feedback,
+            this.list,
+        );
         this.knowledgePanel.className = "ticktick-task-center__knowledge-panel fn__none";
         this.root.append(header, sectionNavigation, this.taskPanel, this.knowledgePanel);
         target.append(this.root);
@@ -225,6 +273,19 @@ export class TaskCenterView {
             button.classList.toggle("ticktick-task-center__filter--active", filter === state.filter);
             button.setAttribute("aria-pressed", String(filter === state.filter));
         }
+        const viewLabels: Record<TaskViewMode, string> = {
+            list: translate("taskCenterView.viewList"),
+            calendar: translate("taskCenterView.viewCalendar"),
+        };
+        for (const [mode, button] of this.viewButtons) {
+            button.textContent = viewLabels[mode];
+            button.classList.toggle(
+                "ticktick-task-center__view-button--active",
+                mode === this.taskViewMode,
+            );
+            button.setAttribute("aria-pressed", String(mode === this.taskViewMode));
+        }
+        this.controls.classList.toggle("fn__none", this.taskViewMode === "calendar");
 
         const notices: HTMLElement[] = [];
         if (state.incompleteCount > 0) {
@@ -268,6 +329,13 @@ export class TaskCenterView {
             }
         }
 
+        if (this.taskViewMode === "calendar") {
+            this.list.removeAttribute("role");
+            this.list.replaceChildren(this.createActivityCalendar(state.items, today));
+            return;
+        }
+        this.list.setAttribute("role", "list");
+
         const visibleItems = filterTaskCenterItems(
             state.items,
             state.filter,
@@ -276,8 +344,14 @@ export class TaskCenterView {
         );
         let hasVisibleItems = visibleItems.length > 0;
         if (state.filter === "active") {
-            const pendingItems = sortTaskCenterItemsByDeadline(visibleItems.filter((item) => (
+            const unprogressedItems = visibleItems.filter((item) => (
                 !isProgressedToday(item.lastProgressedDate, today)
+            ));
+            const focusItems = sortTaskCenterFocusItems(unprogressedItems.filter((item) => (
+                getFocusDisposition(item.focusPlan, today, item.deadline) !== undefined
+            )), today);
+            const pendingItems = sortTaskCenterItemsByDeadline(unprogressedItems.filter((item) => (
+                getFocusDisposition(item.focusPlan, today, item.deadline) === undefined
             )));
             const progressedItems = visibleItems.filter((item) => (
                 isProgressedToday(item.lastProgressedDate, today)
@@ -291,12 +365,20 @@ export class TaskCenterView {
                 item.status === "completed"
                 && isProgressedToday(item.lastProgressedDate, today)
             ));
-            hasVisibleItems = pendingItems.length + progressedItems.length + completedItems.length > 0;
+            hasVisibleItems = focusItems.length + pendingItems.length
+                + progressedItems.length + completedItems.length > 0;
             if (hasVisibleItems) {
-                this.list.replaceChildren(
-                    this.createPendingGroup(pendingItems, today),
-                    this.createProgressGroup(progressedItems, completedItems, today),
-                );
+                const groups: HTMLElement[] = [];
+                if (focusItems.length > 0) {
+                    groups.push(this.createFocusGroup(focusItems, today));
+                }
+                if (pendingItems.length > 0) {
+                    groups.push(this.createPendingGroup(pendingItems, today));
+                }
+                if (progressedItems.length + completedItems.length > 0) {
+                    groups.push(this.createProgressGroup(progressedItems, completedItems, today));
+                }
+                this.list.replaceChildren(...groups);
             } else {
                 this.list.replaceChildren();
             }
@@ -311,6 +393,36 @@ export class TaskCenterView {
         }
     }
 
+    private createFocusGroup(
+        items: readonly TaskCenterItem[],
+        today: string,
+    ): HTMLElement {
+        const group = document.createElement("section");
+        group.className = "ticktick-task-center__daily-group ticktick-task-center__daily-group--focus";
+        group.setAttribute("role", "group");
+
+        const heading = document.createElement("h2");
+        heading.className = "ticktick-task-center__daily-heading";
+        const count = document.createElement("strong");
+        count.textContent = String(items.length);
+        heading.append(`${this.options.translate("taskCenterView.dailyFocus")} `, count);
+
+        const sortRule = document.createElement("p");
+        sortRule.className = "ticktick-task-center__focus-sort-rule";
+        sortRule.textContent = this.options.translate("taskCenterView.focusSortRule");
+
+        const groupList = document.createElement("div");
+        groupList.className = "ticktick-task-center__daily-list";
+        groupList.append(...items.map((item, index) => this.createTaskItem(
+            item,
+            "toggle",
+            today,
+            { items, index },
+        )));
+        group.append(heading, sortRule, groupList);
+        return group;
+    }
+
     private setSection(section: TaskCenterSection): void {
         if (this.section === section) {
             return;
@@ -322,6 +434,121 @@ export class TaskCenterView {
         if (section === "knowledge") {
             this.knowledgeView.refreshLanguage();
         }
+    }
+
+    private setTaskViewMode(mode: TaskViewMode): void {
+        if (this.taskViewMode === mode) {
+            return;
+        }
+        this.taskViewMode = mode;
+        if (mode === "calendar") {
+            this.activityMonthKey = getLocalDate().slice(0, 7);
+        }
+        this.render(this.options.controller.getState());
+    }
+
+    private createActivityCalendar(
+        items: readonly TaskCenterItem[],
+        today: string,
+    ): HTMLElement {
+        const calendarMonth = calendarMonthFromDate(`${this.activityMonthKey}-01`)
+            ?? calendarMonthFromDate(today)!;
+        const counts = countTaskCenterActivityByDate(items, today);
+        const panel = document.createElement("section");
+        panel.className = "ticktick-task-center__activity-calendar";
+        panel.setAttribute("aria-label", this.options.translate("taskCenterView.activityCalendarLabel"));
+
+        const header = document.createElement("header");
+        header.className = "ticktick-task-center__activity-calendar-header";
+        const previous = this.createActivityCalendarNavigationButton(calendarMonth, -1, "‹");
+        const heading = document.createElement("h2");
+        heading.textContent = new Intl.DateTimeFormat(this.getLocale(), {
+            year: "numeric",
+            month: "long",
+        }).format(new Date(calendarMonth.year, calendarMonth.month - 1, 1, 12));
+        const next = this.createActivityCalendarNavigationButton(calendarMonth, 1, "›");
+        const current = document.createElement("button");
+        current.type = "button";
+        current.className = "ticktick-task-center__activity-calendar-today";
+        current.textContent = this.options.translate("taskCenterView.calendarToday");
+        current.addEventListener("click", () => {
+            this.activityMonthKey = today.slice(0, 7);
+            this.render(this.options.controller.getState());
+        });
+        header.append(previous, heading, next, current);
+
+        const grid = document.createElement("div");
+        grid.className = "ticktick-task-center__activity-calendar-grid";
+        for (const label of this.getWeekdayLabels()) {
+            const weekday = document.createElement("span");
+            weekday.className = "ticktick-task-center__activity-calendar-weekday";
+            weekday.textContent = label;
+            grid.append(weekday);
+        }
+        for (const date of getCalendarMonthCells(calendarMonth)) {
+            if (!date) {
+                const spacer = document.createElement("span");
+                spacer.className = "ticktick-task-center__activity-calendar-spacer";
+                grid.append(spacer);
+                continue;
+            }
+            const day = document.createElement("div");
+            day.className = "ticktick-task-center__activity-calendar-day";
+            day.dataset.date = date;
+            day.dataset.today = String(date === today);
+            const dayNumber = document.createElement("strong");
+            dayNumber.textContent = String(Number(date.slice(8, 10)));
+            const dayCounts = counts.get(date) ?? { planned: 0, actual: 0 };
+            day.dataset.activityLevel = String(getActivityHeatLevel(dayCounts.actual));
+            day.title = `${date} · ${this.options.translate("taskCenterView.calendarPlanned")} ${dayCounts.planned} · ${this.options.translate("taskCenterView.calendarActual")} ${dayCounts.actual}`;
+            const planned = document.createElement("span");
+            planned.className = "ticktick-task-center__activity-calendar-count ticktick-task-center__activity-calendar-count--planned";
+            planned.textContent = `${this.options.translate("taskCenterView.calendarPlanned")} ${dayCounts.planned}`;
+            const actual = document.createElement("span");
+            actual.className = "ticktick-task-center__activity-calendar-count ticktick-task-center__activity-calendar-count--actual";
+            actual.textContent = `${this.options.translate("taskCenterView.calendarActual")} ${dayCounts.actual}`;
+            day.append(dayNumber, planned, actual);
+            grid.append(day);
+        }
+        const legend = document.createElement("div");
+        legend.className = "ticktick-task-center__activity-calendar-legend";
+        const legendLabel = document.createElement("span");
+        legendLabel.textContent = this.options.translate("taskCenterView.calendarHeatLegend");
+        const less = document.createElement("span");
+        less.textContent = this.options.translate("taskCenterView.calendarHeatLess");
+        legend.append(legendLabel, less);
+        for (let level = 0; level <= 4; level += 1) {
+            const swatch = document.createElement("span");
+            swatch.className = "ticktick-task-center__activity-calendar-swatch";
+            swatch.dataset.activityLevel = String(level);
+            swatch.setAttribute("aria-hidden", "true");
+            legend.append(swatch);
+        }
+        const more = document.createElement("span");
+        more.textContent = this.options.translate("taskCenterView.calendarHeatMore");
+        legend.append(more);
+        panel.append(header, grid, legend);
+        return panel;
+    }
+
+    private createActivityCalendarNavigationButton(
+        calendarMonth: { year: number; month: number },
+        offset: number,
+        label: string,
+    ): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ticktick-task-center__activity-calendar-navigation";
+        button.textContent = label;
+        button.addEventListener("click", () => {
+            const shifted = shiftCalendarMonth(calendarMonth, offset);
+            const key = shifted ? formatCalendarMonthKey(shifted) : undefined;
+            if (key) {
+                this.activityMonthKey = key;
+                this.render(this.options.controller.getState());
+            }
+        });
+        return button;
     }
 
     private createPendingGroup(
@@ -403,6 +630,7 @@ export class TaskCenterView {
         item: TaskCenterItem,
         dailyAction: DailyTaskAction,
         today: string,
+        focusPosition?: { items: readonly TaskCenterItem[]; index: number },
     ): HTMLElement {
         const { translate } = this.options;
         const status = TASK_STATUS_CONFIG[item.status];
@@ -478,10 +706,26 @@ export class TaskCenterView {
         const updated = document.createElement("div");
         updated.className = "ticktick-task-center__updated";
         updated.append(`${translate("taskCenterView.updated")}: `, createTime(item.updatedAt, this.getLocale()));
-        content.append(title, source, path, updated);
+        content.append(title);
+        const focusDisposition = getFocusDisposition(item.focusPlan, today, item.deadline);
+        if (focusDisposition) {
+            const focusState = document.createElement("div");
+            focusState.className = `ticktick-task-center__focus-state ticktick-task-center__focus-state--${focusDisposition.kind}`;
+            focusState.textContent = this.getFocusStateLabel(focusDisposition.kind, focusDisposition.entry.date);
+            content.append(focusState);
+            article.dataset.focusKind = focusDisposition.kind;
+        }
+        content.append(source, path, updated);
 
         const actions = document.createElement("div");
         actions.className = "ticktick-task-center__actions";
+        if (!status.terminal) {
+            actions.append(this.createCalendarToggleButton(item, today));
+            actions.append(...this.createFocusPlanButtons(item, today));
+        }
+        if (focusPosition) {
+            actions.append(...this.createFocusOrderButtons(item, today, focusPosition));
+        }
         if (dailyAction === "toggle") {
             actions.append(this.createDailyProgressButton(item, today));
         } else if (dailyAction === "completed") {
@@ -507,7 +751,293 @@ export class TaskCenterView {
         actions.append(locate, targetControl);
 
         article.append(deadlineButton, classification, content, actions);
+        const calendarMonth = this.calendarMonths.get(item.blockId);
+        if (!status.terminal && calendarMonth) {
+            article.append(this.createFocusCalendar(item, today, calendarMonth));
+        }
         return article;
+    }
+
+    private createCalendarToggleButton(item: TaskCenterItem, today: string): HTMLButtonElement {
+        const open = this.calendarMonths.has(item.blockId);
+        const count = item.focusPlan?.entries.filter((entry) => !entry.completedOn).length ?? 0;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--outline ticktick-task-center__focus-calendar-toggle";
+        button.dataset.open = String(open);
+        button.textContent = this.options.translate("taskCenterView.focusCalendar")
+            .replace("${count}", String(count));
+        button.setAttribute("aria-expanded", String(open));
+        button.addEventListener("click", () => {
+            if (open) {
+                this.calendarMonths.delete(item.blockId);
+            } else {
+                this.calendarMonths.set(item.blockId, today.slice(0, 7));
+            }
+            this.render(this.options.controller.getState());
+        });
+        return button;
+    }
+
+    private createFocusCalendar(
+        item: TaskCenterItem,
+        today: string,
+        monthKey: string,
+    ): HTMLElement {
+        const calendarMonth = calendarMonthFromDate(`${monthKey}-01`)
+            ?? calendarMonthFromDate(today)!;
+        const panel = document.createElement("section");
+        panel.className = "ticktick-task-center__focus-calendar";
+        panel.setAttribute("aria-label", this.options.translate("taskCenterView.focusCalendarLabel"));
+
+        const header = document.createElement("header");
+        header.className = "ticktick-task-center__focus-calendar-header";
+        const previous = this.createCalendarNavigationButton(item.blockId, calendarMonth, -1, "‹");
+        const heading = document.createElement("strong");
+        heading.textContent = new Intl.DateTimeFormat(this.getLocale(), {
+            year: "numeric",
+            month: "long",
+        }).format(new Date(calendarMonth.year, calendarMonth.month - 1, 1, 12));
+        const next = this.createCalendarNavigationButton(item.blockId, calendarMonth, 1, "›");
+        const close = document.createElement("button");
+        close.type = "button";
+        close.className = "ticktick-task-center__focus-calendar-close";
+        close.textContent = "×";
+        close.title = this.options.translate("taskCenterView.focusCalendarClose");
+        close.addEventListener("click", () => {
+            this.calendarMonths.delete(item.blockId);
+            this.render(this.options.controller.getState());
+        });
+        header.append(previous, heading, next, close);
+
+        const grid = document.createElement("div");
+        grid.className = "ticktick-task-center__focus-calendar-grid";
+        for (const label of this.getWeekdayLabels()) {
+            const weekday = document.createElement("span");
+            weekday.className = "ticktick-task-center__focus-calendar-weekday";
+            weekday.textContent = label;
+            grid.append(weekday);
+        }
+        for (const date of getCalendarMonthCells(calendarMonth)) {
+            if (!date) {
+                const spacer = document.createElement("span");
+                spacer.className = "ticktick-task-center__focus-calendar-spacer";
+                grid.append(spacer);
+                continue;
+            }
+            grid.append(this.createCalendarDateButton(item, date, today));
+        }
+        panel.append(header, grid);
+        return panel;
+    }
+
+    private createCalendarNavigationButton(
+        blockId: string,
+        calendarMonth: { year: number; month: number },
+        offset: number,
+        label: string,
+    ): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ticktick-task-center__focus-calendar-navigation";
+        button.textContent = label;
+        button.addEventListener("click", () => {
+            const shifted = shiftCalendarMonth(calendarMonth, offset);
+            const key = shifted ? formatCalendarMonthKey(shifted) : undefined;
+            if (key) {
+                this.calendarMonths.set(blockId, key);
+                this.render(this.options.controller.getState());
+            }
+        });
+        return button;
+    }
+
+    private getWeekdayLabels(): string[] {
+        const formatter = new Intl.DateTimeFormat(this.getLocale(), { weekday: "narrow" });
+        return Array.from({ length: 7 }, (_, index) => (
+            formatter.format(new Date(2026, 0, 5 + index, 12))
+        ));
+    }
+
+    private createCalendarDateButton(
+        item: TaskCenterItem,
+        date: string,
+        today: string,
+    ): HTMLButtonElement {
+        const entry = item.focusPlan?.entries.find((candidate) => candidate.date === date);
+        const selected = entry !== undefined;
+        const afterDeadline = item.deadline !== undefined && date > item.deadline;
+        const beforeToday = date < today;
+        const progressedToday = date === today
+            && isProgressedToday(item.lastProgressedDate, today)
+            && !selected;
+        const pending = this.pendingFocusPlans.has(item.blockId);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ticktick-task-center__focus-calendar-date";
+        button.textContent = String(Number(date.slice(-2)));
+        button.dataset.date = date;
+        button.dataset.today = String(date === today);
+        button.dataset.selected = String(selected);
+        button.dataset.completed = String(entry?.completedOn !== undefined);
+        button.dataset.deadline = String(date === item.deadline);
+        button.setAttribute("aria-pressed", String(selected));
+        button.disabled = pending || beforeToday || afterDeadline || progressedToday;
+        button.title = this.options.translate(
+            beforeToday
+                ? "taskCenterView.focusPastDate"
+                : afterDeadline
+                    ? "taskCenterView.focusAfterDeadline"
+                    : progressedToday
+                        ? "taskCenterView.focusProgressedToday"
+                        : selected
+                            ? "taskCenterView.focusCancelTitle"
+                            : "taskCenterView.focusArrangeTitle",
+        ).replace("${date}", date);
+        button.addEventListener("click", () => {
+            void this.toggleFocusPlan(item, date, today, "exact");
+        });
+        return button;
+    }
+
+    private getFocusStateLabel(kind: "overdue" | "carried" | "today", date: string): string {
+        if (kind === "today") {
+            return this.options.translate("taskCenterView.focusStateToday");
+        }
+        return this.options.translate(
+            kind === "overdue"
+                ? "taskCenterView.focusStateOverdue"
+                : "taskCenterView.focusStateCarried",
+        ).replace("${date}", date);
+    }
+
+    private createFocusPlanButtons(item: TaskCenterItem, today: string): HTMLButtonElement[] {
+        const tomorrow = addLocalCalendarDays(today, 1);
+        if (!tomorrow) {
+            return [];
+        }
+        return [
+            this.createFocusPlanButton(item, today, today, "today"),
+            this.createFocusPlanButton(item, tomorrow, today, "tomorrow"),
+        ];
+    }
+
+    private createFocusPlanButton(
+        item: TaskCenterItem,
+        targetDate: string,
+        today: string,
+        kind: "today" | "tomorrow",
+    ): HTMLButtonElement {
+        const selected = isQuickFocusDateSelected(item.focusPlan, targetDate, today);
+        const pending = this.pendingFocusPlans.has(item.blockId);
+        const afterDeadline = item.deadline !== undefined && targetDate > item.deadline;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--outline ticktick-task-center__focus-plan";
+        button.dataset.focusDate = kind;
+        button.dataset.selected = String(selected);
+        button.textContent = this.options.translate(
+            kind === "today" ? "taskCenterView.focusToday" : "taskCenterView.focusTomorrow",
+        );
+        button.setAttribute("aria-pressed", String(selected));
+        button.disabled = pending || (afterDeadline && !selected);
+        button.title = this.options.translate(
+            selected
+                ? "taskCenterView.focusCancelTitle"
+                : afterDeadline
+                    ? "taskCenterView.focusAfterDeadline"
+                    : "taskCenterView.focusArrangeTitle",
+        ).replace("${date}", targetDate);
+        button.addEventListener("click", () => {
+            void this.toggleFocusPlan(item, targetDate, today, "quick");
+        });
+        return button;
+    }
+
+    private createFocusOrderButtons(
+        item: TaskCenterItem,
+        today: string,
+        position: { items: readonly TaskCenterItem[]; index: number },
+    ): HTMLButtonElement[] {
+        return (["up", "down"] as const).map((direction) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "b3-button b3-button--outline ticktick-task-center__focus-order";
+            button.dataset.direction = direction;
+            button.textContent = direction === "up" ? "↑" : "↓";
+            button.title = this.options.translate(
+                direction === "up" ? "taskCenterView.focusMoveUp" : "taskCenterView.focusMoveDown",
+            );
+            button.disabled = this.pendingFocusPlans.has(item.blockId)
+                || (direction === "up" ? position.index === 0 : position.index === position.items.length - 1);
+            button.addEventListener("click", () => {
+                void this.moveFocusItem(item, today, position, direction);
+            });
+            return button;
+        });
+    }
+
+    private async moveFocusItem(
+        item: TaskCenterItem,
+        today: string,
+        position: { items: readonly TaskCenterItem[]; index: number },
+        direction: "up" | "down",
+    ): Promise<void> {
+        const disposition = getFocusDisposition(item.focusPlan, today, item.deadline);
+        const order = calculateMovedFocusOrder(position.items, position.index, direction, today);
+        if (!disposition || order === undefined || this.pendingFocusPlans.has(item.blockId)) {
+            return;
+        }
+        this.pendingFocusPlans.add(item.blockId);
+        this.render(this.options.controller.getState());
+        try {
+            const focusPlan = await this.options.onSetFocusOrder(
+                item.blockId,
+                disposition.entry.date,
+                order,
+            );
+            if (!this.options.controller.applyFocusPlan(item.blockId, focusPlan)) {
+                throw new Error(`TickTick task ${item.blockId} is no longer available`);
+            }
+        } catch (error) {
+            this.options.onFocusPlanError?.(error);
+        } finally {
+            this.pendingFocusPlans.delete(item.blockId);
+            if (!this.destroyed) {
+                this.render(this.options.controller.getState());
+            }
+        }
+    }
+
+    private async toggleFocusPlan(
+        item: TaskCenterItem,
+        targetDate: string,
+        today: string,
+        mode: "quick" | "exact",
+    ): Promise<void> {
+        if (this.pendingFocusPlans.has(item.blockId)) {
+            return;
+        }
+        this.pendingFocusPlans.add(item.blockId);
+        this.render(this.options.controller.getState());
+        try {
+            const focusPlan = await this.options.onToggleFocusDate(
+                item.blockId,
+                targetDate,
+                today,
+                mode,
+            );
+            if (!this.options.controller.applyFocusPlan(item.blockId, focusPlan)) {
+                throw new Error(`TickTick task ${item.blockId} is no longer available`);
+            }
+        } catch (error) {
+            this.options.onFocusPlanError?.(error);
+        } finally {
+            this.pendingFocusPlans.delete(item.blockId);
+            if (!this.destroyed) {
+                this.render(this.options.controller.getState());
+            }
+        }
     }
 
     private createSiYuanTargetButton(blockId: string, label: string): HTMLButtonElement {
@@ -585,8 +1115,13 @@ export class TaskCenterView {
         this.pendingDailyProgress.add(item.blockId);
         this.render(this.options.controller.getState());
         try {
-            await this.options.onSaveDailyProgress(item.blockId, nextDate);
-            if (!this.options.controller.applyDailyProgress(item.blockId, nextDate)) {
+            const result = await this.options.onSaveDailyProgress(item.blockId, nextDate);
+            if (!this.options.controller.applyDailyProgressWithFocus(
+                item.blockId,
+                nextDate,
+                result?.focusPlan,
+                result?.progressLog,
+            )) {
                 throw new Error(`TickTick task ${item.blockId} is no longer available`);
             }
         } catch (error) {
@@ -612,6 +1147,42 @@ export class TaskCenterView {
             this.scheduleDayBoundary();
         }, millisecondsUntilNextLocalDay());
     }
+}
+
+function calculateMovedFocusOrder(
+    items: readonly TaskCenterItem[],
+    index: number,
+    direction: "up" | "down",
+    today: string,
+): number | undefined {
+    const orders = items.map((item) => {
+        const disposition = getFocusDisposition(item.focusPlan, today, item.deadline);
+        return disposition ? getFocusEntryOrder(disposition.entry) : undefined;
+    });
+    if (orders.some((order) => order === undefined)) {
+        return undefined;
+    }
+    const values = orders as number[];
+    if (direction === "up") {
+        if (index <= 0) {
+            return undefined;
+        }
+        const previous = values[index - 1];
+        if (index === 1) {
+            return previous - 1024;
+        }
+        const outer = values[index - 2];
+        return outer < previous ? outer + ((previous - outer) / 2) : previous - 0.5;
+    }
+    if (index >= values.length - 1) {
+        return undefined;
+    }
+    const next = values[index + 1];
+    if (index === values.length - 2) {
+        return next + 1024;
+    }
+    const outer = values[index + 2];
+    return next < outer ? next + ((outer - next) / 2) : next + 0.5;
 }
 
 function createExternalTargetLink(url: string, label: string): HTMLAnchorElement {

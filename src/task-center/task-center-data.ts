@@ -4,6 +4,8 @@ import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain
 import { readLocalDate } from "../domain/local-date";
 import { parseTaskBlockAttributes, type TaskBlockParseFailure } from "../task-card/task-data";
 import type { TickTickTaskWorkMode } from "../domain/work-mode";
+import { parseFocusPlanAttribute, type FocusPlan } from "../domain/focus-plan";
+import { parseProgressLogAttribute, type ProgressLog } from "../domain/progress-log";
 
 export type TaskCenterItem = {
     blockId: string;
@@ -20,6 +22,8 @@ export type TaskCenterItem = {
     updatedAt: string;
     deadline?: string;
     lastProgressedDate?: string;
+    progressLog?: ProgressLog;
+    focusPlan?: FocusPlan;
 };
 
 export type TaskCenterInvalidReason =
@@ -141,6 +145,12 @@ export function aggregateTaskCenterRows(
         const deadline = readLocalDate(
             aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline],
         );
+        const focusPlan = parseFocusPlanAttribute(
+            aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan],
+        );
+        const progressLog = parseProgressLogAttribute(
+            aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog],
+        );
         items.push({
             blockId,
             rootId,
@@ -156,6 +166,12 @@ export function aggregateTaskCenterRows(
             updatedAt: parsed.data.updatedAt,
             ...(deadline ? { deadline } : {}),
             ...(lastProgressedDate ? { lastProgressedDate } : {}),
+            ...(progressLog.valid && progressLog.log.dates.length > 0
+                ? { progressLog: progressLog.log }
+                : {}),
+            ...(focusPlan.valid && focusPlan.plan.entries.length > 0
+                ? { focusPlan: focusPlan.plan }
+                : {}),
         });
     }
 

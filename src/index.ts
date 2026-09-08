@@ -25,6 +25,11 @@ import {
     TaskCenterController,
 } from "./task-center/task-center-controller";
 import { saveDailyProgress } from "./task-center/daily-progress";
+import {
+    FocusPlanError,
+    setTaskFocusOrder,
+    toggleTaskFocusDate,
+} from "./task-center/focus-plan";
 import { loadTaskCenterData } from "./task-center/task-center-query";
 import {
     TaskCenterTabService,
@@ -251,13 +256,33 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             onDeleteTask: (blockId, title) => this.taskDeleteController?.request(blockId, title)
                 ?? Promise.resolve(false),
             onSaveDailyProgress: (blockId, date) => saveDailyProgress(
-                { setBlockAttributes },
+                { loadAttributes: getBlockAttributes, setBlockAttributes },
                 blockId,
                 date,
             ),
             onDailyProgressError: (error) => {
                 console.error("Failed to update daily TickTick task progress", error);
                 showMessage(translate("taskCenterView.dailyProgressFailed"), 5000, "error");
+            },
+            onToggleFocusDate: (blockId, targetDate, today, mode) => toggleTaskFocusDate(
+                { loadAttributes: getBlockAttributes, setBlockAttributes },
+                blockId,
+                targetDate,
+                today,
+                mode,
+            ),
+            onSetFocusOrder: (blockId, focusDate, order) => setTaskFocusOrder(
+                { loadAttributes: getBlockAttributes, setBlockAttributes },
+                blockId,
+                focusDate,
+                order,
+            ),
+            onFocusPlanError: (error) => {
+                console.error("Failed to update TickTick task focus plan", error);
+                const key = error instanceof FocusPlanError && error.code === "after-deadline"
+                    ? "taskCenterView.focusAfterDeadline"
+                    : "taskCenterView.focusPlanFailed";
+                showMessage(translate(key), 5000, "error");
             },
             knowledgeController,
             onOpenKnowledgeDocument: (documentId) => openSiYuanBlock(this.app, documentId),

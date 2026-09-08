@@ -4,6 +4,33 @@ English | [简体中文](CHANGELOG.md)
 
 ## Unreleased
 
+## 0.4.0 - 2026-09-08
+
+### Today's focus and scheduling rules
+
+- Add Today's focus above pending work, with quick actions to schedule or cancel today and tomorrow.
+- Carry unprogressed focus work forward automatically. After its deadline it remains visible as overdue focus, while new focus dates later than the deadline are rejected.
+- Move progressed focus work into Today's progress and restore it to today's focus when that day's progress is undone.
+- Add a full per-task monthly calendar for multiple dates across months, retaining the planned date, scheduling time, completion date, and manual order.
+- Persist up/down ordering for same-day focus work. New plans append to the end and carried work keeps its original position.
+
+### Monthly plans, actual progress, and heat map
+
+- Add Task list / Calendar switching in the Task Center, with previous month, next month, and return-to-current-month navigation.
+- Show explicit focus-plan counts and all actual progress counts for every date, including both focus and ordinary pending work.
+- Do not inflate plan counts when work carries forward. Count each task once per actual day and remove that day when today's progress is undone.
+- Shade date cells with five theme-adaptive heat levels for 0, 1, 2, 3–4, and 5+ actual tasks, plus a Less-to-More legend.
+- Add the versioned `custom-ticktick-progress-log` history while continuing to maintain `custom-ticktick-last-progressed-date` for today's grouping and legacy compatibility.
+- Add the versioned `custom-ticktick-focus-plan` for focus schedules. All task data remains on the original task block without task copies.
+- Existing tasks require no migration. Their first new progress action carries forward the latest date still available, but older dates overwritten before v0.4.0 cannot be reconstructed.
+
+### Compatibility and verification
+
+- Use system-local calendar semantics across day, month, year, and timezone boundaries, while rejecting invalid dates, duplicates, and malformed attribute data.
+- Preserve released task attributes, SQL aggregation, edit-conflict checks, write verification, and tab-scoped protection from stale query responses.
+- Extend Chinese/English UI, light/dark theme styling, and horizontal overflow behavior for narrow windows.
+- Expand verification to 37 test files and 335 tests, with static checks, production build, local installation, and package-integrity validation passing.
+
 ### Development workflow
 
 - Expand the repository-level `AGENTS.md` with the task-block single-source rule, local SiYuan API boundaries, explicit authorization for live-workspace writes, risk-based testing, local installation, and GitHub Actions release rules.

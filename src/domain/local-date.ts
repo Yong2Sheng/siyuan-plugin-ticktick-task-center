@@ -18,3 +18,12 @@ export function readLocalDate(value: unknown): string | undefined {
         ? value
         : undefined;
 }
+
+export function addLocalCalendarDays(date: string, days: number): string | undefined {
+    const valid = readLocalDate(date);
+    if (!valid || !Number.isInteger(days)) {
+        return undefined;
+    }
+    const [year, month, day] = valid.split("-").map(Number);
+    return getLocalDate(new Date(year, month - 1, day + days, 12));
+}

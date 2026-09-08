@@ -8,6 +8,7 @@ import {
     DEFAULT_TASK_CENTER_FILTER,
     filterTaskCenterItems,
     sortTaskCenterItems,
+    sortTaskCenterFocusItems,
     sortTaskCenterItemsByDeadline,
 } from "./task-center-filter";
 
@@ -83,6 +84,42 @@ describe("task center filtering", () => {
 
         expect(sortTaskCenterItemsByDeadline([undated, later, today, overdue]))
             .toEqual([overdue, today, later, undated]);
+    });
+
+    it("sorts focus work by its persistent arrangement order", () => {
+        const withFocus = (
+            source: TaskCenterItem,
+            date: string,
+            plannedAt: string,
+            deadline?: string,
+        ): TaskCenterItem => ({
+            ...source,
+            ...(deadline ? { deadline } : {}),
+            focusPlan: { version: 1, entries: [{ date, plannedAt }] },
+        });
+        const overdue = withFocus(ITEMS[0], "2026-08-10", "2026-08-09T20:00:00.000Z", "2026-08-11");
+        const carried = withFocus(ITEMS[1], "2026-08-11", "2026-08-10T20:00:00.000Z");
+        const todayFirst = withFocus(ITEMS[2], "2026-08-12", "2026-08-11T19:00:00.000Z");
+        const todaySecond = withFocus(ITEMS[3], "2026-08-12", "2026-08-11T20:00:00.000Z");
+
+        expect(sortTaskCenterFocusItems(
+            [todaySecond, carried, todayFirst, overdue],
+            "2026-08-12",
+        )).toEqual([overdue, carried, todayFirst, todaySecond]);
+
+        const manuallyMoved = {
+            ...todaySecond,
+            focusPlan: {
+                version: 1 as const,
+                entries: [{
+                    date: "2026-08-12",
+                    plannedAt: "2026-08-11T20:00:00.000Z",
+                    order: Date.parse("2026-08-09T19:00:00.000Z"),
+                }],
+            },
+        };
+        expect(sortTaskCenterFocusItems([overdue, manuallyMoved], "2026-08-12"))
+            .toEqual([manuallyMoved, overdue]);
     });
 
     it.each([

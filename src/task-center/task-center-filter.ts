@@ -1,6 +1,7 @@
 import { TASK_STATUS_CONFIG } from "../domain/status";
 import type { Translate } from "../i18n";
 import type { TaskCenterItem } from "./task-center-data";
+import { getFocusDisposition, getFocusEntryOrder } from "../domain/focus-plan";
 
 export const TASK_CENTER_FILTERS = ["active", "closed", "all"] as const;
 export type TaskCenterFilter = (typeof TASK_CENTER_FILTERS)[number];
@@ -52,6 +53,25 @@ export function sortTaskCenterItemsByDeadline(
             return 1;
         }
         return compareByUpdatedTitleAndId(left, right);
+    });
+}
+
+export function sortTaskCenterFocusItems(
+    items: readonly TaskCenterItem[],
+    today: string,
+): TaskCenterItem[] {
+    return [...items].sort((left, right) => {
+        const leftFocus = getFocusDisposition(left.focusPlan, today, left.deadline);
+        const rightFocus = getFocusDisposition(right.focusPlan, today, right.deadline);
+        if (!leftFocus || !rightFocus) {
+            return leftFocus ? -1 : rightFocus ? 1 : compareByUpdatedTitleAndId(left, right);
+        }
+        const order = getFocusEntryOrder(leftFocus.entry) - getFocusEntryOrder(rightFocus.entry);
+        if (order !== 0) {
+            return order;
+        }
+        const focusDate = leftFocus.entry.date.localeCompare(rightFocus.entry.date);
+        return focusDate !== 0 ? focusDate : compareByUpdatedTitleAndId(left, right);
     });
 }
 

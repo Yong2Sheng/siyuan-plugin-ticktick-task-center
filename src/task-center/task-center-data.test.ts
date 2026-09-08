@@ -59,6 +59,22 @@ describe("aggregateTaskCenterRows", () => {
         expect(withoutProgress.incompleteBlocks).toEqual([]);
     });
 
+    it("reads a valid progress history and ignores malformed history", () => {
+        const valid = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog]: JSON.stringify({
+                version: 1,
+                dates: ["2026-08-10", "2026-08-11"],
+            }),
+        }));
+        const malformed = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog]: "not-json",
+        }));
+
+        expect(valid.items[0]?.progressLog?.dates).toEqual(["2026-08-10", "2026-08-11"]);
+        expect(malformed.items[0]?.progressLog).toBeUndefined();
+        expect(malformed.items).toHaveLength(1);
+    });
+
     it("reads an optional deadline without requiring it on older tasks", () => {
         const withDeadline = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
             [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "2026-08-31",
@@ -68,6 +84,26 @@ describe("aggregateTaskCenterRows", () => {
         expect(withDeadline.items[0]?.deadline).toBe("2026-08-31");
         expect(withoutDeadline.items[0]?.deadline).toBeUndefined();
         expect(withoutDeadline.incompleteBlocks).toEqual([]);
+    });
+
+    it("reads a valid optional focus plan and ignores malformed plan data", () => {
+        const serialized = JSON.stringify({
+            version: 1,
+            entries: [{
+                date: "2026-08-12",
+                plannedAt: "2026-08-11T20:00:00.000Z",
+            }],
+        });
+        const valid = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan]: serialized,
+        }));
+        const malformed = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan]: "not-json",
+        }));
+
+        expect(valid.items[0]?.focusPlan?.entries[0]?.date).toBe("2026-08-12");
+        expect(malformed.items).toHaveLength(1);
+        expect(malformed.items[0]?.focusPlan).toBeUndefined();
     });
 
     it("reads an optional work category without requiring it on older tasks", () => {

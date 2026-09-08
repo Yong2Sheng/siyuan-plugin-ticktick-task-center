@@ -216,6 +216,7 @@ function getEditErrorMessage(error: unknown, translate: Translate): string {
         "block-unavailable": "taskEdit.errors.blockUnavailable",
         "current-data-invalid": "taskEdit.errors.currentDataInvalid",
         "edit-conflict": "taskEdit.errors.conflict",
+        "focus-after-deadline": "taskEdit.errors.focusAfterDeadline",
         "content-update-failed": "taskEdit.errors.contentUpdateFailed",
         "attribute-write-failed": "taskEdit.errors.attributeWriteFailed",
     };

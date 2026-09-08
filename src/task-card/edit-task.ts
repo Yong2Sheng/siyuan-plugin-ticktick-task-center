@@ -7,6 +7,18 @@ import {
 import { getLocalDate } from "../domain/local-date";
 import type { NormalizedTaskData } from "../domain/validation";
 import { parseTaskBlockAttributes } from "./task-data";
+import {
+    hasFocusDateAfterDeadline,
+    parseFocusPlanAttribute,
+    serializeFocusPlan,
+    setFocusPlanProgress,
+} from "../domain/focus-plan";
+import {
+    includeLegacyProgressDate,
+    parseProgressLogAttribute,
+    serializeProgressLog,
+    setProgressLogDate,
+} from "../domain/progress-log";
 
 export type TaskEditApi = {
     loadAttributes(blockId: string): Promise<Record<string, unknown>>;
@@ -25,6 +37,7 @@ export type TaskEditErrorCode =
     | "block-unavailable"
     | "current-data-invalid"
     | "edit-conflict"
+    | "focus-after-deadline"
     | "content-update-failed"
     | "attribute-write-failed"
     | "rollback-failed";
@@ -103,8 +116,50 @@ export async function editTask(
         throw new TaskEditError("attribute-write-failed", request.blockId, error);
     }
     const nextAttributes: Record<string, string> = createTaskBlockAttributes(nextData);
+    const focusPlan = parseFocusPlanAttribute(
+        attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan],
+    );
+    if (
+        deadlineChanged
+        && !focusPlan.valid
+        && attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan] !== undefined
+        && attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan] !== ""
+    ) {
+        throw new TaskEditError("current-data-invalid", request.blockId, "invalid-focus-plan");
+    }
+    if (
+        deadlineChanged
+        && focusPlan.valid
+        && hasFocusDateAfterDeadline(focusPlan.plan, nextData.deadline)
+    ) {
+        throw new TaskEditError("focus-after-deadline", request.blockId);
+    }
     if (statusChanged && nextData.status === "completed") {
-        nextAttributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate] = getLocalDate(changedAt);
+        const completedDate = getLocalDate(changedAt);
+        const progressLog = parseProgressLogAttribute(
+            attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog],
+        );
+        if (!progressLog.valid) {
+            throw new TaskEditError("current-data-invalid", request.blockId, "invalid-progress-log");
+        }
+        nextAttributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate] = completedDate;
+        nextAttributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog] = serializeProgressLog(
+            setProgressLogDate(
+                includeLegacyProgressDate(
+                    progressLog.log,
+                    typeof attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate] === "string"
+                        ? attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate] as string
+                        : undefined,
+                ),
+                completedDate,
+                true,
+            ),
+        );
+        if (focusPlan.valid && focusPlan.plan.entries.length > 0) {
+            nextAttributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan] = serializeFocusPlan(
+                setFocusPlanProgress(focusPlan.plan, completedDate, true),
+            );
+        }
     }
 
     if (!titleChanged && !urlChanged) {

@@ -2,7 +2,7 @@
   "name": "siyuan-plugin-ticktick-task-center",
   "author": "Yong2Sheng",
   "url": "https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "minAppVersion": "3.7.0",
   "disabledInPublish": true,
   "backends": [

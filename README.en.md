@@ -20,7 +20,7 @@ The current version does not call any target-service API, handle OAuth, or perfo
 ## Core features
 
 - Create a task card from the slash menu in an editable SiYuan document. The default status is `in-progress`, and the new block is inserted at the top of the current root document.
-- Store the task title, a validated target link, seven required attributes, and optional work-category, deadline, and daily-progress date attributes in one ordinary SiYuan block.
+- Store the task title, a validated target link, seven required attributes, and optional work-category, deadline, focus-plan, and progress-history attributes in one ordinary SiYuan block.
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
 - Non-destructively enhance the block as a task card with an original checklist icon that opens the Task Center, a task link, a work-category button, a semantically colored status badge, and a Deadline button. The work category is stacked above the status.
 - Open the complete editor from the work-category, status, or Deadline button to change the title, URL, work category, status, or deadline. Work categories and statuses are both selected from directly visible button groups.
@@ -38,6 +38,9 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Filter Active, Closed, or All tasks and search task titles, source documents, source paths, and localized status names.
 - Display All, Active, Closed, and today's progress statistics. Ordinary lists use a stable descending sort based on the task attribute `updated-at`.
 - Show **🌤️ To progress today** and **✨ Today's progress** in the Active view. Today's progress is further divided into **🚀 Advanced** and **🏆 Completed today**.
+- Show **⭐ Today's focus** above pending work. Schedule today or tomorrow quickly, or select multiple focus dates from a task calendar; unfinished focus work carries forward without creating a date after its deadline.
+- Persist the execution order of today's focus with up/down controls; progress moves an item into Today's progress, while undo restores it to today's focus.
+- Switch between the task list and a monthly calendar that shows daily planned and actual counts with five theme-adaptive progress heat levels.
 - Force **To progress today** into deadline order: overdue and nearer deadlines first, undated tasks last, then descending update time when deadlines match.
 - To do, In progress, Waiting for response, and Blocked tasks all participate in daily progress. Moving a task to Completed automatically records it as progress for the day.
 - Use **🚀 Progress today** and **✨ Progressed today** to mark or undo today's record without changing the task status or its existing `updated-at`.
@@ -85,7 +88,18 @@ The work category describes how a task is approached and remains independent of 
 ## Development status and changelog
 
 > [!NOTE]
-> `v0.2.0` was published on 2026-08-26. The project is not yet listed in the SiYuan Marketplace.
+> `v0.4.0` was published on 2026-09-08. The project is not yet listed in the SiYuan Marketplace.
+
+### 0.4.0 (2026-09-08)
+
+- Add Today's focus, today/tomorrow shortcuts, multi-date calendar planning, deadline constraints, automatic carry-over, and manual ordering.
+- Add a Task Center monthly calendar with daily planned/actual counts and five-level progress heat shading.
+- Add compatible focus-plan and progress-history attributes while keeping the original task block as the only persistent source. Existing tasks require no migration.
+
+### 0.3.0 (2026-09-01)
+
+- Add the knowledge-document index, explicit manual scanning, and task-tree ownership.
+- Add Today, Random, and Relearning review entry points with five-level feedback scheduling.
 
 ### 0.2.0 (2026-08-26)
 
@@ -101,7 +115,7 @@ The work category describes how a task is approached and remains independent of 
 - Support light and dark themes, Chinese and English interfaces, and a dedicated plugin icon.
 - Declare experimental HarmonyOS native-mobile support after basic verification of the core workflow on a Huawei tablet running HarmonyOS 6.
 
-See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record and the [v0.2.0 GitHub Release](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.2.0) for the installable package.
+See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record and the [v0.4.0 GitHub Release](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.4.0) for the installable package.
 
 ## Installation
 
@@ -109,7 +123,7 @@ See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development rec
 
 The plugin is not currently listed in the SiYuan Marketplace, but it can be installed manually from GitHub Releases.
 
-Download `package.zip` from the [v0.2.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.2.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
+Download `package.zip` from the [v0.4.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.4.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
 
 ### Development installation
 
@@ -205,10 +219,25 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Moving a task from a non-completed status to **✅ Completed** automatically records the local date and retains the card under **🏆 Completed today**. It remains a Closed task and is not counted as Active.
 - Failed and Cancelled tasks are not included in Completed today.
 - The top numerator combines Advanced and Completed today. Its denominator combines pending tasks with today's progress, so completing every task still produces a motivating `10 / 10`.
-- Daily progress stores only the latest progressed date. It does not complete the task or change its `updated-at` and existing sort order.
+- Daily progress keeps the latest date for today's grouping and appends a deduplicated local-date history. It does not complete the task or change its `updated-at` and existing sort order.
 - “Today” follows the computer's current system timezone. The view automatically treats yesterday's marks as pending after local midnight and rechecks the date when the SiYuan window regains focus.
 
-### 7. Build the knowledge document index
+### 7. Plan today's focus
+
+1. Select **⭐ Today** or **🌙 Tomorrow** on an active task to schedule or cancel that date quickly.
+2. Open the task's **📅 Plan** calendar to select multiple dates across months. New plans cannot use past dates or dates after the deadline.
+3. On its focus date, the task appears under **⭐ Today's focus**. Unprogressed focus work carries into later days and is shown as overdue after its deadline until progressed or manually cancelled.
+4. Use ↑↓ to arrange multiple focus tasks into an execution order stored on the original task block.
+5. Progress moves a focus task into **✨ Today's progress**; undoing today's progress restores it to today's focus.
+
+### 8. View the planning and progress calendar
+
+1. Switch the Tasks section of the Task Center to **Calendar**.
+2. Each date shows Planned and Actual. Planned counts only explicit focus dates, so automatic carry-over does not inflate the original plan. Actual counts every task progressed that day.
+3. A task counts once per day regardless of repeated interaction. Undoing today's progress removes that day's actual record.
+4. Date cells use five heat levels for 0, 1, 2, 3–4, and 5+ actual tasks, making monthly work rhythms easy to scan.
+
+### 9. Build the knowledge document index
 
 1. Open the Task Center and switch to **Knowledge documents**.
 2. On first use, select **Initialize knowledge index**. The plugin manually refreshes tasks, then traverses child documents under each task document.
@@ -217,7 +246,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 5. Later, select **Scan for new knowledge documents** whenever you want to discover recent work. The plugin never polls or scans in the background.
 6. Search by knowledge title, path, or source task, and open either the original knowledge document or its task document.
 
-### 8. Review knowledge documents
+### 10. Review knowledge documents
 
 1. Due today includes available documents that have never been reviewed or whose next-review date has arrived. Select **Start today's review** to process them one at a time.
 2. **Random review** draws from available documents not yet shown in the current round, so a document does not repeat within that round.
@@ -272,10 +301,17 @@ custom-ticktick-created-at
 custom-ticktick-updated-at
 ```
 
-Daily progress uses one optional attribute:
+Daily progress uses a compatible latest-date attribute plus a versioned history attribute:
 
 ```text
 custom-ticktick-last-progressed-date = YYYY-MM-DD
+custom-ticktick-progress-log = {"version":1,"dates":["YYYY-MM-DD", ...]}
+```
+
+Focus planning uses another versioned optional attribute:
+
+```text
+custom-ticktick-focus-plan = {"version":1,"entries":[...]}
 ```
 
 The deadline uses another optional attribute:
@@ -300,11 +336,11 @@ custom-task-center-knowledge = true
 
 The plugin also stores a rebuildable knowledge-index cache for fast list loading and review count, feedback, interval, and next-review time. It contains no document content and never replaces SiYuan documents or block attributes.
 
-Older tasks require no migration when these optional attributes are absent. A missing daily-progress date is treated as pending today; a missing deadline is displayed as “No deadline” and sorted after dated tasks; a missing work category is displayed as “未分类-Unclassified”. Editing a legacy task again requires an explicit work-category choice. The plugin compares stored dates with the system-local date instead of rewriting every task block at midnight.
+Older tasks require no migration when these optional attributes are absent. A missing daily-progress date is treated as pending today; a missing focus plan does not enter Today's focus; a missing deadline is displayed as “No deadline” and sorted after dated tasks; a missing work category is displayed as “未分类-Unclassified”. The first new progress action on an older task carries its currently stored latest date into history, but dates already overwritten before v0.4.0 cannot be reconstructed. The plugin compares stored dates with the system-local date instead of rewriting every task block at midnight.
 
 ## Task Center query
 
-The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven required task attributes and the optional work-category, daily-progress, and deadline attributes into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
+The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven required task attributes and the optional work-category, daily-progress, focus-plan, and deadline attributes into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
 
 The query is still subject to SiYuan's global SQL result-count limit, and pagination is not currently implemented. Search and filters operate only on the validated results already loaded in memory and do not execute additional SQL queries.
 
@@ -316,7 +352,7 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 - No batch operations or batch status changes.
 - No pagination or virtual scrolling; the Task Center is subject to SiYuan's SQL result-count limit.
 - No settings page.
-- Daily progress stores only the latest date; there is no history, streak, or trend reporting.
+- Progress dates overwritten before v0.4.0 cannot be reconstructed. The current calendar does not provide streaks or a click-through task list for a date.
 - The daily date follows the current system timezone. When traveling across timezones, tasks are reevaluated using the local date at the current location.
 - Deadlines are local SiYuan metadata. The plugin does not read or synchronize deadlines from linked services and does not issue system notifications.
 - Work categories are local SiYuan metadata and do not automatically create or synchronize tags in linked services.
@@ -342,7 +378,7 @@ pnpm run make-install
 
 Repository-wide development constraints live in [AGENTS.md](AGENTS.md). The project skill discovered by DeepSeek Harness and Codex lives in [.agents/skills/task-center-development](.agents/skills/task-center-development). Together they define SiYuan API read/write boundaries, test selection, package verification, local automatic installation, and the GitHub Actions release workflow.
 
-The current verification suite contains 31 test files and 279 tests.
+The current verification suite contains 37 test files and 335 tests.
 
 ## License
 

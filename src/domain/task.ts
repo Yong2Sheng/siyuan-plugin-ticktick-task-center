@@ -15,7 +15,9 @@ export const TASK_BLOCK_ATTRIBUTES = {
 
 export const TASK_BLOCK_OPTIONAL_ATTRIBUTES = {
     lastProgressedDate: "custom-ticktick-last-progressed-date",
+    progressLog: "custom-ticktick-progress-log",
     deadline: "custom-ticktick-deadline",
+    focusPlan: "custom-ticktick-focus-plan",
     workMode: "custom-ticktick-work-mode",
 } as const;
 

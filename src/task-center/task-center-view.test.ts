@@ -22,12 +22,22 @@ const dictionary: Record<string, string> = {
     "taskCenterView.filterActive": "Active",
     "taskCenterView.filterClosed": "Closed",
     "taskCenterView.filterAll": "All tasks",
+    "taskCenterView.viewList": "Task list",
+    "taskCenterView.viewCalendar": "Calendar",
+    "taskCenterView.activityCalendarLabel": "Activity calendar",
+    "taskCenterView.calendarToday": "This month",
+    "taskCenterView.calendarPlanned": "Planned",
+    "taskCenterView.calendarActual": "Actual",
+    "taskCenterView.calendarHeatLegend": "Actual progress heat",
+    "taskCenterView.calendarHeatLess": "Less",
+    "taskCenterView.calendarHeatMore": "More",
     "taskCenterView.searchPlaceholder": "Search tasks",
     "taskCenterView.summaryAll": "All",
     "taskCenterView.summaryActive": "Active",
     "taskCenterView.summaryClosed": "Closed",
     "taskCenterView.summaryToday": "✨ Today’s progress",
     "taskCenterView.dailyPending": "🌤️ To progress today",
+    "taskCenterView.dailyFocus": "⭐ Today’s focus",
     "taskCenterView.dailyProgressed": "✨ Today’s progress",
     "taskCenterView.dailyAdvanced": "🚀 Advanced",
     "taskCenterView.dailyCompleted": "🏆 Completed today",
@@ -36,6 +46,22 @@ const dictionary: Record<string, string> = {
     "taskCenterView.dailyProgressDone": "✨ Progressed today",
     "taskCenterView.dailyProgressTitle": "Mark progress",
     "taskCenterView.dailyProgressUndoTitle": "Undo progress",
+    "taskCenterView.focusToday": "⭐ Today",
+    "taskCenterView.focusTomorrow": "🌙 Tomorrow",
+    "taskCenterView.focusArrangeTitle": "Arrange ${date}",
+    "taskCenterView.focusCancelTitle": "Cancel ${date}",
+    "taskCenterView.focusAfterDeadline": "After deadline",
+    "taskCenterView.focusSortRule": "Use arrows; new plans append",
+    "taskCenterView.focusStateToday": "⭐ Scheduled today",
+    "taskCenterView.focusStateCarried": "↪ Carried from ${date}",
+    "taskCenterView.focusStateOverdue": "⚠️ Overdue from ${date}",
+    "taskCenterView.focusCalendar": "📅 Plan ${count}",
+    "taskCenterView.focusCalendarLabel": "Focus calendar",
+    "taskCenterView.focusCalendarClose": "Close calendar",
+    "taskCenterView.focusPastDate": "Past date",
+    "taskCenterView.focusProgressedToday": "Already progressed",
+    "taskCenterView.focusMoveUp": "Move up",
+    "taskCenterView.focusMoveDown": "Move down",
     "taskCenterView.source": "Source",
     "taskCenterView.updated": "Updated",
     "taskCenterView.locate": "Locate",
@@ -114,7 +140,15 @@ async function createView(load = vi.fn().mockResolvedValue({
     const onEditTask = vi.fn();
     const onLocateTask = vi.fn();
     const onOpenSiYuanTarget = vi.fn();
-    const onSaveDailyProgress = vi.fn().mockResolvedValue(undefined);
+    const onSaveDailyProgress = vi.fn().mockResolvedValue({});
+    const onToggleFocusDate = vi.fn().mockImplementation(async (_blockId, targetDate) => ({
+        version: 1 as const,
+        entries: [{ date: targetDate, plannedAt: "2026-09-07T20:00:00.000Z" }],
+    }));
+    const onSetFocusOrder = vi.fn().mockImplementation(async (_blockId, date, order) => ({
+        version: 1 as const,
+        entries: [{ date, plannedAt: "2026-09-07T20:00:00.000Z", order }],
+    }));
     const onDeleteTask = vi.fn().mockResolvedValue(true);
     const onDailyProgressError = vi.fn();
     const onToggleLanguage = vi.fn().mockResolvedValue(undefined);
@@ -132,6 +166,9 @@ async function createView(load = vi.fn().mockResolvedValue({
         onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
+        onToggleFocusDate,
+        onSetFocusOrder,
+        onFocusPlanError: vi.fn(),
         knowledgeController,
         onOpenKnowledgeDocument,
         onOpenKnowledgeSource,
@@ -148,6 +185,8 @@ async function createView(load = vi.fn().mockResolvedValue({
         onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
+        onToggleFocusDate,
+        onSetFocusOrder,
         onToggleLanguage,
         knowledgeController,
         onOpenKnowledgeDocument,
@@ -171,7 +210,7 @@ describe("TaskCenterView", () => {
         const { target } = await createView();
         expect(target.querySelectorAll(".ticktick-task-center__item")).toHaveLength(1);
         expect(target.querySelector(".ticktick-task-center__title")?.textContent).toBe("DS9 Adaptor");
-        expect(target.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.textContent).toBe("Active");
+        expect(target.querySelector<HTMLButtonElement>('.ticktick-task-center__filter[aria-pressed="true"]')?.textContent).toBe("Active");
 
         const closed = Array.from(target.querySelectorAll<HTMLButtonElement>(".ticktick-task-center__filter"))
             .find((button) => button.textContent === "Closed");
@@ -371,7 +410,9 @@ describe("TaskCenterView", () => {
             onEditTask: vi.fn(),
             onLocateTask: vi.fn(),
             onDeleteTask: vi.fn().mockResolvedValue(true),
-            onSaveDailyProgress: vi.fn().mockResolvedValue(undefined),
+            onSaveDailyProgress: vi.fn().mockResolvedValue({}),
+            onToggleFocusDate: vi.fn().mockResolvedValue({ version: 1, entries: [] }),
+            onSetFocusOrder: vi.fn().mockResolvedValue({ version: 1, entries: [] }),
             knowledgeController,
             onOpenKnowledgeDocument: vi.fn().mockResolvedValue(undefined),
             onOpenKnowledgeSource: vi.fn().mockResolvedValue(undefined),
@@ -506,6 +547,186 @@ describe("TaskCenterView", () => {
             .toBe("✨ Progressed today");
     });
 
+    it("moves a scheduled task into today's focus and exposes tomorrow planning", async () => {
+        const harness = await createView(vi.fn().mockResolvedValue({
+            items: [ACTIVE],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        const todayButton = harness.target.querySelector<HTMLButtonElement>(
+            '[data-focus-date="today"]',
+        )!;
+        const tomorrowButton = harness.target.querySelector<HTMLButtonElement>(
+            '[data-focus-date="tomorrow"]',
+        )!;
+        expect(todayButton.ariaPressed).toBe("false");
+        expect(tomorrowButton.disabled).toBe(false);
+
+        todayButton.click();
+        await vi.waitFor(() => {
+            expect(harness.onToggleFocusDate).toHaveBeenCalledWith(
+                ACTIVE.blockId,
+                TODAY,
+                TODAY,
+                "quick",
+            );
+            expect(harness.target.querySelector(
+                ".ticktick-task-center__daily-group--focus .ticktick-task-center__title",
+            )?.textContent).toBe(ACTIVE.title);
+        });
+        expect(harness.target.querySelector(".ticktick-task-center__focus-state")?.textContent)
+            .toBe("⭐ Scheduled today");
+        expect(harness.target.querySelector(".ticktick-task-center__focus-sort-rule")?.textContent)
+            .toBe("Use arrows; new plans append");
+    });
+
+    it("shows a carried focus once, marks post-deadline carry as overdue, and blocks tomorrow", async () => {
+        const carried = {
+            ...ACTIVE,
+            deadline: "2026-09-07",
+            focusPlan: {
+                version: 1 as const,
+                entries: [{ date: "2026-09-07", plannedAt: "2026-09-06T20:00:00.000Z" }],
+            },
+        };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [carried],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        expect(target.querySelectorAll(
+            ".ticktick-task-center__daily-group--focus .ticktick-task-center__item",
+        )).toHaveLength(1);
+        expect(target.querySelector(".ticktick-task-center__focus-state")?.textContent)
+            .toBe("⚠️ Overdue from 2026-09-07");
+        expect(target.querySelector<HTMLButtonElement>('[data-focus-date="today"]')).toMatchObject({
+            disabled: false,
+            ariaPressed: "true",
+        });
+        expect(target.querySelector<HTMLButtonElement>('[data-focus-date="tomorrow"]')?.disabled)
+            .toBe(true);
+    });
+
+    it("opens a full calendar, navigates across months, and toggles an exact allowed date", async () => {
+        const dueTomorrow = { ...ACTIVE, deadline: "2026-09-09" };
+        const harness = await createView(vi.fn().mockResolvedValue({
+            items: [dueTomorrow],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        harness.target.querySelector<HTMLButtonElement>(
+            ".ticktick-task-center__focus-calendar-toggle",
+        )?.click();
+
+        expect(harness.target.querySelectorAll(
+            ".ticktick-task-center__focus-calendar-weekday",
+        )).toHaveLength(7);
+        expect(harness.target.querySelector<HTMLButtonElement>('[data-date="2026-09-10"]')?.disabled)
+            .toBe(true);
+
+        harness.target.querySelectorAll<HTMLButtonElement>(
+            ".ticktick-task-center__focus-calendar-navigation",
+        )[1]?.click();
+        expect(harness.target.querySelector(".ticktick-task-center__focus-calendar-header strong")?.textContent)
+            .toBe("October 2026");
+        harness.target.querySelectorAll<HTMLButtonElement>(
+            ".ticktick-task-center__focus-calendar-navigation",
+        )[0]?.click();
+
+        harness.target.querySelector<HTMLButtonElement>('[data-date="2026-09-09"]')?.click();
+        await vi.waitFor(() => expect(harness.onToggleFocusDate).toHaveBeenCalledWith(
+            ACTIVE.blockId,
+            "2026-09-09",
+            TODAY,
+            "exact",
+        ));
+    });
+
+    it("switches to a monthly overview with planned and actual task counts", async () => {
+        const planned = {
+            ...ACTIVE,
+            focusPlan: {
+                version: 1 as const,
+                entries: [{ date: TODAY, plannedAt: TODAY_UPDATED_AT }],
+            },
+            progressLog: { version: 1 as const, dates: [TODAY] },
+        };
+        const progressed = {
+            ...BLOCKED,
+            progressLog: { version: 1 as const, dates: [TODAY] },
+        };
+        const harness = await createView(vi.fn().mockResolvedValue({
+            items: [planned, progressed],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        Array.from(harness.target.querySelectorAll<HTMLButtonElement>(
+            ".ticktick-task-center__view-button",
+        )).find((button) => button.textContent === "Calendar")?.click();
+
+        const todayCell = harness.target.querySelector<HTMLElement>(
+            `.ticktick-task-center__activity-calendar-day[data-date="${TODAY}"]`,
+        );
+        expect(todayCell?.dataset.today).toBe("true");
+        expect(todayCell?.dataset.activityLevel).toBe("2");
+        expect(Array.from(
+            todayCell?.querySelectorAll(".ticktick-task-center__activity-calendar-count") ?? [],
+            (node) => node.textContent,
+        )).toEqual(["Planned 1", "Actual 2"]);
+        expect(harness.target.querySelector(".ticktick-task-center__controls")?.classList)
+            .toContain("fn__none");
+        expect(harness.target.querySelectorAll(".ticktick-task-center__activity-calendar-swatch"))
+            .toHaveLength(5);
+        expect(harness.target.querySelector(".ticktick-task-center__activity-calendar-legend")?.textContent)
+            .toBe("Actual progress heatLessMore");
+
+        const initialHeading = harness.target.querySelector(
+            ".ticktick-task-center__activity-calendar-header h2",
+        )?.textContent;
+        harness.target.querySelectorAll<HTMLButtonElement>(
+            ".ticktick-task-center__activity-calendar-navigation",
+        )[1]?.click();
+        expect(harness.target.querySelector(".ticktick-task-center__activity-calendar-header h2")?.textContent)
+            .not.toBe(initialHeading);
+    });
+
+    it("moves one focus item upward with a single-task order update", async () => {
+        const first = {
+            ...ACTIVE,
+            focusPlan: {
+                version: 1 as const,
+                entries: [{ date: TODAY, plannedAt: "2026-09-07T20:00:00.000Z" }],
+            },
+        };
+        const second = {
+            ...BLOCKED,
+            focusPlan: {
+                version: 1 as const,
+                entries: [{ date: TODAY, plannedAt: "2026-09-07T21:00:00.000Z" }],
+            },
+        };
+        const harness = await createView(vi.fn().mockResolvedValue({
+            items: [first, second],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        const secondArticle = Array.from(harness.target.querySelectorAll<HTMLElement>(
+            ".ticktick-task-center__daily-group--focus .ticktick-task-center__item",
+        )).find((article) => article.querySelector(".ticktick-task-center__title")?.textContent === second.title)!;
+        secondArticle.querySelector<HTMLButtonElement>('[data-direction="up"]')?.click();
+
+        await vi.waitFor(() => expect(Array.from(
+            harness.target.querySelectorAll(
+                ".ticktick-task-center__daily-group--focus .ticktick-task-center__title",
+            ),
+            (node) => node.textContent,
+        )).toEqual([second.title, first.title]));
+        expect(harness.onSetFocusOrder).toHaveBeenCalledOnce();
+        expect(harness.onSetFocusOrder.mock.calls[0]?.slice(0, 2)).toEqual([second.blockId, TODAY]);
+    });
+
     it("persists, moves, and can undo a daily progress mark without reloading SQL", async () => {
         const harness = await createView(vi.fn().mockResolvedValue({
             items: [ACTIVE],
@@ -617,7 +838,7 @@ describe("TaskCenterView", () => {
         });
 
         expect(target.querySelector<HTMLInputElement>(".ticktick-task-center__search")?.value).toBe("ds9");
-        expect(target.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.textContent).toBe("Active");
+        expect(target.querySelector<HTMLButtonElement>('.ticktick-task-center__filter[aria-pressed="true"]')?.textContent).toBe("Active");
         expect(Array.from(target.querySelectorAll(".ticktick-task-center__title"), (node) => node.textContent))
             .toEqual(["DS9 Older edited", "DS9 Newer"]);
         expect(load).toHaveBeenCalledOnce();

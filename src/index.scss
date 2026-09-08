@@ -316,6 +316,11 @@
 }
 
 .ticktick-task-center {
+    --ticktick-daily-focus-color: color-mix(
+        in srgb,
+        #8b5cf6 82%,
+        var(--b3-theme-on-background)
+    );
     --ticktick-daily-pending-color: color-mix(
         in srgb,
         #d58b19 78%,
@@ -409,6 +414,42 @@
         }
     }
 
+    &__view-navigation {
+        display: inline-flex;
+        gap: 4px;
+        margin-bottom: 14px;
+        padding: 3px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 8px;
+        background: var(--b3-theme-surface);
+    }
+
+    &__view-button {
+        padding: 5px 12px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--b3-theme-on-surface);
+        font: inherit;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            color: var(--b3-theme-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 1px;
+        }
+
+        &--active {
+            background: color-mix(in srgb, var(--b3-theme-primary) 14%, var(--b3-theme-background));
+            color: var(--b3-theme-primary);
+            font-weight: 700;
+        }
+    }
+
     &__task-panel,
     &__knowledge-panel,
     &__knowledge {
@@ -418,6 +459,9 @@
     &__language,
     &__refresh,
     &__retry,
+    &__focus-calendar-toggle,
+    &__focus-plan,
+    &__focus-order,
     &__daily-progress,
     &__daily-completed,
     &__locate,
@@ -1085,6 +1129,58 @@
         }
     }
 
+    &__daily-group--focus {
+        border-color: color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 48%,
+            var(--b3-border-color)
+        );
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 9%,
+            var(--b3-theme-background)
+        );
+        box-shadow: inset 4px 0 0 color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 82%,
+            transparent
+        );
+
+        .ticktick-task-center__daily-heading {
+            color: var(--ticktick-daily-focus-color);
+
+            &::after {
+                background: color-mix(
+                    in srgb,
+                    var(--ticktick-daily-focus-color) 46%,
+                    var(--b3-border-color)
+                );
+            }
+
+            strong {
+                background: color-mix(
+                    in srgb,
+                    var(--ticktick-daily-focus-color) 18%,
+                    var(--b3-theme-background)
+                );
+                color: var(--ticktick-daily-focus-color);
+            }
+        }
+
+        .ticktick-task-center__item {
+            border-color: color-mix(
+                in srgb,
+                var(--ticktick-daily-focus-color) 34%,
+                var(--b3-border-color)
+            );
+            background: color-mix(
+                in srgb,
+                var(--ticktick-daily-focus-color) 6%,
+                var(--b3-theme-surface)
+            );
+        }
+    }
+
     &__daily-group--progressed {
         border-color: color-mix(
             in srgb,
@@ -1284,6 +1380,26 @@
         overflow-wrap: anywhere;
     }
 
+    &__focus-state {
+        width: fit-content;
+        margin-bottom: 3px;
+        color: var(--ticktick-daily-focus-color);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.4;
+
+        &--overdue {
+            color: var(--b3-theme-error, #cf222e);
+        }
+    }
+
+    &__focus-sort-rule {
+        margin: 0;
+        color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
     &__actions {
         flex: 0 1 auto;
         justify-content: flex-end;
@@ -1292,6 +1408,7 @@
     }
 
     &__daily-progress,
+    &__focus-plan,
     &__locate,
     &__external {
         border-color: var(--ticktick-daily-pending-color);
@@ -1307,6 +1424,328 @@
         &:hover:not(:disabled) {
             filter: brightness(1.05);
             transform: translateY(-1px);
+        }
+    }
+
+    &__focus-plan {
+        border-color: color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 55%,
+            var(--b3-border-color)
+        );
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 7%,
+            var(--b3-theme-background)
+        );
+        color: var(--ticktick-daily-focus-color);
+        font-weight: 700;
+
+        &[data-selected="true"] {
+            border-color: var(--ticktick-daily-focus-color);
+            background: var(--ticktick-daily-focus-color);
+            color: #fff;
+        }
+
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.48;
+        }
+    }
+
+    &__focus-calendar-toggle,
+    &__focus-order {
+        border-color: color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 42%,
+            var(--b3-border-color)
+        );
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 5%,
+            var(--b3-theme-background)
+        );
+        color: var(--ticktick-daily-focus-color);
+        font-weight: 700;
+    }
+
+    &__focus-calendar-toggle[data-open="true"] {
+        border-color: var(--ticktick-daily-focus-color);
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 13%,
+            var(--b3-theme-background)
+        );
+    }
+
+    &__focus-order {
+        min-width: 30px;
+        padding-inline: 8px;
+        font-size: 16px;
+        line-height: 1;
+    }
+
+    &__focus-calendar {
+        box-sizing: border-box;
+        display: grid;
+        flex: 1 0 100%;
+        gap: 10px;
+        width: 100%;
+        padding: 12px;
+        border: 1px solid color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 38%,
+            var(--b3-border-color)
+        );
+        border-radius: 9px;
+        background: color-mix(
+            in srgb,
+            var(--ticktick-daily-focus-color) 4%,
+            var(--b3-theme-background)
+        );
+    }
+
+    &__focus-calendar-header {
+        display: grid;
+        grid-template-columns: 34px minmax(120px, 1fr) 34px 34px;
+        gap: 6px;
+        align-items: center;
+        color: var(--b3-theme-on-background);
+        text-align: center;
+    }
+
+    &__focus-calendar-navigation,
+    &__focus-calendar-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 30px;
+        padding: 0;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 6px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-surface);
+        font: inherit;
+        font-size: 18px;
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--ticktick-daily-focus-color);
+            color: var(--ticktick-daily-focus-color);
+        }
+    }
+
+    &__focus-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(28px, 1fr));
+        gap: 5px;
+    }
+
+    &__focus-calendar-weekday,
+    &__focus-calendar-spacer,
+    &__focus-calendar-date {
+        min-width: 0;
+        min-height: 32px;
+    }
+
+    &__activity-calendar {
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+        padding: 14px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 10px;
+        background: var(--b3-theme-surface);
+    }
+
+    &__activity-calendar-header {
+        display: grid;
+        grid-template-columns: 36px minmax(130px, 1fr) 36px auto;
+        gap: 7px;
+        align-items: center;
+
+        h2 {
+            margin: 0;
+            color: var(--b3-theme-on-background);
+            font-size: 17px;
+            text-align: center;
+        }
+    }
+
+    &__activity-calendar-navigation,
+    &__activity-calendar-today {
+        min-height: 32px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 6px;
+        background: var(--b3-theme-background);
+        color: var(--b3-theme-on-surface);
+        font: inherit;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            border-color: var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 1px;
+        }
+    }
+
+    &__activity-calendar-navigation {
+        padding: 0;
+        font-size: 18px;
+    }
+
+    &__activity-calendar-today {
+        padding: 4px 10px;
+        white-space: nowrap;
+    }
+
+    &__activity-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(82px, 1fr));
+        gap: 6px;
+        min-width: 0;
+        overflow-x: auto;
+    }
+
+    &__activity-calendar-weekday,
+    &__activity-calendar-spacer,
+    &__activity-calendar-day {
+        min-width: 82px;
+    }
+
+    &__activity-calendar-weekday {
+        padding-block: 4px;
+        color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+        font-size: 12px;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    &__activity-calendar-day {
+        box-sizing: border-box;
+        display: grid;
+        align-content: start;
+        gap: 5px;
+        min-height: 92px;
+        padding: 8px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 8px;
+        background: var(--b3-theme-background);
+
+        &[data-today="true"] {
+            border-color: var(--b3-theme-primary);
+            box-shadow: inset 0 0 0 1px var(--b3-theme-primary);
+        }
+
+        strong {
+            color: var(--b3-theme-on-background);
+            font-size: 14px;
+        }
+    }
+
+    &__activity-calendar-count {
+        font-size: 12px;
+        line-height: 1.35;
+        white-space: nowrap;
+
+        &--planned {
+            color: var(--ticktick-daily-focus-color);
+        }
+
+        &--actual {
+            color: var(--ticktick-daily-progressed-color);
+        }
+    }
+
+    &__activity-calendar-day,
+    &__activity-calendar-swatch {
+        --ticktick-activity-heat: var(--b3-theme-success, #1a7f37);
+
+        &[data-activity-level="1"] {
+            border-color: color-mix(in srgb, var(--ticktick-activity-heat) 24%, var(--b3-border-color));
+            background: color-mix(in srgb, var(--ticktick-activity-heat) 13%, var(--b3-theme-background));
+        }
+
+        &[data-activity-level="2"] {
+            border-color: color-mix(in srgb, var(--ticktick-activity-heat) 40%, var(--b3-border-color));
+            background: color-mix(in srgb, var(--ticktick-activity-heat) 25%, var(--b3-theme-background));
+        }
+
+        &[data-activity-level="3"] {
+            border-color: color-mix(in srgb, var(--ticktick-activity-heat) 58%, var(--b3-border-color));
+            background: color-mix(in srgb, var(--ticktick-activity-heat) 40%, var(--b3-theme-background));
+        }
+
+        &[data-activity-level="4"] {
+            border-color: color-mix(in srgb, var(--ticktick-activity-heat) 78%, var(--b3-border-color));
+            background: color-mix(in srgb, var(--ticktick-activity-heat) 58%, var(--b3-theme-background));
+        }
+    }
+
+    &__activity-calendar-legend {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 5px;
+        color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+        font-size: 12px;
+    }
+
+    &__activity-calendar-swatch {
+        box-sizing: border-box;
+        width: 15px;
+        height: 15px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 3px;
+        background: var(--b3-theme-background);
+    }
+
+    &__focus-calendar-weekday {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    &__focus-calendar-date {
+        border: 1px solid transparent;
+        border-radius: 7px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-surface);
+        font: inherit;
+        cursor: pointer;
+
+        &[data-today="true"] {
+            border-color: var(--b3-theme-primary);
+        }
+
+        &[data-deadline="true"] {
+            box-shadow: inset 0 -3px 0 var(--b3-theme-warning, #c47b12);
+        }
+
+        &[data-selected="true"] {
+            border-color: var(--ticktick-daily-focus-color);
+            background: var(--ticktick-daily-focus-color);
+            color: #fff;
+            font-weight: 700;
+        }
+
+        &[data-completed="true"] {
+            background: var(--ticktick-daily-progressed-color);
+            text-decoration: line-through;
+        }
+
+        &:disabled {
+            cursor: not-allowed;
+            opacity: 0.38;
         }
     }
 
@@ -1596,6 +2035,12 @@
     .ticktick-task-center__work-mode,
     .ticktick-task-center__status,
     .ticktick-task-center__deadline,
+    .ticktick-task-center__focus-calendar-toggle,
+    .ticktick-task-center__focus-plan,
+    .ticktick-task-center__focus-order,
+    .ticktick-task-center__focus-calendar-navigation,
+    .ticktick-task-center__focus-calendar-close,
+    .ticktick-task-center__focus-calendar-date,
     .ticktick-task-center__daily-progress,
     .ticktick-task-center__locate,
     .ticktick-task-center__external
@@ -1637,6 +2082,12 @@
         .ticktick-task-center__work-mode,
         .ticktick-task-center__status,
         .ticktick-task-center__deadline,
+        .ticktick-task-center__focus-calendar-toggle,
+        .ticktick-task-center__focus-plan,
+        .ticktick-task-center__focus-order,
+        .ticktick-task-center__focus-calendar-navigation,
+        .ticktick-task-center__focus-calendar-close,
+        .ticktick-task-center__focus-calendar-date,
         .ticktick-task-center__daily-progress,
         .ticktick-task-center__locate,
         .ticktick-task-center__external
