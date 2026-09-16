@@ -40,6 +40,7 @@ describe("createTaskCardViewModel", () => {
         expect(viewModel.statusText).toContain(config.icon);
         expect(viewModel.statusText).toContain(translate(config.labelKey));
         expect(viewModel.statusTone).toBe(config.tone);
+        expect(viewModel.statusTerminal).toBe(config.terminal);
     });
 
     it("uses translated UI labels and carries task fields into the model", () => {

@@ -23,6 +23,13 @@ describe("deadline urgency", () => {
         expect(DEADLINE_TRACK_SEGMENTS).toBe(8);
     });
 
+    it("stops calculating urgency after a task is closed", () => {
+        expect(getDeadlineState("2026-08-10", "2026-08-12", { closed: true })).toEqual({
+            kind: "closed",
+            filledSegments: 0,
+        });
+    });
+
     it("uses calendar dates instead of elapsed hours across daylight-saving boundaries", () => {
         expect(getDeadlineState("2026-03-09", "2026-03-08")).toMatchObject({
             daysRemaining: 1,

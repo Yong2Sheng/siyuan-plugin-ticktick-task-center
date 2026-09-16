@@ -4,6 +4,11 @@ English | [简体中文](CHANGELOG.md)
 
 ## Unreleased
 
+### Fixed
+
+- Stop deadline urgency and overdue-focus calculations for Completed, Failed, and Cancelled tasks. Their original deadline remains visible and editable with a Closed label.
+- Make the Task Center calendar interaction test derive dates from the current local day so fixed dates cannot expire and cause false failures.
+
 ## 0.4.0 - 2026-09-08
 
 ### Today's focus and scheduling rules

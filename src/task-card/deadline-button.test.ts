@@ -6,6 +6,7 @@ import { createDeadlineButton } from "./deadline-button";
 
 const translate = (key: string): string => ({
     "deadline.none": "No deadline",
+    "deadline.closed": "Closed",
     "deadline.setAction": "Set deadline",
     "deadline.remainingDay": "1 day left",
     "deadline.remainingDays": "${count} days left",
@@ -69,5 +70,22 @@ describe("deadline button", () => {
 
         expect(upcoming.querySelector(".deadline-summary")?.textContent).toBe("1 day left");
         expect(overdue.querySelector(".deadline-summary")?.textContent).toBe("1 day overdue");
+    });
+
+    it("keeps the deadline date but stops overdue calculation for a closed task", () => {
+        const button = createDeadlineButton({
+            className: "deadline",
+            deadline: "2026-08-10",
+            today: "2026-08-12",
+            closed: true,
+            locale: "en-US",
+            translate,
+            onClick: vi.fn(),
+        });
+
+        expect(button.dataset.deadlineState).toBe("closed");
+        expect(button.querySelector(".deadline-summary")?.textContent).toBe("Closed");
+        expect(button.querySelector(".deadline-date")?.textContent).toBe("Aug 10");
+        expect(button.querySelectorAll('.deadline-segment[data-filled="true"]')).toHaveLength(0);
     });
 });

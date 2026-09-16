@@ -72,6 +72,7 @@
   },
   "deadline": {
     "none": "No deadline",
+    "closed": "Closed",
     "setAction": "Set deadline",
     "remainingDay": "1 day left",
     "remainingDays": "${count} days left",

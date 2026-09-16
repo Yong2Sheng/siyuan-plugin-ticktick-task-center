@@ -637,7 +637,11 @@ export class TaskCenterView {
         const article = document.createElement("article");
         article.className = "ticktick-task-center__item";
         article.setAttribute("data-status-tone", status.tone);
-        article.setAttribute("data-deadline-state", getDeadlineState(item.deadline, today).kind);
+        article.setAttribute("data-deadline-state", getDeadlineState(
+            item.deadline,
+            today,
+            { closed: status.terminal },
+        ).kind);
         article.setAttribute("role", "listitem");
         article.addEventListener("contextmenu", (event) => {
             openTaskActionsMenu(event, {
@@ -680,6 +684,7 @@ export class TaskCenterView {
         const deadlineButton = createDeadlineButton({
             className: "ticktick-task-center__deadline",
             deadline: item.deadline,
+            closed: status.terminal,
             today,
             locale: this.getLocale(),
             translate,
@@ -707,7 +712,9 @@ export class TaskCenterView {
         updated.className = "ticktick-task-center__updated";
         updated.append(`${translate("taskCenterView.updated")}: `, createTime(item.updatedAt, this.getLocale()));
         content.append(title);
-        const focusDisposition = getFocusDisposition(item.focusPlan, today, item.deadline);
+        const focusDisposition = status.terminal
+            ? undefined
+            : getFocusDisposition(item.focusPlan, today, item.deadline);
         if (focusDisposition) {
             const focusState = document.createElement("div");
             focusState.className = `ticktick-task-center__focus-state ticktick-task-center__focus-state--${focusDisposition.kind}`;

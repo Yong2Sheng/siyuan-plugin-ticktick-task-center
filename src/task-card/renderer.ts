@@ -47,7 +47,11 @@ export function enhanceTaskBlock(
     card.setAttribute(TASK_CARD_CONTAINER_ATTRIBUTE, "");
     card.setAttribute(TASK_CARD_BLOCK_ID_ATTRIBUTE, blockId);
     card.setAttribute("data-status-tone", viewModel.statusTone);
-    card.setAttribute("data-deadline-state", getDeadlineState(viewModel.deadline).kind);
+    card.setAttribute("data-deadline-state", getDeadlineState(
+        viewModel.deadline,
+        undefined,
+        { closed: viewModel.statusTerminal },
+    ).kind);
     card.setAttribute("contenteditable", "false");
     if (actions?.onDeleteTask) {
         card.addEventListener("contextmenu", (event) => {
@@ -86,6 +90,7 @@ export function enhanceTaskBlock(
     const deadline = createDeadlineButton({
         className: "ticktick-task-card__deadline",
         deadline: viewModel.deadline,
+        closed: viewModel.statusTerminal,
         translate: (key) => viewModel.translate(key),
         onClick: () => actions?.onEditTask(blockId, { focus: "deadline" }),
     });

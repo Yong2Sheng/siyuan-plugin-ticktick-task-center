@@ -3,7 +3,7 @@ import { getLocalDate, readLocalDate } from "./local-date";
 export const DEADLINE_TRACK_SEGMENTS = 8;
 export const DEADLINE_URGENCY_DAYS = 7;
 
-export type DeadlineStateKind = "unset" | "normal" | "upcoming" | "today" | "overdue";
+export type DeadlineStateKind = "unset" | "closed" | "normal" | "upcoming" | "today" | "overdue";
 
 export type DeadlineState = {
     kind: DeadlineStateKind;
@@ -14,9 +14,13 @@ export type DeadlineState = {
 export function getDeadlineState(
     deadline: string | undefined,
     today = getLocalDate(),
+    options: { closed?: boolean } = {},
 ): DeadlineState {
     if (!deadline || !readLocalDate(deadline) || !readLocalDate(today)) {
         return { kind: "unset", filledSegments: 0 };
+    }
+    if (options.closed) {
+        return { kind: "closed", filledSegments: 0 };
     }
 
     const daysRemaining = calendarDayNumber(deadline) - calendarDayNumber(today);

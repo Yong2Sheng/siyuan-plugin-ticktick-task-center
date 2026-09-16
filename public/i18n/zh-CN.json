@@ -72,6 +72,7 @@
   },
   "deadline": {
     "none": "无截止日期",
+    "closed": "已结束",
     "setAction": "点击设置",
     "remainingDay": "剩余 1 天",
     "remainingDays": "剩余 ${count} 天",

@@ -24,6 +24,7 @@ const VALID_ATTRIBUTES: Record<string, unknown> = {
 const VIEW_MODEL = {
     translate: (key: string) => ({
         "deadline.none": "No deadline",
+        "deadline.closed": "Closed",
         "deadline.setAction": "Set deadline",
         "deadline.editTitle": "Click to edit the deadline",
         "deadline.editAriaLabel": "Edit deadline: ${summary}, ${date}",
@@ -43,6 +44,7 @@ const VIEW_MODEL = {
     statusTitle: "Click to edit task",
     statusAriaLabel: "Edit task, current status: In progress",
     statusTone: "primary" as const,
+    statusTerminal: false,
 };
 
 function createBlock(id = "20260712120000-abcdefg", task = true): HTMLElement {
@@ -128,6 +130,24 @@ describe("task card renderer", () => {
         expect(target.getAttribute("href")).toBeNull();
         target.click();
         expect(onOpenSiYuanTarget).toHaveBeenCalledWith(blockId);
+    });
+
+    it("does not mark a completed task with a past deadline as overdue", () => {
+        const block = createBlock();
+        document.body.append(block);
+
+        expect(enhanceTaskBlock(block, block.dataset.nodeId!, {
+            ...VIEW_MODEL,
+            deadline: "2020-01-01",
+            statusTerminal: true,
+        })).toBe(true);
+
+        const card = getTaskCardDecoration(block)!;
+        expect(card.dataset.deadlineState).toBe("closed");
+        expect(card.querySelector<HTMLElement>(".ticktick-task-card__deadline")?.dataset.deadlineState)
+            .toBe("closed");
+        expect(card.querySelector(".ticktick-task-card__deadline-summary")?.textContent)
+            .toBe("Closed");
     });
 
     it("keeps the visual card completely outside the persisted block DOM", () => {

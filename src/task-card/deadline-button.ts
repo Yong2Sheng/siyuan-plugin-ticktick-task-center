@@ -9,6 +9,7 @@ import type { Translate } from "../i18n";
 export type DeadlineButtonOptions = {
     className: string;
     deadline?: string;
+    closed?: boolean;
     today?: string;
     locale?: string;
     translate: Translate;
@@ -16,7 +17,7 @@ export type DeadlineButtonOptions = {
 };
 
 export function createDeadlineButton(options: DeadlineButtonOptions): HTMLButtonElement {
-    const state = getDeadlineState(options.deadline, options.today);
+    const state = getDeadlineState(options.deadline, options.today, { closed: options.closed });
     const label = getDeadlineLabel(state.kind, state.daysRemaining, options.translate);
     const dateLabel = options.deadline
         ? formatDeadlineDate(options.deadline, options.locale, options.today)
@@ -67,6 +68,9 @@ function getDeadlineLabel(
 ): string {
     if (kind === "unset") {
         return translate("deadline.none");
+    }
+    if (kind === "closed") {
+        return translate("deadline.closed");
     }
     if (kind === "today") {
         return translate("deadline.dueToday");

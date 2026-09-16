@@ -23,6 +23,7 @@ export type TaskCardViewModel = {
     statusTitle: string;
     statusAriaLabel: string;
     statusTone: TaskStatusTone;
+    statusTerminal: boolean;
 };
 
 export function createTaskCardViewModel(
@@ -56,5 +57,6 @@ export function createTaskCardViewModel(
         statusTitle: translate("taskEdit.statusButtonTitle"),
         statusAriaLabel: translate("taskEdit.statusButtonAriaLabel").replace("${status}", statusLabel),
         statusTone: status.tone,
+        statusTerminal: status.terminal,
     };
 }

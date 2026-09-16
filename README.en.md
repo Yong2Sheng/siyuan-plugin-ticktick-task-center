@@ -28,6 +28,7 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Show the deadline as remaining days, an eight-segment urgency track, and the calendar date. An undated task keeps the same track layout and a clear setup entry point.
 - Keep the track empty outside the seven-day window, then fill one segment per day from seven days remaining. Due-today and overdue tasks use a full track.
 - Apply theme-adaptive low-saturation emphasis to active tasks inside the seven-day window, with warning emphasis for due-today tasks and error emphasis for overdue tasks while preserving readable theme contrast.
+- Stop deadline and overdue-focus calculations for Completed, Failed, and Cancelled tasks. The Deadline control keeps its original date and edit action while showing Closed.
 - Preserve `created-at` and update `updated-at` only when task data actually changes.
 - Check `updated-at` for edit conflicts before saving, and attempt to roll back Markdown when a title or URL double-write fails.
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
@@ -185,6 +186,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - The first button row shows “N days left,” “Due today,” “N days overdue,” or “No deadline.” The second row always contains eight track segments, and the third row shows the date or setup action.
 - The track remains low-contrast and empty when more than seven days remain or no deadline is configured.
 - The first segment fills at seven days remaining, then one more segment fills each day. One day remaining shows seven filled segments; due-today and overdue tasks show all eight.
+- Completed, Failed, and Cancelled tasks stop deadline-urgency and overdue-focus calculations. Their original deadline remains visible and editable with a Closed label.
 - Deadlines are stored only in SiYuan task-block attributes. They are not written to the linked target and do not create system notifications or background reminders.
 
 ### 4. Open the Task Center

@@ -10,6 +10,7 @@ import { TaskCenterController } from "./task-center-controller";
 import { TaskCenterView } from "./task-center-view";
 import { KnowledgeCenterController } from "../knowledge/knowledge-controller";
 import { createEmptyKnowledgeIndex } from "../knowledge/knowledge-index";
+import { addLocalCalendarDays } from "../domain/local-date";
 
 const dictionary: Record<string, string> = {
     "taskCenterView.title": "Task Center",
@@ -90,6 +91,7 @@ const dictionary: Record<string, string> = {
     "status.blocked": "Blocked",
     "status.completed": "Completed",
     "deadline.none": "No deadline",
+    "deadline.closed": "Closed",
     "deadline.setAction": "Set deadline",
     "deadline.remainingDay": "1 day left",
     "deadline.remainingDays": "${count} days left",
@@ -290,6 +292,30 @@ describe("TaskCenterView", () => {
         expect(deadline.querySelectorAll('[data-filled="true"]')).toHaveLength(8);
         deadline.click();
         expect(onEditTask).toHaveBeenCalledWith(ACTIVE.blockId, "deadline");
+    });
+
+    it("stops deadline and focus overdue indicators for completed tasks", async () => {
+        const completed = {
+            ...CLOSED,
+            deadline: "2020-01-01",
+            focusPlan: {
+                version: 1 as const,
+                entries: [{ date: "2020-01-01", plannedAt: "2020-01-01T12:00:00.000Z" }],
+            },
+        };
+        const { target, controller } = await createView(vi.fn().mockResolvedValue({
+            items: [completed],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        controller.setFilter("closed");
+        const article = target.querySelector<HTMLElement>(".ticktick-task-center__item")!;
+        expect(article.dataset.deadlineState).toBe("closed");
+        expect(article.dataset.focusKind).toBeUndefined();
+        expect(article.querySelector(".ticktick-task-center__focus-state")).toBeNull();
+        expect(article.querySelector(".ticktick-task-center__deadline-summary")?.textContent)
+            .toBe("Closed");
     });
 
     it("opens actions from any inner area and removes a confirmed deletion immediately", async () => {
@@ -609,7 +635,9 @@ describe("TaskCenterView", () => {
     });
 
     it("opens a full calendar, navigates across months, and toggles an exact allowed date", async () => {
-        const dueTomorrow = { ...ACTIVE, deadline: "2026-09-09" };
+        const dueDate = addLocalCalendarDays(TODAY, 1)!;
+        const afterDeadline = addLocalCalendarDays(TODAY, 2)!;
+        const dueTomorrow = { ...ACTIVE, deadline: dueDate };
         const harness = await createView(vi.fn().mockResolvedValue({
             items: [dueTomorrow],
             invalidBlocks: [],
@@ -622,22 +650,27 @@ describe("TaskCenterView", () => {
         expect(harness.target.querySelectorAll(
             ".ticktick-task-center__focus-calendar-weekday",
         )).toHaveLength(7);
-        expect(harness.target.querySelector<HTMLButtonElement>('[data-date="2026-09-10"]')?.disabled)
+        expect(harness.target.querySelector<HTMLButtonElement>(`[data-date="${afterDeadline}"]`)?.disabled)
             .toBe(true);
 
+        const initialHeading = harness.target.querySelector(
+            ".ticktick-task-center__focus-calendar-header strong",
+        )?.textContent;
         harness.target.querySelectorAll<HTMLButtonElement>(
             ".ticktick-task-center__focus-calendar-navigation",
         )[1]?.click();
         expect(harness.target.querySelector(".ticktick-task-center__focus-calendar-header strong")?.textContent)
-            .toBe("October 2026");
+            .not.toBe(initialHeading);
         harness.target.querySelectorAll<HTMLButtonElement>(
             ".ticktick-task-center__focus-calendar-navigation",
         )[0]?.click();
+        expect(harness.target.querySelector(".ticktick-task-center__focus-calendar-header strong")?.textContent)
+            .toBe(initialHeading);
 
-        harness.target.querySelector<HTMLButtonElement>('[data-date="2026-09-09"]')?.click();
+        harness.target.querySelector<HTMLButtonElement>(`[data-date="${dueDate}"]`)?.click();
         await vi.waitFor(() => expect(harness.onToggleFocusDate).toHaveBeenCalledWith(
             ACTIVE.blockId,
-            "2026-09-09",
+            dueDate,
             TODAY,
             "exact",
         ));
