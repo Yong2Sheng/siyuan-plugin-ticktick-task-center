@@ -4,6 +4,10 @@ English | [简体中文](CHANGELOG.md)
 
 ## Unreleased
 
+### Development workflow
+
+- Require a reviewable design and explicit user approval before implementing user-visible UI changes. Drafts cover relevant states, interaction flow, themes, and wide/narrow layouts; the temporary `design/` directory is not committed.
+
 ### Fixed
 
 - Stop deadline urgency and overdue-focus calculations for Completed, Failed, and Cancelled tasks. Their original deadline remains visible and editable with a Closed label.

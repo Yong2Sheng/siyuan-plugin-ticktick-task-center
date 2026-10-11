@@ -380,7 +380,9 @@ pnpm run make-install
 
 Repository-wide development constraints live in [AGENTS.md](AGENTS.md). The project skill discovered by DeepSeek Harness and Codex lives in [.agents/skills/task-center-development](.agents/skills/task-center-development). Together they define SiYuan API read/write boundaries, test selection, package verification, local automatic installation, and the GitHub Actions release workflow.
 
-The current verification suite contains 37 test files and 335 tests.
+For user-visible UI changes, present a reviewable design first and obtain explicit user approval before changing UI code. See [AGENTS.md](AGENTS.md) for the scope and design requirements. Temporary design drafts belong in the untracked `design/` directory.
+
+The current verification suite contains 37 test files and 339 tests.
 
 ## License
 

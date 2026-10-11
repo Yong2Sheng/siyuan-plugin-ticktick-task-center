@@ -380,7 +380,9 @@ pnpm run make-install
 
 仓库级开发约束位于 [AGENTS.md](AGENTS.md)，DeepSeek Harness 和 Codex 可自动发现的项目 skill 位于 [.agents/skills/task-center-development](.agents/skills/task-center-development)。其中包含思源 API 的读写边界、测试选择、安装包校验、本机自动安装以及 GitHub Actions 发布流程。
 
-当前验证规模为 37 个测试文件、335 项测试。
+涉及用户可见界面的改动须先提交可审阅的设计稿，获得用户明确确认后再修改界面代码；具体范围与设计要求见 [AGENTS.md](AGENTS.md)。临时设计稿放在不提交的 `design/` 目录。
+
+当前验证规模为 37 个测试文件、339 项测试。
 
 ## 许可证
 
