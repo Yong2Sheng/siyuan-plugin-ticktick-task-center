@@ -14,7 +14,8 @@ export type TaskCardViewModel = {
     linkText: string;
     title: string;
     url: string;
-    target: TaskTarget;
+    /** 目标链接是可选字段；没有链接时为 undefined，卡片上不渲染打开控件。 */
+    target?: TaskTarget;
     deadline?: string;
     workModeText: string;
     workModeTitle: string;
@@ -30,11 +31,11 @@ export function createTaskCardViewModel(
     task: PersistedTickTickTaskData,
     translate: Translate,
 ): TaskCardViewModel {
-    const parsedTarget = parseTaskTarget(task.url);
-    if (!parsedTarget.valid) {
+    const parsedTarget = task.url.trim() === "" ? undefined : parseTaskTarget(task.url);
+    if (parsedTarget && !parsedTarget.valid) {
         throw new Error(`Cannot render invalid task target: ${parsedTarget.reason}`);
     }
-    const target = parsedTarget.target;
+    const target = parsedTarget?.target;
     const status = TASK_STATUS_CONFIG[task.status];
     const statusLabel = translate(status.labelKey);
     const workModeLabel = task.workMode
@@ -44,10 +45,12 @@ export function createTaskCardViewModel(
     return {
         translate,
         identity: translate("taskCardView.identity"),
-        linkText: `${translate(TASK_TARGET_OPEN_LABEL_KEYS[target.kind])}: ${task.title} ↗️`,
+        linkText: target
+            ? `${translate(TASK_TARGET_OPEN_LABEL_KEYS[target.kind])}: ${task.title} ↗️`
+            : task.title,
         title: task.title,
         url: task.url,
-        target,
+        ...(target ? { target } : {}),
         ...(task.deadline ? { deadline: task.deadline } : {}),
         workModeText: workModeLabel,
         workModeTitle: translate("taskEdit.workModeButtonTitle"),

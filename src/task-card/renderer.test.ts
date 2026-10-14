@@ -47,6 +47,13 @@ const VIEW_MODEL = {
     statusTerminal: false,
 };
 
+const LINKLESS_VIEW_MODEL = {
+    ...VIEW_MODEL,
+    linkText: "DS9 Adaptor",
+    url: "",
+    target: undefined,
+};
+
 function createBlock(id = "20260712120000-abcdefg", task = true): HTMLElement {
     const block = document.createElement("div");
     block.dataset.nodeId = id;
@@ -130,6 +137,24 @@ describe("task card renderer", () => {
         expect(target.getAttribute("href")).toBeNull();
         target.click();
         expect(onOpenSiYuanTarget).toHaveBeenCalledWith(blockId);
+    });
+
+    it("renders plain text instead of a link control when the task has no target", () => {
+        const block = createBlock();
+        document.body.append(block);
+
+        expect(enhanceTaskBlock(block, block.dataset.nodeId!, LINKLESS_VIEW_MODEL)).toBe(true);
+
+        const target = getTaskCardDecoration(block)!
+            .querySelector<HTMLElement>(".ticktick-task-card__link")!;
+        // 少一个控件，而不是留一个点不动的灰按钮
+        expect(target.tagName).toBe("SPAN");
+        expect(target.classList.contains("ticktick-task-card__link--plain")).toBe(true);
+        expect(target.textContent).toBe("DS9 Adaptor");
+        expect(target.getAttribute("href")).toBeNull();
+        // 状态与工作分类仍然可编辑
+        expect(getTaskCardDecoration(block)!
+            .querySelector<HTMLButtonElement>(".ticktick-task-card__status")?.type).toBe("button");
     });
 
     it("does not mark a completed task with a past deadline as overdue", () => {

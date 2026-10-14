@@ -6,7 +6,6 @@ import { isTickTickTaskWorkMode, type TickTickTaskWorkMode } from "./work-mode";
 
 export type TaskValidationError =
     | "title-required"
-    | "url-required"
     | "url-invalid"
     | "url-protocol-unsupported"
     | "url-credentials-unsupported"
@@ -25,6 +24,7 @@ export type TaskDataCandidate = {
 
 export type NormalizedTaskData = {
     title: string;
+    /** 空字符串表示「还没有目标链接」。链接是可选字段，不是必填。 */
     url: string;
     status: TickTickTaskStatus;
     workMode: TickTickTaskWorkMode;
@@ -50,9 +50,9 @@ export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationRes
         errors.push("title-required");
     }
 
-    if (rawUrl.length === 0) {
-        errors.push("url-required");
-    } else {
+    // 目标链接是可选字段：留空表示「还没有链接」，不报错；
+    // 但一旦填了就必须是允许的目标，非法值仍然拒绝，不静默丢弃。
+    if (rawUrl.length > 0) {
         const target = parseTaskTarget(rawUrl);
         if (target.valid) {
             normalizedUrl = target.target.url;

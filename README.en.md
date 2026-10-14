@@ -20,7 +20,7 @@ The current version does not call any target-service API, handle OAuth, or perfo
 ## Core features
 
 - Create a task card from the slash menu in an editable SiYuan document. The default status is `in-progress`, and the new block is inserted at the top of the current root document.
-- Store the task title, a validated target link, seven required attributes, and optional work-category, deadline, focus-plan, and progress-history attributes in one ordinary SiYuan block.
+- Store the task title, six required attributes, and optional link, work-category, deadline, focus-plan, and progress-history attributes in one ordinary SiYuan block.
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
 - Non-destructively enhance the block as a task card with an original checklist icon that opens the Task Center, a task link, a work-category button, a semantically colored status badge, and a Deadline button. The work category is stacked above the status.
 - Open the complete editor from the work-category, status, or Deadline button to change the title, URL, work category, status, or deadline. Work categories and statuses are both selected from directly visible button groups.
@@ -31,6 +31,13 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Stop deadline and overdue-focus calculations for Completed, Failed, and Cancelled tasks. The Deadline control keeps its original date and edit action while showing Closed.
 - Preserve `created-at` and update `updated-at` only when task data actually changes.
 - Check `updated-at` for edit conflicts before saving, and attempt to roll back Markdown when a title or URL double-write fails.
+- Add an **Inbox** tab to the Task Center for capturing notes as a Title plus an optional Body. Enter in the title saves; Enter in the body inserts a newline and ⌘/Ctrl + Enter saves.
+- A note is **not a task**: it stores only text, a tier, and a creation time, carries no status, deadline, work category, focus plan, or link, and never creates, modifies, or hides any document or notebook.
+- Notes come in two tiers, ⚡ Quick errand and 🔬 Formal task. A quick errand can be finished in place and moves into ✓ Done today; a formal task can only be moved to the task list.
+- Each note renders as a bold title plus a collapsed body. A body longer than two lines can be expanded and is rendered as basic Markdown: paragraphs, bold, italic, inline code, links, unordered lists, and quotes.
+- Move to task list creates a new task document and writes the task block into it: the task title comes from the note title and the note body is written into the same document. The order is fixed as create task block → write body → delete note, and any failure keeps the note.
+- Add a Quick capture button to the SiYuan top bar that opens a small dialog from anywhere; Save and continue is meant for capturing several notes in a row.
+- Inbox data lives in a plugin data file with three rotating backups and a field-by-field read-back after every write. Nothing appears in the document tree.
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
 - Add a Knowledge documents section to the Task Center. A manual scan discovers child documents under task documents and writes and verifies `custom-task-center-knowledge = true` only for newly discovered documents.
 - Load the Knowledge section from a rebuildable cache without scanning, polling, or live listening. The document tree is read only when the user selects Initialize knowledge index or Scan for new knowledge documents.
@@ -61,6 +68,8 @@ The current version does not call any target-service API, handle OAuth, or perfo
 
 The plugin rejects `http:`, `javascript:`, `data:`, `file:`, URLs containing embedded usernames or passwords, and any unsupported or malformed custom scheme. TickTick and Dida365 hostnames must match exactly. A SiYuan link must contain exactly one valid block ID, without extra path segments, query parameters, or fragments. Validation checks syntax and security boundaries only; it does not verify that a remote resource exists.
 
+The task link is **optional**: a task can be created and saved without one, and the card then shows the title as plain text. Existing tasks need no migration.
+
 ## Seven task statuses
 
 Status IDs are the stable values used for persistence and queries. Emoji and labels are display-only.
@@ -89,7 +98,14 @@ The work category describes how a task is approached and remains independent of 
 ## Development status and changelog
 
 > [!NOTE]
-> `v0.4.0` was published on 2026-09-08. The project is not yet listed in the SiYuan Marketplace.
+> `v0.5.0` was published on 2026-10-14. The project is not yet listed in the SiYuan Marketplace.
+
+### 0.5.0 (2026-10-14)
+
+- Add the Inbox tab for capturing notes as a title plus an optional body. Notes carry no task fields and are never written into or hidden from the document tree.
+- Notes come in two tiers, quick errand and formal task. Moving a note to the task list creates a task document, takes the note title as the task title, writes the body into the same document, and then deletes the note.
+- Add a Quick capture button to the SiYuan top bar that opens a small dialog from anywhere, with Save and continue for capturing several notes in a row.
+- The task link is now optional: tasks can be created without one, and existing tasks need no migration.
 
 ### 0.4.0 (2026-09-08)
 
@@ -116,7 +132,7 @@ The work category describes how a task is approached and remains independent of 
 - Support light and dark themes, Chinese and English interfaces, and a dedicated plugin icon.
 - Declare experimental HarmonyOS native-mobile support after basic verification of the core workflow on a Huawei tablet running HarmonyOS 6.
 
-See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record and the [v0.4.0 GitHub Release](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.4.0) for the installable package.
+See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record and the [v0.5.0 GitHub Release](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.5.0) for the installable package.
 
 ## Installation
 
@@ -124,7 +140,7 @@ See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development rec
 
 The plugin is not currently listed in the SiYuan Marketplace, but it can be installed manually from GitHub Releases.
 
-Download `package.zip` from the [v0.4.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.4.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
+Download `package.zip` from the [v0.5.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.5.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
 
 ### Development installation
 
@@ -189,14 +205,31 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Completed, Failed, and Cancelled tasks stop deadline-urgency and overdue-focus calculations. Their original deadline remains visible and editable with a Closed label.
 - Deadlines are stored only in SiYuan task-block attributes. They are not written to the linked target and do not create system notifications or background reminders.
 
-### 4. Open the Task Center
+### 4. Capture a note into the Inbox
+
+1. Open the Task Center and switch to the Inbox tab, or select the ⚡ button in the SiYuan top bar to capture from the Quick capture dialog.
+2. Write what needs doing in Title. Press Enter in the title field to save.
+3. Body is optional: use it for background, context, or a pasted email. Enter inserts a newline; ⌘/Ctrl + Enter saves.
+4. Choose ⚡ Quick errand or 🔬 Formal task. The last choice is reused by default.
+5. Captured notes appear under Open with a bold title and a collapsed body. A body longer than two lines can be expanded and is rendered as basic Markdown.
+
+### 5. Process the Inbox
+
+- A ⚡ Quick errand can be finished in place with ✓ Done and moves into ✓ Done today. A 🔬 Formal task has no complete button and can only be moved to the task list.
+- Use Make it a formal task or Make it a quick errand to change the tier at any time.
+- Select → To task list to turn a note into a real task: first choose where the new task document goes (select a notebook to create it at the notebook root, select a document to create it underneath; the triangle only expands and collapses), then confirm the document name, then fill in status, work category, deadline, and task link.
+- Moving always runs create task block → write body → delete note. The task title comes from the note title and the note body is written into the newly created task document. Any failure keeps the note; nothing is dropped silently.
+- You can also create a task card inside a document with `/` and bring a note in from the Inbox: the task and the note body are both written into the current document.
+- ✓ Done today shows today's records only and prunes them after 7 days.
+
+### 6. Open the Task Center
 
 - Select the checklist icon on the left side of any document task card, or select the SiYuan Task Center button in the SiYuan top bar.
 - The Task Center opens as an independent custom tab.
 - Only one Task Center tab exists at a time. Selecting either entry again focuses the existing tab instead of creating another one.
 - The workspace is queried once when the tab first opens.
 
-### 5. Use the Task Center
+### 7. Use the Task Center
 
 - Click `Switch to English` to the left of Refresh to use the English interface; the button then changes to “切换为中文” so you can switch back.
 - View counts for All, Active, Closed, and today's progress.
@@ -211,7 +244,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - After saving an edit from the Task Center, its list, filtered results, ordering, and statistics update immediately without a refresh.
 - **To progress today** prioritizes overdue and upcoming tasks, with undated tasks placed last.
 
-### 6. Track today's progress
+### 8. Track today's progress
 
 - The Active view is automatically divided into **🌤️ To progress today** and **✨ Today's progress**.
 - Today's progress is further divided into **🚀 Advanced** and **🏆 Completed today**, keeping ongoing progress and completed work visible together.
@@ -224,7 +257,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Daily progress keeps the latest date for today's grouping and appends a deduplicated local-date history. It does not complete the task or change its `updated-at` and existing sort order.
 - “Today” follows the computer's current system timezone. The view automatically treats yesterday's marks as pending after local midnight and rechecks the date when the SiYuan window regains focus.
 
-### 7. Plan today's focus
+### 9. Plan today's focus
 
 1. Select **⭐ Today** or **🌙 Tomorrow** on an active task to schedule or cancel that date quickly.
 2. Open the task's **📅 Plan** calendar to select multiple dates across months. New plans cannot use past dates or dates after the deadline.
@@ -232,14 +265,14 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 4. Use ↑↓ to arrange multiple focus tasks into an execution order stored on the original task block.
 5. Progress moves a focus task into **✨ Today's progress**; undoing today's progress restores it to today's focus.
 
-### 8. View the planning and progress calendar
+### 10. View the planning and progress calendar
 
 1. Switch the Tasks section of the Task Center to **Calendar**.
 2. Each date shows Planned and Actual. Planned counts only explicit focus dates, so automatic carry-over does not inflate the original plan. Actual counts every task progressed that day.
 3. A task counts once per day regardless of repeated interaction. Undoing today's progress removes that day's actual record.
 4. Date cells use five heat levels for 0, 1, 2, 3–4, and 5+ actual tasks, making monthly work rhythms easy to scan.
 
-### 9. Build the knowledge document index
+### 11. Build the knowledge document index
 
 1. Open the Task Center and switch to **Knowledge documents**.
 2. On first use, select **Initialize knowledge index**. The plugin manually refreshes tasks, then traverses child documents under each task document.
@@ -248,7 +281,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 5. Later, select **Scan for new knowledge documents** whenever you want to discover recent work. The plugin never polls or scans in the background.
 6. Search by knowledge title, path, or source task, and open either the original knowledge document or its task document.
 
-### 10. Review knowledge documents
+### 12. Review knowledge documents
 
 1. Due today includes available documents that have never been reviewed or whose next-review date has arrived. Select **Start today's review** to process them one at a time.
 2. **Random review** draws from available documents not yet shown in the current round, so a document does not repeat within that round.
@@ -275,6 +308,9 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 | Open the Task Center for the first time | One query runs automatically |
 | Search or change a filter | Only the current list is processed; no SQL query runs |
 | Leave the Task Center idle | No background query runs |
+| Capture, complete, re-tier, or delete a note in the Inbox | The current list updates immediately; no refresh needed |
+| Open the Quick capture dialog | Reads the plugin data file once first |
+| Switch to the Inbox | Reads the plugin data file once |
 | Switch to Knowledge documents | Show the last cache only; do not scan the document tree |
 | Select Scan for new knowledge documents | Refresh tasks, then manually scan task subdocuments |
 
@@ -291,16 +327,31 @@ If Refresh is selected immediately after an edit or daily-progress update inside
 - The plugin does not require a target-service login, use OAuth, or call a target-service API.
 - It does not upload or synchronize task data to linked services in the background. A target opens only when selected by the user.
 
-The seven required structured attributes are:
+### Inbox
+
+An inbox note is **not a task**; it is a note captured before a task exists. It contains only text, a tier, and a creation time, and carries no status, deadline, work category, focus plan, or task link.
+
+- Notes are stored in the plugin data file `inbox.json`, with rotating copies `inbox.backup-1.json`, `inbox.backup-2.json`, and `inbox.backup-3.json` in the same directory. Every write is read back and verified field by field.
+- The Inbox never creates, modifies, or hides a document or notebook, so nothing appears in the document tree.
+- A note becomes a real task block only when it is moved to the task list, and it is deleted from the plugin data at the same time. There is no intermediate state where something is both a note and a task.
+- Completing a note only means the note has been dealt with; it never counts toward task statistics.
+- A write is refused unless the data file has been read successfully first, so an empty in-memory state can never overwrite existing notes.
+
+The six required structured attributes are:
 
 ```text
 custom-ticktick-card
 custom-ticktick-version
 custom-ticktick-title
-custom-ticktick-url
 custom-ticktick-status
 custom-ticktick-created-at
 custom-ticktick-updated-at
+```
+
+The task link is an optional attribute; a task is equally valid without it:
+
+```text
+custom-ticktick-url = https://... | siyuan://blocks/<block ID>
 ```
 
 Daily progress uses a compatible latest-date attribute plus a versioned history attribute:
@@ -342,7 +393,7 @@ Older tasks require no migration when these optional attributes are absent. A mi
 
 ## Task Center query
 
-The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the seven required task attributes and the optional work-category, daily-progress, focus-plan, and deadline attributes into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
+The Task Center executes one global SQL query when it loads or is manually refreshed. Conditional aggregation converts the six required task attributes and the optional link, work-category, daily-progress, focus-plan, and deadline attributes into one row per task. This avoids the older “one row per attribute” shape producing a partially read task at SiYuan's SQL result-count limit.
 
 The query is still subject to SiYuan's global SQL result-count limit, and pagination is not currently implemented. Search and filters operate only on the validated results already loaded in memory and do not execute additional SQL queries.
 
@@ -354,6 +405,9 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 - No batch operations or batch status changes.
 - No pagination or virtual scrolling; the Task Center is subject to SiYuan's SQL result-count limit.
 - No settings page.
+- The Inbox holds at most 5000 notes, and a single note is limited to 2000 characters.
+- The Inbox shows today's completed records only and prunes them after 7 days; there is no full-text search across notes.
+- Note bodies support basic Markdown only (paragraphs, bold, italic, inline code, links, unordered lists, and quotes). Tables, code blocks, images, and ordered lists are not supported.
 - Progress dates overwritten before v0.4.0 cannot be reconstructed. The current calendar does not provide streaks or a click-through task list for a date.
 - The daily date follows the current system timezone. When traveling across timezones, tasks are reevaluated using the local date at the current location.
 - Deadlines are local SiYuan metadata. The plugin does not read or synchronize deadlines from linked services and does not issue system notifications.
@@ -382,7 +436,7 @@ Repository-wide development constraints live in [AGENTS.md](AGENTS.md). The proj
 
 For user-visible UI changes, present a reviewable design first and obtain explicit user approval before changing UI code. See [AGENTS.md](AGENTS.md) for the scope and design requirements. Temporary design drafts belong in the untracked `design/` directory.
 
-The current verification suite contains 37 test files and 339 tests.
+The current verification suite contains 49 test files and 505 tests.
 
 ## License
 

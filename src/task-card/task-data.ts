@@ -39,10 +39,15 @@ export function parseTaskBlockAttributes(
         return { valid: false, reason: "missing-title" };
     }
 
-    const url = attributes[TASK_BLOCK_ATTRIBUTES.url];
-    if (typeof url !== "string" || !isAllowedTaskTarget(url)) {
-        return { valid: false, reason: "invalid-url" };
+    // 目标链接可选：属性缺失或为空都表示「还没有链接」；
+    // 但存在且非法时仍然判无效，不静默接受脏数据。
+    const rawUrl = attributes[TASK_BLOCK_ATTRIBUTES.url];
+    if (rawUrl !== undefined && rawUrl !== "") {
+        if (typeof rawUrl !== "string" || !isAllowedTaskTarget(rawUrl)) {
+            return { valid: false, reason: "invalid-url" };
+        }
     }
+    const url = typeof rawUrl === "string" ? rawUrl : "";
 
     const status = attributes[TASK_BLOCK_ATTRIBUTES.status];
     if (!isTickTickTaskStatus(status)) {

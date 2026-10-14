@@ -37,12 +37,16 @@ import {
     shiftCalendarMonth,
 } from "../domain/calendar-month";
 import { countTaskCenterActivityByDate, getActivityHeatLevel } from "./activity-calendar";
+import type { InboxNote } from "../inbox/inbox-note";
+import type { InboxActionFailure, InboxController } from "../inbox/inbox-controller";
+import { InboxView } from "../inbox/inbox-view";
 
-type TaskCenterSection = "tasks" | "knowledge";
+type TaskCenterSection = "tasks" | "inbox" | "knowledge";
 type TaskViewMode = "list" | "calendar";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
+    inboxController: InboxController;
     translate: Translate;
     locale?: string | (() => string);
     onToggleLanguage(): Promise<void>;
@@ -60,6 +64,8 @@ export type TaskCenterViewOptions = {
     ): Promise<FocusPlan>;
     onSetFocusOrder(blockId: string, focusDate: string, order: number): Promise<FocusPlan>;
     onFocusPlanError?(error: unknown): void;
+    onPromoteInboxNote(note: InboxNote): void;
+    onInboxActionFailed(failure: InboxActionFailure): void;
     knowledgeController: KnowledgeCenterController;
     onOpenKnowledgeDocument(documentId: string): Promise<void>;
     onOpenKnowledgeSource(documentId: string): Promise<void>;
@@ -75,7 +81,9 @@ export class TaskCenterView {
     private readonly refreshButton = document.createElement("button");
     private readonly sectionButtons = new Map<TaskCenterSection, HTMLButtonElement>();
     private readonly taskPanel = document.createElement("section");
+    private readonly inboxPanel = document.createElement("section");
     private readonly knowledgePanel = document.createElement("section");
+    private readonly inboxView: InboxView;
     private readonly knowledgeView: KnowledgeCenterView;
     private readonly summary = document.createElement("div");
     private readonly viewButtons = new Map<TaskViewMode, HTMLButtonElement>();
@@ -89,6 +97,7 @@ export class TaskCenterView {
     private readonly pendingFocusPlans = new Set<string>();
     private readonly calendarMonths = new Map<string, string>();
     private readonly unsubscribe: () => void;
+    private readonly unsubscribeInbox: () => void;
     private dayBoundaryTimer?: number;
     private switchingLanguage = false;
     private section: TaskCenterSection = "tasks";
@@ -116,14 +125,14 @@ export class TaskCenterView {
         this.languageButton.addEventListener("click", () => void this.toggleLanguage());
         this.refreshButton.type = "button";
         this.refreshButton.className = "b3-button b3-button--outline ticktick-task-center__refresh";
-        this.refreshButton.addEventListener("click", () => void options.controller.refresh());
+        this.refreshButton.addEventListener("click", () => void this.refreshCurrentSection());
         headerActions.append(this.languageButton, this.refreshButton);
         header.append(this.heading, headerActions);
 
         const sectionNavigation = document.createElement("nav");
         sectionNavigation.className = "ticktick-task-center__section-navigation";
         sectionNavigation.setAttribute("aria-label", "Task center sections");
-        for (const section of ["tasks", "knowledge"] as const) {
+        for (const section of ["tasks", "inbox", "knowledge"] as const) {
             const button = document.createElement("button");
             button.type = "button";
             button.className = "ticktick-task-center__section-button";
@@ -176,9 +185,17 @@ export class TaskCenterView {
             this.feedback,
             this.list,
         );
+        this.inboxPanel.className = "ticktick-task-center__inbox-panel fn__none";
         this.knowledgePanel.className = "ticktick-task-center__knowledge-panel fn__none";
-        this.root.append(header, sectionNavigation, this.taskPanel, this.knowledgePanel);
+        this.root.append(header, sectionNavigation, this.taskPanel, this.inboxPanel, this.knowledgePanel);
         target.append(this.root);
+        this.inboxView = new InboxView(this.inboxPanel, {
+            controller: options.inboxController,
+            translate: options.translate,
+            locale: options.locale,
+            onPromote: options.onPromoteInboxNote,
+            onActionFailed: options.onInboxActionFailed,
+        });
         this.knowledgeView = new KnowledgeCenterView(this.knowledgePanel, {
             controller: options.knowledgeController,
             translate: options.translate,
@@ -188,6 +205,7 @@ export class TaskCenterView {
             onOpenError: options.onKnowledgeOpenError,
         });
         this.unsubscribe = options.controller.subscribe((state) => this.render(state));
+        this.unsubscribeInbox = options.inboxController.subscribe(() => this.renderRefreshButton());
         window.addEventListener("focus", this.handleWindowFocus);
         this.scheduleDayBoundary();
     }
@@ -199,6 +217,8 @@ export class TaskCenterView {
         }
         window.removeEventListener("focus", this.handleWindowFocus);
         this.unsubscribe();
+        this.unsubscribeInbox();
+        this.inboxView.destroy();
         this.knowledgeView.destroy();
         this.root.remove();
     }
@@ -206,6 +226,7 @@ export class TaskCenterView {
     refreshLanguage(): void {
         if (!this.destroyed) {
             this.render(this.options.controller.getState());
+            this.inboxView.refreshLanguage();
             this.knowledgeView.refreshLanguage();
         }
     }
@@ -229,15 +250,12 @@ export class TaskCenterView {
         this.languageButton.textContent = translate("taskCenterView.switchLanguage");
         this.languageButton.title = translate("taskCenterView.switchLanguageTitle");
         this.languageButton.disabled = this.switchingLanguage;
-        this.refreshButton.textContent = translate(
-            state.refreshing ? "taskCenterView.refreshing" : "taskCenterView.refresh",
-        );
-        this.refreshButton.disabled = state.loading || state.refreshing;
-        this.refreshButton.classList.toggle("fn__none", this.section !== "tasks");
+        this.renderRefreshButton();
         this.searchInput.value = state.search;
         this.searchInput.placeholder = translate("taskCenterView.searchPlaceholder");
         const sectionLabels: Record<TaskCenterSection, string> = {
             tasks: translate("knowledgeCenter.tabTasks"),
+            inbox: translate("inbox.tab"),
             knowledge: translate("knowledgeCenter.tabKnowledge"),
         };
         for (const [section, button] of this.sectionButtons) {
@@ -423,14 +441,44 @@ export class TaskCenterView {
         return group;
     }
 
+    private async refreshCurrentSection(): Promise<void> {
+        if (this.section === "inbox") {
+            await this.options.inboxController.refresh();
+            this.inboxView.focusCapture();
+            return;
+        }
+        await this.options.controller.refresh();
+    }
+
+    private renderRefreshButton(): void {
+        if (this.destroyed) {
+            return;
+        }
+        const { translate } = this.options;
+        const inboxState = this.options.inboxController.getState();
+        const taskState = this.options.controller.getState();
+        const busy = this.section === "inbox"
+            ? inboxState.loading || inboxState.saving
+            : taskState.loading || taskState.refreshing;
+        this.refreshButton.textContent = translate(
+            busy ? "taskCenterView.refreshing" : "taskCenterView.refresh",
+        );
+        this.refreshButton.disabled = busy;
+        this.refreshButton.classList.toggle("fn__none", this.section === "knowledge");
+    }
+
     private setSection(section: TaskCenterSection): void {
         if (this.section === section) {
             return;
         }
         this.section = section;
         this.taskPanel.classList.toggle("fn__none", section !== "tasks");
+        this.inboxPanel.classList.toggle("fn__none", section !== "inbox");
         this.knowledgePanel.classList.toggle("fn__none", section !== "knowledge");
         this.render(this.options.controller.getState());
+        if (section === "inbox") {
+            this.inboxView.refreshLanguage();
+        }
         if (section === "knowledge") {
             this.knowledgeView.refreshLanguage();
         }
@@ -747,15 +795,18 @@ export class TaskCenterView {
             item.rootId,
             item.notebookId,
         ));
-        const parsedTarget = parseTaskTarget(item.url);
-        if (!parsedTarget.valid) {
+        // 目标链接可选：没有链接的任务只显示「定位原块」，不渲染打开链接的控件。
+        const parsedTarget = item.url.trim() === "" ? undefined : parseTaskTarget(item.url);
+        if (parsedTarget && !parsedTarget.valid) {
             throw new Error(`Cannot render invalid task target: ${parsedTarget.reason}`);
         }
-        const targetLabel = `${translate(TASK_TARGET_OPEN_LABEL_KEYS[parsedTarget.target.kind])} ↗️`;
-        const targetControl = parsedTarget.target.kind === "siyuan-block"
-            ? this.createSiYuanTargetButton(parsedTarget.target.blockId, targetLabel)
-            : createExternalTargetLink(parsedTarget.target.url, targetLabel);
-        actions.append(locate, targetControl);
+        actions.append(locate);
+        if (parsedTarget?.valid) {
+            const targetLabel = `${translate(TASK_TARGET_OPEN_LABEL_KEYS[parsedTarget.target.kind])} ↗️`;
+            actions.append(parsedTarget.target.kind === "siyuan-block"
+                ? this.createSiYuanTargetButton(parsedTarget.target.blockId, targetLabel)
+                : createExternalTargetLink(parsedTarget.target.url, targetLabel));
+        }
 
         article.append(deadlineButton, classification, content, actions);
         const calendarMonth = this.calendarMonths.get(item.blockId);

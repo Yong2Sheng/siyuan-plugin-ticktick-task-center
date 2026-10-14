@@ -19,7 +19,30 @@ import {
     updateMarkdownBlock,
 } from "./siyuan/blocks";
 import { locateSiYuanBlock, openSiYuanBlock } from "./siyuan/navigation";
-import { listChildDocuments } from "./siyuan/documents";
+import {
+    createDocument,
+    listChildDocuments,
+    listNotebooks,
+    searchDocuments,
+} from "./siyuan/documents";
+import { insertMarkdownBlockAfter } from "./siyuan/blocks";
+import {
+    InboxController,
+    type InboxActionFailure,
+} from "./inbox/inbox-controller";
+import { loadInboxStore, saveInboxStore, type InboxPersistenceApi } from "./inbox/inbox-persistence";
+import { findInboxNote } from "./inbox/inbox-store";
+import { splitInboxNoteText } from "./inbox/inbox-note";
+import type { InboxNote } from "./inbox/inbox-note";
+import { selectPendingInboxNotes } from "./inbox/inbox-store";
+import { showPromoteInboxNoteDialog } from "./inbox/promote-dialog";
+import { showQuickCaptureDialog } from "./inbox/quick-capture-dialog";
+import { DEFAULT_INBOX_NOTE_TIER, type InboxNoteTier } from "./inbox/inbox-note";
+import {
+    promoteToTaskList,
+    promoteToTaskListOrThrow,
+    resolveTargetDocument,
+} from "./inbox/promote";
 import {
     createTaskCenterEditSession,
     TaskCenterController,
@@ -51,13 +74,22 @@ import { scanKnowledgeDocuments } from "./knowledge/knowledge-scanner";
 import "./index.scss";
 
 const LANGUAGE_PREFERENCE_FILE = "language.json";
+const QUICK_CAPTURE_ICON_ID = "iconTickTickQuickCapture";
+const QUICK_CAPTURE_ICON = `<symbol id="${QUICK_CAPTURE_ICON_ID}" viewBox="4 4 24 24">
+    <path d="M13 4 6 14h5l-1 8 7-10h-5l1-8Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+</symbol>`;
 
 export default class TickTickTaskCenterPlugin extends Plugin {
     private readonly activeDialogs = new Set<Dialog>();
+    private inboxController?: InboxController;
     private taskCardLifecycle?: TaskCardLifecycle;
     private taskEditController?: TaskEditController;
     private taskDeleteController?: TaskDeleteController;
     private taskCenterTab?: TaskCenterTabService;
+    private quickCaptureButton?: HTMLElement;
+    private quickCaptureDialog?: Dialog;
+    /** 上次用过的分级，收件箱捕获框与快速记录弹窗共用。 */
+    private lastCaptureTier: InboxNoteTier = DEFAULT_INBOX_NOTE_TIER;
     private interfaceLanguage: InterfaceLanguage = DEFAULT_INTERFACE_LANGUAGE;
     private readonly translate = createLanguageTranslator(
         { "zh-CN": zhCN, en },
@@ -66,6 +98,15 @@ export default class TickTickTaskCenterPlugin extends Plugin {
 
     onload(): void {
         const { translate } = this;
+        const inboxApi: InboxPersistenceApi = {
+            loadData: (file) => this.loadData(file),
+            saveData: (file, value) => this.saveData(file, value),
+        };
+        this.inboxController = new InboxController({
+            load: () => loadInboxStore(inboxApi),
+            save: (store) => saveInboxStore(inboxApi, store),
+            onError: (error) => console.error("Failed to read the SiYuan Task Center inbox", error),
+        });
         this.taskDeleteController = new TaskDeleteController({
             translate,
             deleteBlock,
@@ -132,9 +173,22 @@ export default class TickTickTaskCenterPlugin extends Plugin {
     onLayoutReady(): void {
         this.taskCardLifecycle?.start();
         this.taskCenterTab?.mountTopBar();
+        this.addIcons(QUICK_CAPTURE_ICON);
+        this.quickCaptureButton = this.addTopBar({
+            icon: QUICK_CAPTURE_ICON_ID,
+            title: this.translate("quickCapture.openTooltip"),
+            position: "right",
+            callback: () => void this.openQuickCapture(),
+        });
     }
 
     onunload(): void {
+        this.quickCaptureButton?.remove();
+        this.quickCaptureButton = undefined;
+        this.quickCaptureDialog?.destroy();
+        this.quickCaptureDialog = undefined;
+        this.inboxController?.destroy();
+        this.inboxController = undefined;
         this.taskCenterTab?.stop();
         this.taskCenterTab = undefined;
         this.taskEditController?.stop();
@@ -148,8 +202,20 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         this.activeDialogs.clear();
     }
 
+    private getFormalInboxNotes(): InboxNote[] {
+        const store = this.inboxController?.getState().store;
+        return store ? selectPendingInboxNotes(store).formal : [];
+    }
+
+    private showInboxActionFailure(failure: InboxActionFailure): void {
+        const message = this.translate(`inbox.errors.${failure}`);
+        showMessage(message, 6000, "error");
+    }
+
     private async openCreateTaskDialog(protyle: Protyle): Promise<void> {
         const { translate } = this;
+        // 带入列表必须来自最新数据：用户可能从未打开过任务中心。
+        await this.inboxController?.refresh();
         const rootDocumentId = getEditableRootDocumentId(protyle);
         if (rootDocumentId === null) {
             showMessage(translate("taskCreate.errors.documentUnavailable"), 7000, "error");
@@ -173,15 +239,31 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         dialog = showCreateTaskDialog({
             translate,
             initialTitle,
-            onCreate: async (task) => {
-                const { blockId } = await createTaskBlock(
-                    { prependMarkdownBlock, setBlockAttributes, deleteBlock },
-                    {
-                        rootDocumentId,
-                        taskLabel: translate("taskCard"),
-                        task,
+            inboxNotes: this.getFormalInboxNotes(),
+            onCreate: async (task, inboxNoteId) => {
+                const inboxController = this.requireInboxController();
+                const note = inboxNoteId
+                    ? findInboxNote(inboxController.getState().store, inboxNoteId)
+                    : undefined;
+                const noteBody = note ? splitInboxNoteText(note.text).body : "";
+                const { blockId } = await promoteToTaskListOrThrow({
+                    createTaskBlock: (request) => createTaskBlock(
+                        { prependMarkdownBlock, setBlockAttributes, deleteBlock },
+                        request,
+                    ),
+                    insertNoteBody: async (blockId, markdown) => {
+                        await insertMarkdownBlockAfter(blockId, markdown);
                     },
-                );
+                    removeInboxNote: async (noteId) => (await inboxController.consume(noteId)).ok,
+                }, {
+                    rootDocumentId,
+                    taskLabel: translate("taskCard"),
+                    task,
+                    ...(inboxNoteId ? { noteId: inboxNoteId } : {}),
+                    ...(noteBody ? { noteBody } : {}),
+                });
+                // 先让卡片渲染出来：任务块已经建好了，后面无论便条出了什么状况，
+                // 文档里的这张卡片都应该立刻可见。
                 this.taskCardLifecycle?.refreshBlock(protyle.protyle, blockId);
             },
             onDestroy: () => {
@@ -237,8 +319,12 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             }),
             onError: (error) => console.error("Failed to update the knowledge document index", error),
         });
+        const inboxController = this.requireInboxController();
         const view = new TaskCenterView(target, {
             controller,
+            inboxController,
+            onPromoteInboxNote: (note) => this.openPromoteDialog(note, translate, controller),
+            onInboxActionFailed: (failure) => this.showInboxActionFailure(failure),
             translate,
             locale: () => this.interfaceLanguage === "zh-CN" ? "zh-CN" : "en-US",
             onToggleLanguage: () => this.toggleInterfaceLanguage(),
@@ -299,7 +385,11 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                     return;
                 }
                 started = true;
-                await Promise.all([controller.start(), knowledgeController.start()]);
+                await Promise.all([
+                    controller.start(),
+                    inboxController.refresh(),
+                    knowledgeController.start(),
+                ]);
             },
             destroy: () => {
                 editSession.dispose();
@@ -309,6 +399,98 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             },
             refreshLanguage: () => view.refreshLanguage(),
         };
+    }
+
+    /**
+     * 顶栏「快速记录」：不必先打开任务中心页签。
+     *
+     * 打开前先读一次盘——控制器本身也会拦住"没读盘就写"，
+     * 但这里主动读一次能让用户看到最新的收件箱状态。
+     */
+    private async openQuickCapture(): Promise<void> {
+        const existing = this.quickCaptureDialog;
+        if (existing) {
+            existing.element.querySelector<HTMLInputElement>('[data-field="title"]')?.focus();
+            return;
+        }
+        const controller = this.requireInboxController();
+        await controller.refresh();
+        if (this.quickCaptureDialog) {
+            return;
+        }
+
+        let dialog: Dialog;
+        dialog = showQuickCaptureDialog({
+            translate: this.translate,
+            initialTier: this.lastCaptureTier,
+            onCapture: async (text, tier) => {
+                this.lastCaptureTier = tier;
+                return controller.capture(text, tier);
+            },
+            onDestroy: () => {
+                this.quickCaptureDialog = undefined;
+                this.activeDialogs.delete(dialog);
+            },
+        });
+        this.quickCaptureDialog = dialog;
+        this.activeDialogs.add(dialog);
+    }
+
+    private requireInboxController(): InboxController {
+        const controller = this.inboxController;
+        if (!controller) {
+            throw new Error("The SiYuan Task Center inbox controller is not ready");
+        }
+        return controller;
+    }
+
+    /**
+     * 入口 1：从收件箱移入任务清单。
+     * 目标位置必须由用户在文档树里选；成功后立刻刷新当前任务中心列表。
+     */
+    private openPromoteDialog(
+        note: InboxNote,
+        translate: Translate,
+        taskController: TaskCenterController,
+    ): void {
+        const inboxController = this.requireInboxController();
+        let dialog: Dialog;
+        dialog = showPromoteInboxNoteDialog({
+            translate,
+            note,
+            pickerApi: { listNotebooks, listChildDocuments, searchDocuments },
+            onCreate: async ({ target, task }) => {
+                const resolved = await resolveTargetDocument({ createDocument }, target);
+                if (!resolved.ok) {
+                    return { ok: false, reason: resolved.reason };
+                }
+                const noteBody = splitInboxNoteText(note.text).body;
+                const result = await promoteToTaskList({
+                    createTaskBlock: (request) => createTaskBlock(
+                        { prependMarkdownBlock, setBlockAttributes, deleteBlock },
+                        request,
+                    ),
+                    insertNoteBody: async (blockId, markdown) => {
+                        await insertMarkdownBlockAfter(blockId, markdown);
+                    },
+                    removeInboxNote: async (noteId) => (await inboxController.consume(noteId)).ok,
+                }, {
+                    rootDocumentId: resolved.documentId,
+                    taskLabel: translate("taskCard"),
+                    task,
+                    noteId: note.id,
+                    ...(noteBody ? { noteBody } : {}),
+                });
+                if (result.ok) {
+                    await taskController.refresh();
+                }
+                return result;
+            },
+            onDestroy: () => {
+                this.activeDialogs.delete(dialog);
+            },
+        });
+        this.activeDialogs.add(dialog);
     }
 
     private async locateTask(
@@ -367,6 +549,11 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         const slashCommand = this.protyleSlash.find(({ id }) => id === "insertTickTickTaskCard");
         if (slashCommand) {
             slashCommand.html = `<div class="b3-list-item__first"><span class="b3-list-item__text">${escapeHtml(this.translate("taskCreate.slashName"))}</span></div>`;
+        }
+        if (this.quickCaptureButton) {
+            const title = this.translate("quickCapture.openTooltip");
+            this.quickCaptureButton.title = title;
+            this.quickCaptureButton.setAttribute("aria-label", title);
         }
         this.taskCenterTab?.refreshLanguage();
         void this.taskCardLifecycle?.refreshAll();

@@ -10,6 +10,8 @@ import {
     type TaskValidationError,
 } from "../domain/validation";
 import type { Translate } from "../i18n";
+import { splitInboxNoteText, type InboxNote } from "../inbox/inbox-note";
+import { PromoteTaskError } from "../inbox/promote";
 import { TaskCreationError } from "./create-task";
 import { SubmissionController } from "./submission-controller";
 import { createTaskChoiceGroup } from "./task-choice-group";
@@ -22,13 +24,18 @@ type FormOutcome =
 export type CreateTaskDialogOptions = {
     translate: Translate;
     initialTitle: string;
-    onCreate(task: NormalizedTaskData): Promise<void>;
+    /**
+     * 收件箱里的正式任务。有值时弹窗顶部出现「从收件箱带入」，
+     * 选中一条会把它的文字填进标题，并在创建成功后把那张便条从收件箱删掉。
+     * 只列正式任务——快速事项不值得为它新建任务文档。
+     */
+    inboxNotes?: readonly InboxNote[];
+    onCreate(task: NormalizedTaskData, inboxNoteId?: string): Promise<void>;
     onDestroy?(): void;
 };
 
 const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
     "title-required": "validation.titleRequired",
-    "url-required": "validation.urlRequired",
     "url-invalid": "validation.urlInvalid",
     "url-protocol-unsupported": "validation.urlProtocolUnsupported",
     "url-credentials-unsupported": "validation.urlCredentialsUnsupported",
@@ -40,6 +47,7 @@ const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
 
 export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     const { translate } = options;
+    let selectedInboxNoteId: string | undefined;
     const controller = new SubmissionController<TaskDataCandidate, FormOutcome>(async (candidate) => {
         const normalized = normalizeTaskData(candidate);
         if (!normalized.valid) {
@@ -47,7 +55,7 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
         }
 
         try {
-            await options.onCreate(normalized.data);
+            await options.onCreate(normalized.data, selectedInboxNoteId);
             return { kind: "success" };
         } catch (error) {
             return { kind: "failure", error };
@@ -60,9 +68,14 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
         disableClose: true,
         hideCloseIcon: true,
         content: `<form class="ticktick-task-form">
+            <details class="ticktick-task-form__inbox fn__none" data-field="inbox">
+                <summary data-field="inbox-summary"></summary>
+                <div class="ticktick-task-form__inbox-list" data-field="inbox-list" role="listbox"></div>
+            </details>
             <label class="b3-label">
                 <span data-field-label="title"></span>
                 <input class="b3-text-field fn__block" data-field="title" type="text" autocomplete="off">
+                <span class="ticktick-task-form__inbox-chip fn__none" data-field="inbox-chip"></span>
             </label>
             <label class="b3-label">
                 <span data-field-label="url"></span>
@@ -101,6 +114,10 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     const workModeInput = requireElement<HTMLInputElement>(form, '[data-field="work-mode"]');
     const deadlineInput = requireElement<HTMLInputElement>(form, '[data-field="deadline"]');
     const errorElement = requireElement<HTMLElement>(form, '[data-field="error"]');
+    const inboxDetails = requireElement<HTMLDetailsElement>(form, '[data-field="inbox"]');
+    const inboxSummary = requireElement<HTMLElement>(form, '[data-field="inbox-summary"]');
+    const inboxList = requireElement<HTMLElement>(form, '[data-field="inbox-list"]');
+    const inboxChip = requireElement<HTMLElement>(form, '[data-field="inbox-chip"]');
     const cancelButton = requireElement<HTMLButtonElement>(form, '[data-action="cancel"]');
     const createButton = requireElement<HTMLButtonElement>(form, '[data-action="create"]');
 
@@ -112,6 +129,37 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     cancelButton.textContent = translate("common.cancel");
     createButton.textContent = translate("taskCreate.create");
     titleInput.value = options.initialTitle;
+    const inboxNotes = options.inboxNotes ?? [];
+    if (inboxNotes.length > 0) {
+        inboxDetails.classList.remove("fn__none");
+        inboxSummary.textContent = translate("inboxBringIn.summary")
+            .replace("${count}", String(inboxNotes.length));
+        for (const note of inboxNotes) {
+            const option = document.createElement("button");
+            option.type = "button";
+            option.className = "ticktick-task-form__inbox-item";
+            option.setAttribute("role", "option");
+            option.textContent = note.text;
+            const time = document.createElement("span");
+            time.className = "ticktick-task-form__inbox-time";
+            time.textContent = new Intl.DateTimeFormat(undefined, {
+                dateStyle: "short",
+                timeStyle: "short",
+            }).format(new Date(note.createdAt));
+            option.append(time);
+            option.addEventListener("click", () => {
+                selectedInboxNoteId = note.id;
+                // 只带标题；正文由插件在创建成功后写进当前文档
+                titleInput.value = splitInboxNoteText(note.text).title;
+                inboxChip.textContent = translate("inboxBringIn.chip");
+                inboxChip.classList.remove("fn__none");
+                for (const sibling of Array.from(inboxList.children)) {
+                    sibling.classList.toggle("ticktick-task-form__inbox-item--active", sibling === option);
+                }
+            });
+            inboxList.append(option);
+        }
+    }
 
     const statusChoices = createTaskChoiceGroup({
         container: requireElement(form, '[data-choice-group="status"]'),
@@ -192,6 +240,9 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
 }
 
 function getCreationErrorMessage(error: unknown, translate: Translate): string {
+    if (error instanceof PromoteTaskError) {
+        return translate(`inboxPromote.errors.${error.reason}`);
+    }
     if (!(error instanceof TaskCreationError)) {
         return translate("taskCreate.errors.createFailed");
     }

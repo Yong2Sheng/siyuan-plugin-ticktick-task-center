@@ -41,6 +41,14 @@ describe("parseTaskBlockAttributes", () => {
             .toEqual({ valid: false, reason });
     });
 
+    it("accepts a task whose target link is missing or empty", () => {
+        const missing = { ...VALID_ATTRIBUTES };
+        delete missing[TASK_BLOCK_ATTRIBUTES.url];
+        expect(parseTaskBlockAttributes(missing)).toMatchObject({ valid: true, data: { url: "" } });
+        expect(parseTaskBlockAttributes({ ...VALID_ATTRIBUTES, [TASK_BLOCK_ATTRIBUTES.url]: "" }))
+            .toMatchObject({ valid: true, data: { url: "" } });
+    });
+
     it("reads a valid optional deadline and rejects an invalid one", () => {
         expect(parseTaskBlockAttributes({
             ...VALID_ATTRIBUTES,

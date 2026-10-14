@@ -18,7 +18,7 @@ const VALID_ATTRIBUTES: Record<string, unknown> = {
     [TASK_BLOCK_ATTRIBUTES.updatedAt]: "2026-07-18T00:00:00.000Z",
 };
 
-function createGeneratedCard(): HTMLElement {
+function createGeneratedCard(withLink = true): HTMLElement {
     const card = document.createElement("div");
     card.className = "ticktick-task-card";
     card.setAttribute(TASK_CARD_CONTAINER_ATTRIBUTE, "");
@@ -30,11 +30,17 @@ function createGeneratedCard(): HTMLElement {
     identity.textContent = "✅ 滴答清单任务";
     const main = document.createElement("span");
     main.className = "ticktick-task-card__main";
-    const link = document.createElement("a");
-    link.className = "ticktick-task-card__link";
-    link.href = String(VALID_ATTRIBUTES[TASK_BLOCK_ATTRIBUTES.url]);
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
+    // 没有目标链接的任务渲染的是普通文本节点，不是链接；
+    // 污染检测必须同样认得它，否则被序列化的无链接卡片无法自动修复。
+    const link: HTMLElement = withLink ? document.createElement("a") : document.createElement("span");
+    link.className = withLink
+        ? "ticktick-task-card__link"
+        : "ticktick-task-card__link ticktick-task-card__link--plain";
+    if (link instanceof HTMLAnchorElement) {
+        link.href = String(VALID_ATTRIBUTES[TASK_BLOCK_ATTRIBUTES.url]);
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+    }
     link.textContent = "打开任务";
     main.append(link);
     const status = document.createElement("button");
@@ -45,7 +51,12 @@ function createGeneratedCard(): HTMLElement {
     return card;
 }
 
-function createTaskBlock(cardCount = 0, marker = "true", readonly = false): {
+function createTaskBlock(
+    cardCount = 0,
+    marker = "true",
+    readonly = false,
+    cardWithLink = true,
+): {
     block: HTMLElement;
     original: HTMLElement;
 } {
@@ -61,7 +72,7 @@ function createTaskBlock(cardCount = 0, marker = "true", readonly = false): {
     original.setAttribute("spellcheck", "false");
     original.append("滴答任务：Use the unit background for DC4 GRB analysis");
     for (let index = 0; index < cardCount; index += 1) {
-        original.append(createGeneratedCard());
+        original.append(createGeneratedCard(cardWithLink));
     }
     const attr = document.createElement("div");
     attr.className = "protyle-attr";
@@ -222,6 +233,26 @@ describe("serialized task card pollution repair", () => {
 
         expect(repairMarkdown).toHaveBeenCalledOnce();
         expect(inspectTaskCardPollution(block)).toEqual({ kind: "valid", cardCount: 1 });
+    });
+
+    it("repairs a serialized card of a task that has no target link", async () => {
+        const { block } = createTaskBlock(1, "true", false, false);
+        const attributes = { ...VALID_ATTRIBUTES };
+        delete attributes[TASK_BLOCK_ATTRIBUTES.url];
+        const { enhancer, repairMarkdown } = createEnhancer(attributes);
+
+        await enhancer.scan(document.body);
+
+        expect(repairMarkdown).toHaveBeenCalledTimes(1);
+        // 修复后的降级内容不带链接，但仍然是可读文本
+        expect(repairMarkdown.mock.calls[0]?.[1]).toBe(
+            createTaskFallbackMarkdown(
+                "滴答任务",
+                String(VALID_ATTRIBUTES[TASK_BLOCK_ATTRIBUTES.title]),
+                "",
+            ),
+        );
+        expect(block.isConnected).toBe(true);
     });
 
     it("does not repair ordinary user HTML", async () => {

@@ -66,8 +66,9 @@ function isGeneratedTaskCard(card: HTMLElement): boolean {
     }
 
     const mainChildren = Array.from(main.children);
+    const link = mainChildren[0];
     return mainChildren.length === 1
-        && mainChildren[0] instanceof HTMLAnchorElement
-        && mainChildren[0].classList.contains("ticktick-task-card__link")
+        && (link instanceof HTMLAnchorElement || link instanceof HTMLSpanElement)
+        && link.classList.contains("ticktick-task-card__link")
         && status.type === "button";
 }

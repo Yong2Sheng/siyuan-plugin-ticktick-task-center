@@ -1,6 +1,10 @@
 import { isSiYuanId } from "../domain/siyuan-id";
 import type { TickTickTaskStatus } from "../domain/status";
-import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
+import {
+    REQUIRED_TASK_BLOCK_ATTRIBUTE_NAMES,
+    TASK_BLOCK_ATTRIBUTES,
+    TASK_BLOCK_OPTIONAL_ATTRIBUTES,
+} from "../domain/task";
 import { readLocalDate } from "../domain/local-date";
 import { parseTaskBlockAttributes, type TaskBlockParseFailure } from "../task-card/task-data";
 import type { TickTickTaskWorkMode } from "../domain/work-mode";
@@ -56,9 +60,9 @@ type Aggregate = {
     documentPath: unknown;
 };
 
-const REQUIRED_TASK_ATTRIBUTE_NAMES = Object.values(TASK_BLOCK_ATTRIBUTES);
+const REQUIRED_TASK_ATTRIBUTE_NAMES: readonly string[] = REQUIRED_TASK_BLOCK_ATTRIBUTE_NAMES;
 const TASK_ATTRIBUTE_NAMES = new Set<string>([
-    ...REQUIRED_TASK_ATTRIBUTE_NAMES,
+    ...Object.values(TASK_BLOCK_ATTRIBUTES),
     ...Object.values(TASK_BLOCK_OPTIONAL_ATTRIBUTES),
 ]);
 

@@ -2,16 +2,47 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-10-14
+
+### Inbox
+
+- Add an Inbox tab to the Task Center for capturing notes as a title plus an optional body. Enter in the title saves; Enter in the body inserts a newline and ⌘/Ctrl + Enter saves.
+- A note is not a task: it stores only text, a tier, and a creation time, carries no status, deadline, work category, focus plan, or link, and never creates, modifies, or hides a document or notebook.
+- Notes come in two tiers, ⚡ Quick errand and 🔬 Formal task. A quick errand can be finished in place and moves into ✓ Done today; a formal task can only be moved to the task list.
+- Each note renders as a bold title plus a collapsed body. A body longer than two lines can be expanded and is rendered as basic Markdown: paragraphs, bold, italic, inline code, links, unordered lists, and quotes.
+- Implement a minimal Markdown renderer that builds DOM nodes directly, with no `innerHTML` and no third-party dependency. Links accept `http` and `https` only; any other scheme is treated as plain text.
+
+### Moving notes to the task list
+
+- Moving a note to the task list creates a new task document: the task title comes from the note title, the note body is written into the same document, and the note is then deleted.
+- The order is fixed as create task block → write body → delete note. A failed body write keeps the note, a failed note deletion keeps the task block, and both report the real outcome instead of silently dropping content.
+- The target picker now answers where the new task document goes: select a notebook to create it at the notebook root, select a document to create it underneath, and the triangle only expands and collapses. A persistent line shows the full path that will be created together with an editable document name.
+- The picker has no default selection and does not remember the previous choice; every move requires an explicit decision.
+- The document name defaults to the note title after removing line breaks and path separators, and is no longer overwritten by the title once edited by hand.
+- Enlarge the document-tree triangle to a 22×22 hit area with solid ▶ / ▼ glyphs, fixing both the 10px light-grey outline triangle that read as a small dot and the tree jumping back to the top after expanding.
+
+### Quick capture
+
+- Add a Quick capture button to the SiYuan top bar that opens a small dialog from anywhere; Save and continue is meant for capturing several notes in a row.
+- The Quick capture dialog and the Inbox capture box share one data set and one InboxController, so there is never a second inbox, and the tier choice is shared across both entry points.
+
+### Optional task link
+
+- `custom-ticktick-url` changed from required to optional: a task can be created and saved without a link, and the card then shows the title as plain text.
+- This only relaxes the requirement; attribute meaning and format validation are unchanged. A present but invalid link is still rejected, and existing tasks need no migration.
+- The number of required structured attributes drops from seven to six.
+
+### Fixed
+
+- Refuse any Inbox write until the data file has been read successfully, so an empty in-memory state right after startup can no longer overwrite existing notes.
+- Refuse to save a note that has a body but no title, which previously produced a title-less note.
+- Stop deadline urgency and overdue-focus calculations for Completed, Failed, and Cancelled tasks. Their original deadline remains visible and editable with a Closed label.
+- Make the Task Center calendar interaction test derive dates from the current local day so fixed dates cannot expire and cause false failures.
 
 ### Development workflow
 
 - Require a reviewable design and explicit user approval before implementing user-visible UI changes. Drafts cover relevant states, interaction flow, themes, and wide/narrow layouts; the temporary `design/` directory is not committed.
-
-### Fixed
-
-- Stop deadline urgency and overdue-focus calculations for Completed, Failed, and Cancelled tasks. Their original deadline remains visible and editable with a Closed label.
-- Make the Task Center calendar interaction test derive dates from the current local day so fixed dates cannot expire and cause false failures.
+- Add automated coverage for Inbox domain rules, store, persistence, controller, view, document tree, document picker, promotion flow, promotion dialog, Quick capture dialog, and Markdown rendering.
 
 ## 0.4.0 - 2026-09-08
 

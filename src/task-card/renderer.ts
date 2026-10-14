@@ -131,7 +131,17 @@ export function enhanceTaskBlock(
 function createTargetControl(
     viewModel: TaskCardViewModel,
     actions?: TaskCardActions,
-): HTMLAnchorElement | HTMLButtonElement {
+): HTMLElement {
+    // 没有目标链接的任务：卡片上少一个控件，只把标题作为普通文本显示，
+    // 而不是留一个点不动的灰按钮。
+    if (!viewModel.target) {
+        const plain = document.createElement("span");
+        plain.className = "ticktick-task-card__link ticktick-task-card__link--plain";
+        plain.title = viewModel.title;
+        plain.textContent = viewModel.title;
+        return plain;
+    }
+
     if (viewModel.target.kind === "siyuan-block") {
         const { blockId } = viewModel.target;
         const button = document.createElement("button");

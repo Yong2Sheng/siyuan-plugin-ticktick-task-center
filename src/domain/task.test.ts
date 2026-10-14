@@ -22,6 +22,18 @@ describe("Markdown fallback", () => {
         expect(createTaskFallbackMarkdown("Task", "a\r\nb\rc\nd", "https://ticktick.com/t/1"))
             .toBe("Task：[a b c d](https://ticktick.com/t/1)");
     });
+
+    it("writes plain text when the task has no target link yet", () => {
+        // 链接可选：没有链接时降级内容仍然可读、可搜索，只是不带链接。
+        expect(createTaskFallbackMarkdown("Task", "给 GRB 写说明", ""))
+            .toBe("Task：给 GRB 写说明");
+        expect(createTaskFallbackMarkdown("Task", "给 GRB 写说明", "   "))
+            .toBe("Task：给 GRB 写说明");
+    });
+
+    it("still escapes brackets in a linkless title", () => {
+        expect(createTaskFallbackMarkdown("Task", "a[b]", "")).toBe("Task：a\\[b\\]");
+    });
 });
 
 describe("task block attributes", () => {

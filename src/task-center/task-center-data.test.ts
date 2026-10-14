@@ -160,14 +160,38 @@ describe("aggregateTaskCenterRows", () => {
         expect(result.invalidBlocks).toEqual([{ blockId: BLOCK_ID, reason }]);
     });
 
-    it("classifies a task with one missing required attribute as incomplete", () => {
+    it("treats a task without a target link as valid instead of incomplete", () => {
+        // custom-ticktick-url 自收件箱功能起变为可选：没有链接的任务照常进任务中心，
+        // 只是 url 为空字符串，界面上不渲染打开链接的控件。
         const row = rowsFor()[0];
         delete row[TASK_BLOCK_ATTRIBUTES.url];
         const result = aggregateTaskCenterRows([row]);
+
+        expect(result.invalidBlocks).toEqual([]);
+        expect(result.incompleteBlocks).toEqual([]);
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0]?.url).toBe("");
+    });
+
+    it("treats an empty target link attribute as no link", () => {
+        const result = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_ATTRIBUTES.url]: "",
+        }));
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0]?.url).toBe("");
+        expect(result.incompleteBlocks).toEqual([]);
+    });
+
+    it("still classifies a genuinely missing required attribute as incomplete", () => {
+        const row = rowsFor()[0];
+        delete row[TASK_BLOCK_ATTRIBUTES.status];
+        const result = aggregateTaskCenterRows([row]);
+
         expect(result.invalidBlocks).toEqual([]);
         expect(result.incompleteBlocks).toEqual([{
             blockId: BLOCK_ID,
-            missingAttributes: [TASK_BLOCK_ATTRIBUTES.url],
+            missingAttributes: [TASK_BLOCK_ATTRIBUTES.status],
         }]);
     });
 

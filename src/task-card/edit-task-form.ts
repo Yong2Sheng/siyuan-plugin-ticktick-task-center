@@ -33,7 +33,6 @@ export type EditTaskDialog = ManagedEditDialog & {
 
 const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
     "title-required": "validation.titleRequired",
-    "url-required": "validation.urlRequired",
     "url-invalid": "validation.urlInvalid",
     "url-protocol-unsupported": "validation.urlProtocolUnsupported",
     "url-credentials-unsupported": "validation.urlCredentialsUnsupported",

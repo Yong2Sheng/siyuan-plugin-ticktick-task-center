@@ -471,6 +471,7 @@
     }
 
     &__summary,
+    &__inbox-summary,
     &__knowledge-summary {
         display: flex;
         flex-wrap: wrap;
@@ -479,6 +480,7 @@
     }
 
     &__summary-item,
+    &__inbox-summary-item,
     &__knowledge-summary-item {
         padding: 5px 10px;
         border: 1px solid var(--b3-border-color);
@@ -2162,4 +2164,769 @@
             flex: 1 1 0;
         }
     }
+}
+
+/* ------------------------------------------------------------------ 收件箱 */
+
+.ticktick-task-center__inbox {
+    --ticktick-inbox-quick-color: color-mix(
+        in srgb,
+        #d58b19 80%,
+        var(--b3-theme-on-background)
+    );
+    --ticktick-inbox-formal-color: color-mix(
+        in srgb,
+        #8b5cf6 82%,
+        var(--b3-theme-on-background)
+    );
+    display: grid;
+    gap: 18px;
+    min-width: 0;
+}
+
+.ticktick-task-center__inbox-capture {
+    display: grid;
+    gap: 10px;
+    box-sizing: border-box;
+    padding: 14px;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 32%, var(--b3-border-color));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 5%, var(--b3-theme-surface));
+}
+
+.ticktick-task-center__inbox-capture-label {
+    color: var(--b3-theme-primary);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.ticktick-task-center__inbox-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 54px;
+    padding: 9px 11px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: var(--b3-theme-background);
+    color: var(--b3-theme-on-background);
+    font: inherit;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+.ticktick-task-center__inbox-input:focus-visible {
+    border-color: var(--b3-theme-primary);
+    outline: 2px solid color-mix(in srgb, var(--b3-theme-primary) 45%, transparent);
+    outline-offset: 1px;
+}
+
+.ticktick-task-center__inbox-capture-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.ticktick-task-center__inbox-tier {
+    display: inline-flex;
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: var(--b3-theme-surface);
+}
+
+.ticktick-task-center__inbox-tier-option {
+    padding: 4px 11px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.ticktick-task-center__inbox-tier-option:hover {
+    color: var(--b3-theme-primary);
+}
+
+.ticktick-task-center__inbox-tier-option:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 1px;
+}
+
+.ticktick-task-center__inbox-tier-option--active {
+    background: color-mix(in srgb, var(--b3-theme-primary) 14%, var(--b3-theme-background));
+    color: var(--b3-theme-primary);
+    font-weight: 700;
+}
+
+.ticktick-task-center__inbox-tier-option--active[data-tier="quick"] {
+    background: color-mix(in srgb, var(--ticktick-inbox-quick-color) 16%, var(--b3-theme-background));
+    color: var(--ticktick-inbox-quick-color);
+}
+
+.ticktick-task-center__inbox-tier-option--active[data-tier="formal"] {
+    background: color-mix(in srgb, var(--ticktick-inbox-formal-color) 16%, var(--b3-theme-background));
+    color: var(--ticktick-inbox-formal-color);
+}
+
+.ticktick-task-center__inbox-capture-hint {
+    margin-right: auto;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+}
+
+.ticktick-task-center__inbox-submit {
+    padding: 5px 15px;
+}
+
+.ticktick-task-center__inbox-summary {
+    margin: 0;
+}
+
+.ticktick-task-center__inbox-feedback:empty {
+    display: none;
+}
+
+.ticktick-task-center__inbox-state {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+    font-size: 13.5px;
+    line-height: 1.6;
+}
+
+.ticktick-task-center__inbox-state--error {
+    color: var(--b3-theme-error, #cf222e);
+}
+
+.ticktick-task-center__inbox-state--notice {
+    color: color-mix(in srgb, var(--b3-theme-warning, #c47b12) 88%, var(--b3-theme-on-surface));
+}
+
+.ticktick-task-center__inbox-retry {
+    margin-top: 9px;
+}
+
+.ticktick-task-center__inbox-group {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ticktick-task-center__inbox-group-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    margin: 0;
+}
+
+.ticktick-task-center__inbox-group-title {
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.ticktick-task-center__inbox-group--quick .ticktick-task-center__inbox-group-title {
+    color: var(--ticktick-inbox-quick-color);
+}
+
+.ticktick-task-center__inbox-group--formal .ticktick-task-center__inbox-group-title {
+    color: var(--ticktick-inbox-formal-color);
+}
+
+.ticktick-task-center__inbox-group-count {
+    padding: 1px 7px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 999px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11.5px;
+}
+
+.ticktick-task-center__inbox-group-hint {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+}
+
+.ticktick-task-center__inbox-group-list {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ticktick-task-center__inbox-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 14px;
+    box-sizing: border-box;
+    padding: 11px 13px;
+    border: 1px solid var(--b3-border-color);
+    border-left: 3px solid var(--b3-border-color);
+    border-radius: 9px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+}
+
+.ticktick-task-center__inbox-item[data-tier="quick"] {
+    border-left-color: color-mix(in srgb, var(--ticktick-inbox-quick-color) 55%, var(--b3-border-color));
+}
+
+.ticktick-task-center__inbox-item[data-tier="formal"] {
+    border-left-color: color-mix(in srgb, var(--ticktick-inbox-formal-color) 55%, var(--b3-border-color));
+}
+
+.ticktick-task-center__inbox-item:hover {
+    border-color: color-mix(in srgb, var(--b3-theme-primary) 48%, var(--b3-border-color));
+}
+
+.ticktick-task-center__inbox-item[data-tier="quick"]:hover {
+    border-left-color: var(--ticktick-inbox-quick-color);
+}
+
+.ticktick-task-center__inbox-item[data-tier="formal"]:hover {
+    border-left-color: var(--ticktick-inbox-formal-color);
+}
+
+.ticktick-task-center__inbox-item-body {
+    min-width: 0;
+}
+
+.ticktick-task-center__inbox-item-text {
+    margin: 0;
+    color: var(--b3-theme-on-background);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.ticktick-task-center__inbox-item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    margin: 3px 0 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.ticktick-task-center__inbox-retier {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    font: inherit;
+    font-size: 11.5px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.ticktick-task-center__inbox-retier:hover {
+    color: var(--b3-theme-primary);
+}
+
+.ticktick-task-center__inbox-retier:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 2px;
+}
+
+.ticktick-task-center__inbox-retier:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.ticktick-task-center__inbox-item-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.ticktick-task-center__inbox-action {
+    padding: 3px 11px;
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
+/* 主操作沿用既有的「着色态」写法，浅色与深色主题下对比度都成立 */
+.ticktick-task-center__inbox-action--primary {
+    border-color: color-mix(in srgb, var(--b3-theme-primary) 52%, var(--b3-border-color));
+    background: color-mix(in srgb, var(--b3-theme-primary) 16%, var(--b3-theme-background));
+    color: var(--b3-theme-primary);
+    font-weight: 700;
+}
+
+.ticktick-task-center__inbox-group--quick .ticktick-task-center__inbox-action--primary {
+    border-color: color-mix(in srgb, var(--ticktick-inbox-quick-color) 55%, var(--b3-border-color));
+    background: color-mix(in srgb, var(--ticktick-inbox-quick-color) 16%, var(--b3-theme-background));
+    color: var(--ticktick-inbox-quick-color);
+}
+
+.ticktick-task-center__inbox-group--formal .ticktick-task-center__inbox-action--primary {
+    border-color: color-mix(in srgb, var(--ticktick-inbox-formal-color) 55%, var(--b3-border-color));
+    background: color-mix(in srgb, var(--ticktick-inbox-formal-color) 16%, var(--b3-theme-background));
+    color: var(--ticktick-inbox-formal-color);
+}
+
+.ticktick-task-center__inbox-action--icon {
+    padding: 3px 8px;
+    color: var(--b3-theme-on-surface-light);
+}
+
+.ticktick-task-center__inbox-done {
+    border: 1px solid var(--b3-border-color);
+    border-radius: 9px;
+    background: var(--b3-theme-surface);
+}
+
+.ticktick-task-center__inbox-done > summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    padding: 9px 13px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ticktick-task-center__inbox-done-hint {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11.5px;
+    font-weight: 400;
+}
+
+.ticktick-task-center__inbox-done-list {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0 13px 11px 31px;
+    list-style: none;
+}
+
+.ticktick-task-center__inbox-done-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 13px;
+    line-height: 1.6;
+    text-decoration: line-through;
+    overflow-wrap: anywhere;
+}
+
+.ticktick-task-center__inbox-done-time {
+    font-size: 11.5px;
+    text-decoration: none;
+}
+
+/* 没有目标链接的任务：卡片上少一个控件，而不是留一个点不动的灰按钮 */
+.ticktick-task-card__link--plain {
+    display: inline-block;
+    max-width: 100%;
+    padding: 3px 0;
+    color: var(--b3-theme-on-background);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+    .ticktick-task-center__inbox-item {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ticktick-task-center__inbox-item-actions {
+        justify-content: flex-start;
+    }
+
+    .ticktick-task-center__inbox-capture-hint {
+        display: none;
+    }
+
+    .ticktick-task-center__inbox-submit {
+        flex: 1 1 auto;
+    }
+}
+
+/* --------------------------------------------------- 目标位置：可展开的文档树 */
+
+.ticktick-document-picker {
+    display: grid;
+    gap: 0;
+    min-width: 0;
+}
+
+.ticktick-document-picker__search {
+    box-sizing: border-box;
+    width: 100%;
+    border-radius: 7px 7px 0 0;
+}
+
+.ticktick-document-picker__body {
+    min-width: 0;
+}
+
+.ticktick-document-picker__tree {
+    box-sizing: border-box;
+    max-height: 268px;
+    overflow: auto;
+    border: 1px solid var(--b3-border-color);
+    border-top: 0;
+    border-radius: 0;
+    background: var(--b3-theme-background);
+}
+
+.ticktick-document-picker__row {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    padding: 3px 8px 3px calc(6px + var(--depth, 0) * 15px);
+    border-left: 3px solid transparent;
+    color: var(--b3-theme-on-surface);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.ticktick-document-picker__row:hover {
+    background: var(--b3-list-hover, color-mix(in srgb, var(--b3-theme-primary) 8%, transparent));
+}
+
+.ticktick-document-picker__row--selected,
+.ticktick-document-picker__row--selected:hover {
+    border-left-color: var(--b3-theme-primary);
+    background: color-mix(in srgb, var(--b3-theme-primary) 13%, transparent);
+}
+
+.ticktick-document-picker__twisty {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    /* 用正文色而不是浅灰：原来 10px 的浅灰空心三角会被读成一个小圆点 */
+    color: var(--b3-theme-on-surface);
+    font-size: 11px;
+    line-height: 22px;
+    cursor: pointer;
+}
+
+.ticktick-document-picker__twisty:hover {
+    background: color-mix(in srgb, var(--b3-theme-primary) 16%, transparent);
+    color: var(--b3-theme-primary);
+}
+
+.ticktick-document-picker__twisty:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 1px;
+}
+
+.ticktick-document-picker__twisty--leaf {
+    visibility: hidden;
+}
+
+.ticktick-document-picker__label {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 6px;
+    align-items: baseline;
+    min-width: 0;
+    padding: 3px 4px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ticktick-document-picker__row--selected .ticktick-document-picker__label {
+    color: var(--b3-theme-primary);
+    font-weight: 700;
+}
+
+.ticktick-document-picker__name {
+    overflow-wrap: anywhere;
+}
+
+.ticktick-document-picker__tag {
+    flex: 0 0 auto;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+}
+
+.ticktick-document-picker__message {
+    padding: 6px 10px 6px calc(10px + var(--depth, 0) * 15px);
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12.5px;
+}
+
+.ticktick-document-picker__name-input {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+/* 「创建任务」弹窗里的收件箱带入 */
+
+.ticktick-task-form__inbox {
+    margin-bottom: 12px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: var(--b3-theme-surface);
+}
+
+.ticktick-task-form__inbox > summary {
+    padding: 8px 10px;
+    color: var(--b3-theme-on-surface);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ticktick-task-form__inbox-list {
+    display: grid;
+    gap: 3px;
+    padding: 0 8px 8px;
+}
+
+.ticktick-task-form__inbox-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    font: inherit;
+    font-size: 12.5px;
+    line-height: 1.5;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ticktick-task-form__inbox-item:hover {
+    background: var(--b3-list-hover, color-mix(in srgb, var(--b3-theme-primary) 8%, transparent));
+}
+
+.ticktick-task-form__inbox-item--active {
+    background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+    color: var(--b3-theme-primary);
+    font-weight: 700;
+}
+
+.ticktick-task-form__inbox-time {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11.5px;
+    font-weight: 400;
+}
+
+.ticktick-task-form__inbox-chip {
+    display: inline-flex;
+    margin-top: 5px;
+    padding: 2px 8px;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 45%, var(--b3-border-color));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 10%, var(--b3-theme-background));
+    color: var(--b3-theme-primary);
+    font-size: 11.5px;
+}
+
+.ticktick-inbox-promote__note-text {
+    margin: 4px 0 0;
+    padding: 8px 10px;
+    border-left: 3px solid color-mix(in srgb, var(--b3-theme-primary) 45%, var(--b3-border-color));
+    border-radius: 0 6px 6px 0;
+    background: color-mix(in srgb, var(--b3-theme-primary) 6%, var(--b3-theme-surface));
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.ticktick-document-picker__planned {
+    display: grid;
+    gap: 6px;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 1px solid var(--b3-border-color);
+    border-top: 0;
+    border-radius: 0 0 7px 7px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 5%, var(--b3-theme-background));
+}
+
+.ticktick-document-picker__planned--ready {
+    background: color-mix(in srgb, var(--b3-theme-primary) 9%, var(--b3-theme-background));
+}
+
+.ticktick-document-picker__planned-hint {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.ticktick-document-picker__planned-path {
+    color: var(--b3-theme-primary);
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.ticktick-document-picker__planned-path[data-state="error"] {
+    color: var(--b3-theme-error, #cf222e);
+}
+
+.ticktick-document-picker__planned-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.ticktick-document-picker__planned-label {
+    flex: 0 0 auto;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+}
+
+.ticktick-document-picker__name-input {
+    flex: 1 1 220px;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.ticktick-document-picker__tag--picked {
+    color: var(--b3-theme-primary);
+    font-weight: 700;
+}
+
+.ticktick-task-center__inbox-item-body-text {
+    margin: 5px 0 0;
+    color: var(--b3-theme-on-surface);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.ticktick-task-center__inbox-item-body-text p {
+    margin: 0 0 6px;
+}
+
+.ticktick-task-center__inbox-item-body-text > :last-child {
+    margin-bottom: 0;
+}
+
+.ticktick-task-center__inbox-item-body-text ul {
+    margin: 0 0 6px;
+    padding-left: 20px;
+}
+
+.ticktick-task-center__inbox-item-body-text blockquote {
+    margin: 0 0 6px;
+    padding: 2px 0 2px 10px;
+    border-left: 3px solid var(--b3-border-color);
+    color: var(--b3-theme-on-surface-light);
+}
+
+.ticktick-task-center__inbox-item-body-text code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+    font-family: var(--b3-font-family-code, monospace);
+    font-size: 12px;
+}
+
+.ticktick-task-center__inbox-item-body-text a {
+    color: var(--b3-theme-primary);
+}
+
+/* 默认折成 2 行；放不下时才由脚本放出「展开正文」按钮 */
+.ticktick-task-center__inbox-item-body-text[data-collapsed="true"] {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.ticktick-task-center__inbox-body-toggle {
+    margin: 3px 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--b3-theme-primary);
+    font: inherit;
+    font-size: 11.5px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.ticktick-task-center__inbox-body-toggle:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 2px;
+}
+
+.ticktick-task-center__inbox-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.ticktick-task-center__inbox-field-label {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+}
+
+.ticktick-task-center__inbox-title-input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 8px 11px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: var(--b3-theme-background);
+    color: var(--b3-theme-on-background);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.ticktick-task-center__inbox-title-input:focus-visible {
+    border-color: var(--b3-theme-primary);
+    outline: 2px solid color-mix(in srgb, var(--b3-theme-primary) 45%, transparent);
+    outline-offset: 1px;
+}
+
+/* 顶栏「快速记录」弹窗：字段与收件箱捕获框一致，只是更窄 */
+.ticktick-quick-capture__field {
+    display: grid;
+    gap: 4px;
+}
+
+.ticktick-quick-capture__title {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.ticktick-quick-capture__body {
+    box-sizing: border-box;
+    min-height: 88px;
+    font: inherit;
+    line-height: 1.6;
+    resize: vertical;
 }

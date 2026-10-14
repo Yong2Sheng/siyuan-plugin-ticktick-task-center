@@ -57,7 +57,7 @@ describe("createTaskCardViewModel", () => {
 
         expect(viewModel.identity).toBe("SiYuan task");
         expect(viewModel.linkText).toBe("Open TickTick: DS9 Adaptor ↗️");
-        expect(viewModel.target.kind).toBe("ticktick");
+        expect(viewModel.target?.kind).toBe("ticktick");
         expect(viewModel.statusTitle).toBe("Click to edit task");
         expect(viewModel.statusAriaLabel).toBe("Edit task, current status: In progress");
         expect(viewModel.workModeText).toBe("🔎 评审-Review");
@@ -65,6 +65,32 @@ describe("createTaskCardViewModel", () => {
         expect(viewModel.title).toBe("DS9 Adaptor");
         expect(viewModel.url).toBe("https://ticktick.com/task/1");
         expect(viewModel.deadline).toBe("2026-08-31");
+    });
+
+    it("keeps a task without any target link renderable", () => {
+        const viewModel = createTaskCardViewModel({
+            version: 1,
+            title: "给 GRB 那篇的样本筛选写一段可复现的说明",
+            url: "",
+            status: "todo",
+            createdAt: "2026-07-12T08:30:00.000Z",
+            updatedAt: "2026-07-12T08:30:00.000Z",
+        }, translate);
+
+        expect(viewModel.target).toBeUndefined();
+        expect(viewModel.linkText).toBe("给 GRB 那篇的样本筛选写一段可复现的说明");
+        expect(viewModel.title).toBe("给 GRB 那篇的样本筛选写一段可复现的说明");
+    });
+
+    it("rejects a link that is present but not an allowed target", () => {
+        expect(() => createTaskCardViewModel({
+            version: 1,
+            title: "Task",
+            url: "file:///tmp/task",
+            status: "in-progress",
+            createdAt: "2026-07-12T08:30:00.000Z",
+            updatedAt: "2026-07-12T08:30:00.000Z",
+        }, translate)).toThrow(/invalid task target/);
     });
 
     it("uses a target-specific label for SiYuan links", () => {

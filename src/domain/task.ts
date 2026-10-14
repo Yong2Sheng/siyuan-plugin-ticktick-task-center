@@ -21,6 +21,29 @@ export const TASK_BLOCK_OPTIONAL_ATTRIBUTES = {
     workMode: "custom-ticktick-work-mode",
 } as const;
 
+/**
+ * 判断任务块属性是否齐全时使用的必需集合。
+ *
+ * `custom-ticktick-url` 自收件箱功能起变为**可选**：任务可以先没有目标链接，
+ * 之后再补。这是放宽约束，不是改变含义——老任务都带合法链接，因此仍然合法，
+ * 不需要任何数据迁移。属性名与语义保持已发布的兼容接口不变。
+ */
+export const REQUIRED_TASK_BLOCK_ATTRIBUTE_NAMES = [
+    TASK_BLOCK_ATTRIBUTES.card,
+    TASK_BLOCK_ATTRIBUTES.version,
+    TASK_BLOCK_ATTRIBUTES.title,
+    TASK_BLOCK_ATTRIBUTES.status,
+    TASK_BLOCK_ATTRIBUTES.createdAt,
+    TASK_BLOCK_ATTRIBUTES.updatedAt,
+] as const;
+
+export type RequiredTaskBlockAttributeName =
+    (typeof REQUIRED_TASK_BLOCK_ATTRIBUTE_NAMES)[number];
+
+export type OptionalTaskBlockAttributeName =
+    | (typeof TASK_BLOCK_ATTRIBUTES)[keyof typeof TASK_BLOCK_ATTRIBUTES]
+    | (typeof TASK_BLOCK_OPTIONAL_ATTRIBUTES)[keyof typeof TASK_BLOCK_OPTIONAL_ATTRIBUTES];
+
 export const DEFAULT_TASK_STATUS = "in-progress" satisfies TickTickTaskStatus;
 export const DEFAULT_INSERT_POSITION = "document-top" as const;
 export const DEFAULT_TASK_CENTER_VIEW = "non-terminal" as const;
@@ -42,13 +65,8 @@ export type PersistedTickTickTaskData = TickTickTaskCardData & {
     updatedAt: string;
 };
 
-export type TaskBlockAttributes = Record<
-    (typeof TASK_BLOCK_ATTRIBUTES)[keyof typeof TASK_BLOCK_ATTRIBUTES],
-    string
-> & Partial<Record<
-    (typeof TASK_BLOCK_OPTIONAL_ATTRIBUTES)[keyof typeof TASK_BLOCK_OPTIONAL_ATTRIBUTES],
-    string
->>;
+export type TaskBlockAttributes = Record<RequiredTaskBlockAttributeName, string>
+    & Partial<Record<OptionalTaskBlockAttributeName, string>>;
 
 export function escapeMarkdownLinkTitle(title: string): string {
     return title
@@ -58,9 +76,17 @@ export function escapeMarkdownLinkTitle(title: string): string {
         .replace(/\]/g, "\\]");
 }
 
-/** Plain-block fallback shown while the plugin is disabled or unavailable. */
+/**
+ * 插件不可用时的降级内容。
+ *
+ * 没有目标链接的任务只写标题——仍然是一段可读、可编辑、可搜索的普通文本，
+ * 只是不带链接。这段文本必须与任务标题保持一致，插件靠它修复被序列化的卡片。
+ */
 export function createTaskFallbackMarkdown(label: string, title: string, url: string): string {
-    return `${label}：[${escapeMarkdownLinkTitle(title)}](${url})`;
+    const safeTitle = escapeMarkdownLinkTitle(title);
+    return url.trim() === ""
+        ? `${label}：${safeTitle}`
+        : `${label}：[${safeTitle}](${url})`;
 }
 
 export function createTaskBlockAttributes(data: PersistedTickTickTaskData): TaskBlockAttributes {

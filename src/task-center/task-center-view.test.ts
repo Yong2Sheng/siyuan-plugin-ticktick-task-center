@@ -11,6 +11,8 @@ import { TaskCenterView } from "./task-center-view";
 import { KnowledgeCenterController } from "../knowledge/knowledge-controller";
 import { createEmptyKnowledgeIndex } from "../knowledge/knowledge-index";
 import { addLocalCalendarDays } from "../domain/local-date";
+import { InboxController } from "../inbox/inbox-controller";
+import { createEmptyInboxStore } from "../inbox/inbox-store";
 
 const dictionary: Record<string, string> = {
     "taskCenterView.title": "Task Center",
@@ -159,6 +161,9 @@ async function createView(load = vi.fn().mockResolvedValue({
     const onOpenKnowledgeSource = vi.fn().mockResolvedValue(undefined);
     const view = new TaskCenterView(target, {
         controller,
+        inboxController: createInboxController(),
+        onPromoteInboxNote: vi.fn(),
+        onInboxActionFailed: vi.fn(),
         translate,
         locale: "en-US",
         onToggleLanguage,
@@ -202,6 +207,13 @@ function createKnowledgeController(): KnowledgeCenterController {
         saveIndex: vi.fn().mockResolvedValue(undefined),
         loadTasks: vi.fn().mockResolvedValue([]),
         scan: vi.fn(),
+    });
+}
+
+function createInboxController(): InboxController {
+    return new InboxController({
+        load: async () => ({ store: createEmptyInboxStore(), droppedNoteCount: 0 }),
+        save: async () => undefined,
     });
 }
 
@@ -431,6 +443,9 @@ describe("TaskCenterView", () => {
         const knowledgeController = createKnowledgeController();
         const view = new TaskCenterView(target, {
             controller,
+            inboxController: createInboxController(),
+            onPromoteInboxNote: vi.fn(),
+            onInboxActionFailed: vi.fn(),
             translate,
             onToggleLanguage: vi.fn().mockResolvedValue(undefined),
             onEditTask: vi.fn(),

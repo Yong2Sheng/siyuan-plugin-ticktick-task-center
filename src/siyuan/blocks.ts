@@ -77,6 +77,25 @@ export async function prependMarkdownBlock(parentId: string, markdown: string): 
     return blockId;
 }
 
+/** 在指定块后面插入 Markdown，返回新块 ID。 */
+export async function insertMarkdownBlockAfter(
+    previousBlockId: string,
+    markdown: string,
+): Promise<string> {
+    const response = await requestSiYuan<unknown>("/api/block/insertBlock", {
+        dataType: "markdown",
+        data: markdown,
+        previousID: previousBlockId,
+    });
+    const blockId = readInsertedBlockId(response);
+
+    if (blockId === null) {
+        throw new Error("SiYuan insertBlock response did not contain an inserted block ID");
+    }
+
+    return blockId;
+}
+
 export async function setBlockAttributes(blockId: string, attrs: BlockAttributes): Promise<void> {
     await requestSiYuan<null>("/api/attr/setBlockAttrs", {
         id: blockId,
