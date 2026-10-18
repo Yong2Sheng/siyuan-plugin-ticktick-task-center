@@ -3,9 +3,10 @@ export type ManagedEditDialog = {
     focusStatus(): void;
     focusWorkMode(): void;
     focusDeadline(): void;
+    focusPriority(): void;
 };
 
-export type EditDialogFocus = "status" | "work-mode" | "deadline";
+export type EditDialogFocus = "status" | "work-mode" | "deadline" | "priority";
 
 export type EditDialogFactory<TDialog extends ManagedEditDialog> = (
     onDestroy: () => void,
@@ -80,6 +81,10 @@ export class EditDialogManager<TDialog extends ManagedEditDialog = ManagedEditDi
 }
 
 function focusDialog(dialog: ManagedEditDialog, focus: EditDialogFocus): void {
+    if (focus === "priority") {
+        dialog.focusPriority();
+        return;
+    }
     if (focus === "deadline") {
         dialog.focusDeadline();
         return;

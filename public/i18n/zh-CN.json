@@ -26,6 +26,17 @@
     "review": "评审-Review",
     "unclassified": "未分类-Unclassified"
   },
+  "priority": {
+    "high": "必须推进",
+    "normal": "正常推进",
+    "low": "有空再说",
+    "unset": "未设置",
+    "unsetAction": "➖ 设置权重",
+    "menuTitle": "设置任务权重",
+    "menuLabel": "任务权重",
+    "menuAriaLabel": "当前权重：${priority}，点击修改",
+    "saveFailed": "无法更新任务权重，请重试。"
+  },
   "validation": {
     "titleRequired": "请输入任务名称。",
     "urlInvalid": "请输入格式合法的任务链接。",
@@ -34,7 +45,8 @@
     "urlSiYuanInvalid": "思源链接必须为 siyuan://blocks/<合法块 ID>。",
     "statusInvalid": "任务状态无效。",
     "workModeInvalid": "请选择工作分类。",
-    "deadlineInvalid": "截止日期无效。"
+    "deadlineInvalid": "截止日期无效。",
+    "priorityInvalid": "任务权重无效。"
   },
   "taskCreate": {
     "slashName": "任务卡片",
@@ -54,7 +66,8 @@
       "insertFailed": "插入任务块失败。",
       "attributeWriteFailed": "写入任务属性失败，已回滚插入的任务块。",
       "rollbackFailed": "写入任务属性失败，且回滚失败。请手动检查块 ${blockId}。"
-    }
+    },
+    "priorityLabel": "任务权重（可选）"
   },
   "taskCardView": {
     "identity": "思源任务",
@@ -96,7 +109,6 @@
       "blockUnavailable": "无法读取当前任务。",
       "currentDataInvalid": "当前任务数据无效，无法编辑。",
       "conflict": "任务已在其他位置更新，请关闭编辑窗口后重新打开。",
-      "focusAfterDeadline": "已有重点日期晚于新的截止日期，请先在任务中心取消这些安排。",
       "contentUpdateFailed": "更新任务内容失败。",
       "attributeWriteFailed": "更新任务属性失败，任务未发生更改。",
       "rollbackFailed": "任务更新失败，且原内容恢复失败。请手动检查块 ${blockId}。"
@@ -142,7 +154,6 @@
     "focusTomorrow": "🌙 明天",
     "focusArrangeTitle": "安排为 ${date} 的重点",
     "focusCancelTitle": "取消 ${date} 的重点安排",
-    "focusAfterDeadline": "重点日期不能晚于任务截止日期。",
     "focusPlanFailed": "无法更新重点安排，请刷新后重试。",
     "focusSortRule": "顺序：可用 ↑↓ 手动调整；新安排排在末尾，未兑现顺延时保留原位置",
     "focusStateToday": "⭐ 今日安排",

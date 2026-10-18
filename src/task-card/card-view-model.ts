@@ -3,6 +3,11 @@ import type { PersistedTickTickTaskData } from "../domain/task";
 import type { Translate } from "../i18n";
 import { TASK_WORK_MODE_CONFIG } from "../domain/work-mode";
 import {
+    resolveTaskPriority,
+    TASK_PRIORITY_CONFIG,
+    type TickTickTaskPriority,
+} from "../domain/priority";
+import {
     parseTaskTarget,
     TASK_TARGET_OPEN_LABEL_KEYS,
     type TaskTarget,
@@ -14,6 +19,13 @@ export type TaskCardViewModel = {
     linkText: string;
     title: string;
     url: string;
+    /** 权重徽标文案；未设置时是「设置权重」而不是某一档。 */
+    priorityText: string;
+    priorityTitle: string;
+    priority: TickTickTaskPriority;
+    priorityConfigured: boolean;
+    /** 是否今天已标记推进；决定「今日推进」按钮的状态与文案。 */
+    progressedToday: boolean;
     /** 目标链接是可选字段；没有链接时为 undefined，卡片上不渲染打开控件。 */
     target?: TaskTarget;
     deadline?: string;
@@ -30,6 +42,7 @@ export type TaskCardViewModel = {
 export function createTaskCardViewModel(
     task: PersistedTickTickTaskData,
     translate: Translate,
+    options: { lastProgressedDate?: string; today?: string } = {},
 ): TaskCardViewModel {
     const parsedTarget = task.url.trim() === "" ? undefined : parseTaskTarget(task.url);
     if (parsedTarget && !parsedTarget.valid) {
@@ -41,6 +54,11 @@ export function createTaskCardViewModel(
     const workModeLabel = task.workMode
         ? `${TASK_WORK_MODE_CONFIG[task.workMode].icon} ${translate(TASK_WORK_MODE_CONFIG[task.workMode].labelKey)}`
         : translate("workMode.unclassified");
+    const priority = resolveTaskPriority(task.priority);
+    const priorityConfigured = task.priority !== undefined;
+    const priorityLabel = priorityConfigured
+        ? translate(TASK_PRIORITY_CONFIG[priority].labelKey)
+        : translate("priority.unset");
 
     return {
         translate,
@@ -50,6 +68,14 @@ export function createTaskCardViewModel(
             : task.title,
         title: task.title,
         url: task.url,
+        priorityText: priorityConfigured
+            ? `${TASK_PRIORITY_CONFIG[priority].icon} ${priorityLabel}`
+            : translate("priority.unsetAction"),
+        priorityTitle: translate("priority.menuTitle"),
+        priority,
+        priorityConfigured,
+        progressedToday: options.lastProgressedDate !== undefined
+            && options.lastProgressedDate === options.today,
         ...(target ? { target } : {}),
         ...(task.deadline ? { deadline: task.deadline } : {}),
         workModeText: workModeLabel,

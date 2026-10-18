@@ -35,6 +35,9 @@ export function getAllEditor(): unknown[] {
 type MenuItem = {
     label?: string;
     warning?: boolean;
+    current?: boolean;
+    disabled?: boolean;
+    type?: "separator" | "submenu" | "readonly" | "empty";
     click?: (element: HTMLElement, event: MouseEvent) => void | boolean | Promise<void | boolean>;
 };
 
@@ -44,6 +47,10 @@ export class Menu {
 
     constructor(readonly id?: string) {
         this.element.className = "b3-menu";
+        // 真实 Menu 会用传入的 id 标记根元素，测试里也保持一致，便于区分同时存在的菜单。
+        if (id) {
+            this.element.id = id;
+        }
     }
 
     addItem(option: MenuItem): HTMLElement {
@@ -54,6 +61,14 @@ export class Menu {
         if (option.warning) {
             item.dataset.warning = "true";
         }
+        // 当前档位与禁用状态要能被断言到，否则菜单测试只能看文案。
+        if (option.current) {
+            item.dataset.current = "true";
+        }
+        if (option.type) {
+            item.dataset.type = option.type;
+        }
+        item.disabled = Boolean(option.disabled);
         item.addEventListener("click", (event) => {
             void option.click?.(item, event);
         });

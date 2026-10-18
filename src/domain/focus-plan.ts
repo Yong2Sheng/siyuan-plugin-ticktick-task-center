@@ -103,9 +103,8 @@ export function toggleQuickFocusDate(
     plan: FocusPlan,
     targetDate: string,
     today: string,
-    deadline: string | undefined,
     plannedAt: string,
-): { changed: true; plan: FocusPlan } | { changed: false; reason: "invalid-date" | "past-date" | "after-deadline" } {
+): { changed: true; plan: FocusPlan } | { changed: false; reason: "invalid-date" | "past-date" } {
     if (!readLocalDate(targetDate) || !readLocalDate(today) || !isIsoDateTime(plannedAt)) {
         return { changed: false, reason: "invalid-date" };
     }
@@ -123,16 +122,22 @@ export function toggleQuickFocusDate(
         };
     }
 
-    return toggleFocusDate(plan, targetDate, today, deadline, plannedAt);
+    return toggleFocusDate(plan, targetDate, today, plannedAt);
 }
 
+/**
+ * 重点日期只受「不能排到过去」约束。
+ *
+ * 截止日期是软日期时（自己给自己定的，过期也没有真实代价），用它限制重点安排等于把
+ * 软日期当成硬约束。两个维度因此彻底解耦：权重表达重要性，截止日期表达时间，重点安排
+ * 完全由用户决定。
+ */
 export function toggleFocusDate(
     plan: FocusPlan,
     targetDate: string,
     today: string,
-    deadline: string | undefined,
     plannedAt: string,
-): { changed: true; plan: FocusPlan } | { changed: false; reason: "invalid-date" | "past-date" | "after-deadline" } {
+): { changed: true; plan: FocusPlan } | { changed: false; reason: "invalid-date" | "past-date" } {
     if (!readLocalDate(targetDate) || !readLocalDate(today) || !isIsoDateTime(plannedAt)) {
         return { changed: false, reason: "invalid-date" };
     }
@@ -147,9 +152,6 @@ export function toggleFocusDate(
 
     if (targetDate < today) {
         return { changed: false, reason: "past-date" };
-    }
-    if (deadline && targetDate > deadline) {
-        return { changed: false, reason: "after-deadline" };
     }
 
     return {
@@ -234,13 +236,6 @@ export function isQuickFocusDateSelected(
         return true;
     }
     return plan.entries.some((entry) => entry.date === targetDate);
-}
-
-export function hasFocusDateAfterDeadline(
-    plan: FocusPlan,
-    deadline: string | undefined,
-): boolean {
-    return deadline !== undefined && plan.entries.some((entry) => entry.date > deadline);
 }
 
 function withEntries(entries: readonly FocusPlanEntry[]): FocusPlan {

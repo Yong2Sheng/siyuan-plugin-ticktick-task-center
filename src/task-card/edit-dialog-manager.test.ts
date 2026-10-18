@@ -11,6 +11,7 @@ function factory(created: FakeDialog[]) {
             focusStatus: vi.fn(),
             focusWorkMode: vi.fn(),
             focusDeadline: vi.fn(),
+            focusPriority: vi.fn(),
             close: onDestroy,
         };
         created.push(dialog);

@@ -73,7 +73,7 @@ describe("editTask", () => {
         expect(api.updateMarkdownBlock).not.toHaveBeenCalled();
         expect(api.setBlockAttributes).toHaveBeenCalledOnce();
         const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
-        expect(Object.keys(attributes)).toHaveLength(11);
+        expect(Object.keys(attributes)).toHaveLength(12);
         expect(attributes[TASK_BLOCK_ATTRIBUTES.card]).toBe("true");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.version]).toBe("1");
         expect(attributes[TASK_BLOCK_ATTRIBUTES.title]).toBe(ORIGINAL.title);
@@ -119,27 +119,56 @@ describe("editTask", () => {
             .toBe("");
     });
 
-    it("rejects moving the deadline before an existing focus date", async () => {
-        const api = createApi();
-        vi.mocked(api.loadAttributes).mockResolvedValue({
-            ...CURRENT,
-            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan]: JSON.stringify({
-                version: 1,
-                entries: [{
-                    date: "2026-08-20",
-                    plannedAt: "2026-08-10T20:00:00.000Z",
-                }],
+    it("keeps focus dates when the deadline moves before them", async () => {
+        // 重点日期与截止日期解耦：把截止日期提前不再需要先取消重点安排。
+        const api: TaskEditApi = {
+            loadAttributes: vi.fn().mockResolvedValue({
+                ...CURRENT,
+                [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "2026-07-20",
+                [TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan]: JSON.stringify({
+                    version: 1,
+                    entries: [{ date: "2026-07-25", plannedAt: "2026-07-10T10:00:00.000Z" }],
+                }),
             }),
-        });
+            updateMarkdownBlock: vi.fn().mockResolvedValue(undefined),
+            setBlockAttributes: vi.fn().mockResolvedValue(undefined),
+        };
 
-        await expect(editTask(api, request({
+        const result = await editTask(api, request({
             title: ORIGINAL.title,
             url: ORIGINAL.url,
             status: ORIGINAL.status,
             workMode: ORIGINAL.workMode,
-            deadline: "2026-08-19",
-        }))).rejects.toMatchObject({ code: "focus-after-deadline", blockId: BLOCK_ID });
-        expect(api.updateMarkdownBlock).not.toHaveBeenCalled();
+            deadline: "2026-07-18",
+        }), () => new Date("2026-07-12T10:30:00.000Z"));
+
+        expect(result).toMatchObject({ changed: true });
+        expect(api.setBlockAttributes).toHaveBeenCalledOnce();
+    });
+
+    it("writes the task priority and clears it back to unset", async () => {
+        const api = createApi();
+        const changedAt = new Date("2026-07-12T10:30:00.000Z");
+
+        await editTask(api, request({
+            title: ORIGINAL.title,
+            url: ORIGINAL.url,
+            status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
+            priority: "high",
+        }), () => changedAt);
+        expect(api.setBlockAttributes).toHaveBeenCalledWith(BLOCK_ID, expect.objectContaining({
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority]: "high",
+        }));
+
+        vi.mocked(api.setBlockAttributes).mockClear();
+        // 未设置权重时写空字符串，而不是 "normal"。
+        await editTask(api, request({
+            title: ORIGINAL.title,
+            url: ORIGINAL.url,
+            status: ORIGINAL.status,
+            workMode: ORIGINAL.workMode,
+        }), () => changedAt);
         expect(api.setBlockAttributes).not.toHaveBeenCalled();
     });
 

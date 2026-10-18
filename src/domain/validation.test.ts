@@ -107,3 +107,35 @@ describe("task validation", () => {
         })).toContain("deadline-invalid");
     });
 });
+
+describe("task priority validation", () => {
+    const base = {
+        title: "Task",
+        url: "https://example.com/t/1",
+        status: "in-progress",
+        workMode: "explore",
+    };
+
+    it("accepts unset, empty and the three known levels", () => {
+        expect(validateTaskData(base)).toEqual([]);
+        expect(validateTaskData({ ...base, priority: "" })).toEqual([]);
+        expect(validateTaskData({ ...base, priority: "high" })).toEqual([]);
+        expect(validateTaskData({ ...base, priority: "normal" })).toEqual([]);
+        expect(validateTaskData({ ...base, priority: "low" })).toEqual([]);
+    });
+
+    it("reports an unrecognized weight as a validation error", () => {
+        expect(validateTaskData({ ...base, priority: "urgent" })).toContain("priority-invalid");
+    });
+
+    it("normalizes unset back to undefined so it is not persisted as a level", () => {
+        const result = normalizeTaskData({ ...base, priority: "" });
+        expect(result.valid).toBe(true);
+        if (!result.valid) throw new Error("expected normalized data");
+        expect(result.data.priority).toBeUndefined();
+
+        const normalized = normalizeTaskData({ ...base, priority: "low" });
+        if (!normalized.valid) throw new Error("expected normalized data");
+        expect(normalized.data.priority).toBe("low");
+    });
+});

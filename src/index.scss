@@ -145,10 +145,25 @@
         min-width: 0;
     }
 
+    /**
+     * 截止日期 + 「今日推进」竖向同列。
+     * 必须用 grid：截止日期控件带 flex: 0 0 104px，放进纵向 flex 会被解释成高度，
+     * 按钮会被拉成正方形。grid 子项不参与 flex 布局，尺寸与形状保持原样。
+     */
+    &__deadline-column {
+        display: grid;
+        grid-template-rows: auto auto;
+        flex: 0 0 auto;
+        gap: 5px;
+        align-items: center;
+        justify-items: center;
+    }
+
+    /** 分类列竖向堆叠：工作分类 → 状态 → 权重；截止日期仍是独立控件。 */
     &__classification {
         display: grid;
         flex: 0 0 auto;
-        gap: 6px;
+        gap: 5px;
         align-items: stretch;
     }
 
@@ -1304,6 +1319,11 @@
         }
     }
 
+    /**
+     * 分类列：工作分类、状态、权重自上而下堆叠。
+     * 截止日期不在此列——它是固定 104px 宽的独立控件，放进纵向 flex 容器会被
+     * 重新解释 flex-basis（把宽度当成高度），因此必须保持为卡片的直接子元素。
+     */
     &__classification {
         display: grid;
         flex: 0 0 auto;
@@ -1402,11 +1422,26 @@
         line-height: 1.5;
     }
 
+    /**
+     * 操作区两行竖向排列：计划组在上，推进组在下。
+     * 分组后每组更窄，窗口变窄时不会整块被挤到卡片底部。
+     */
     &__actions {
         flex: 0 1 auto;
+        flex-direction: column;
+        align-items: flex-end;
         justify-content: flex-end;
         gap: 6px;
         margin-left: auto;
+    }
+
+    &__actions-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        min-width: 0;
     }
 
     &__daily-progress,
@@ -1800,6 +1835,133 @@
 
 }
 
+
+/* ============================================================
+   任务权重徽标（第二维度）
+   与状态徽标共用一套「描边 + 同色浅底」的语言；三档之间的强弱靠
+   边框线型（实线/虚线）、底色浓度和字重区分，而不是换一套配色。
+   ============================================================ */
+.ticktick-task-center__priority,
+.ticktick-task-card__priority {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 0 0 auto;
+    margin: 0;
+    border: 1px solid var(--ticktick-priority-color, var(--b3-border-color));
+    border-radius: 999px;
+    background: var(--ticktick-priority-background, transparent);
+    color: var(--ticktick-priority-color, var(--b3-theme-on-surface));
+    font: inherit;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        filter: brightness(1.04);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--ticktick-priority-color, var(--b3-theme-primary));
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: default;
+    }
+
+    &[data-priority="high"] {
+        --ticktick-priority-color: var(--b3-theme-error, #cf222e);
+        --ticktick-priority-background: color-mix(
+            in srgb,
+            var(--b3-theme-error, #cf222e) 13%,
+            transparent
+        );
+    }
+
+    &[data-priority="normal"],
+    &[data-priority="unset"] {
+        --ticktick-priority-color: var(--b3-theme-on-surface-light, #7d8590);
+        --ticktick-priority-background: color-mix(
+            in srgb,
+            var(--b3-theme-on-surface-light, #7d8590) 12%,
+            transparent
+        );
+        border-style: dashed;
+    }
+
+    &[data-priority="low"] {
+        --ticktick-priority-color: var(--b3-theme-on-surface-light, #7d8590);
+        --ticktick-priority-background: color-mix(
+            in srgb,
+            var(--b3-theme-on-surface-light, #7d8590) 8%,
+            transparent
+        );
+        font-weight: 400;
+    }
+}
+
+.ticktick-task-center__priority {
+    justify-content: center;
+    padding: 4px 9px;
+    font-size: 13px;
+}
+
+/* 文档正文卡片更窄，徽标与「今日推进」都要小一号 */
+.ticktick-task-card__priority,
+.ticktick-task-card__progress {
+    padding: 2px 8px;
+    font-size: 12px;
+}
+
+.ticktick-task-card__progress {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin: 0;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 999px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+    font: inherit;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+        border-color: var(--b3-theme-primary);
+        color: var(--b3-theme-primary);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 2px;
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: default;
+    }
+
+    &[data-progressed-today="true"] {
+        border-color: color-mix(
+            in srgb,
+            var(--b3-theme-success, #1a7f37) 62%,
+            var(--b3-border-color)
+        );
+        background: color-mix(
+            in srgb,
+            var(--b3-theme-success, #1a7f37) 13%,
+            transparent
+        );
+        color: var(--b3-theme-success, #1a7f37);
+    }
+}
+
 .ticktick-task-card__deadline,
 .ticktick-task-center__deadline {
     --ticktick-deadline-accent: var(--b3-theme-on-surface, var(--b3-theme-on-background));
@@ -2020,6 +2182,8 @@
     .ticktick-task-card__identity-button,
     .ticktick-task-card__work-mode,
     .ticktick-task-card__status,
+    .ticktick-task-card__priority,
+    .ticktick-task-card__progress,
     .ticktick-task-card__deadline,
     .ticktick-task-center__language,
     .ticktick-task-center__refresh,
@@ -2036,6 +2200,7 @@
     .ticktick-task-center__knowledge-open-source,
     .ticktick-task-center__work-mode,
     .ticktick-task-center__status,
+    .ticktick-task-center__priority,
     .ticktick-task-center__deadline,
     .ticktick-task-center__focus-calendar-toggle,
     .ticktick-task-center__focus-plan,
@@ -2531,13 +2696,26 @@
 }
 
 /* 没有目标链接的任务：卡片上少一个控件，而不是留一个点不动的灰按钮 */
+/**
+ * 没有目标链接的任务：标题保留与有链接时相同的框，只是不可点击。
+ *
+ * 关键点是左右内边距必须补回来。基础类 __link 用 background 和
+ * box-shadow: inset 画框，修饰类只改内边距会把文字顶到框线上，
+ * 看起来像被裁掉一截。
+ */
 .ticktick-task-card__link--plain {
     display: inline-block;
     max-width: 100%;
-    padding: 3px 0;
+    padding: 3px 8px;
     color: var(--b3-theme-on-background);
     font-weight: 700;
     overflow-wrap: anywhere;
+    cursor: default;
+
+    /* 不可点击，就不该有「抬起来」的悬浮反馈；框本身保持常显，不随悬停出现消失。 */
+    &:hover {
+        transform: translateY(0);
+    }
 }
 
 @media (max-width: 720px) {

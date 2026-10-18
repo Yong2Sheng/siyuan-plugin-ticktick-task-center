@@ -50,11 +50,12 @@ describe("task focus plan persistence", () => {
         expect(cleared.entries).toEqual([]);
     });
 
-    it("rejects a focus date after the deadline without writing", async () => {
+    it("allows a focus date after the deadline and still verifies the write", async () => {
+        // 截止日期是软日期，不限制重点安排；这里确认写入与复核都正常走完。
         const api = createApi();
-        await expect(toggleTaskFocusDate(api, BLOCK_ID, "2026-09-10", TODAY))
-            .rejects.toMatchObject({ code: "after-deadline" });
-        expect(api.setBlockAttributes).not.toHaveBeenCalled();
+        const result = await toggleTaskFocusDate(api, BLOCK_ID, "2026-09-10", TODAY);
+        expect(result.entries.map((entry) => entry.date)).toEqual(["2026-09-10"]);
+        expect(api.setBlockAttributes).toHaveBeenCalledOnce();
     });
 
     it("reports a write that cannot be verified", async () => {

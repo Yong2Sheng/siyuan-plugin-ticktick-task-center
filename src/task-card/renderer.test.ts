@@ -2,7 +2,8 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { TASK_BLOCK_ATTRIBUTES } from "../domain/task";
+import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
+import { createTaskCardViewModel } from "./card-view-model";
 import { TaskCardEnhancer } from "./enhancer";
 import {
     enhanceTaskBlock,
@@ -31,6 +32,16 @@ const VIEW_MODEL = {
         "taskCenterView.openTooltip": "Open SiYuan Task Center",
         "taskActions.edit": "Edit task",
         "taskActions.delete": "Delete task card",
+        "taskCenterView.dailyProgressAction": "🚀 Push today",
+        "taskCenterView.dailyProgressDone": "✨ Pushed today",
+        "taskCenterView.dailyProgressTitle": "Mark today as pushed",
+        "taskCenterView.dailyProgressUndoTitle": "Undo today's push",
+        "priority.high": "Must advance",
+        "priority.normal": "Normal",
+        "priority.low": "When free",
+        "priority.unset": "Not set",
+        "priority.unsetAction": "➖ Set weight",
+        "priority.menuTitle": "Set task weight",
     })[key] ?? key,
     identity: "SiYuan task",
     linkText: "Open TickTick: DS9 Adaptor ↗️",
@@ -45,6 +56,11 @@ const VIEW_MODEL = {
     statusAriaLabel: "Edit task, current status: In progress",
     statusTone: "primary" as const,
     statusTerminal: false,
+    priorityText: "🔥 必须推进",
+    priorityTitle: "设置任务权重",
+    priority: "high" as const,
+    priorityConfigured: true,
+    progressedToday: false,
 };
 
 const LINKLESS_VIEW_MODEL = {
@@ -110,7 +126,7 @@ describe("task card renderer", () => {
             "ticktick-task-card__identity",
             "ticktick-task-card__main",
             "ticktick-task-card__classification",
-            "ticktick-task-card__deadline",
+            "ticktick-task-card__deadline-column",
         ]);
     });
 
@@ -228,7 +244,7 @@ describe("task card renderer", () => {
         expect(original.textContent).toBe("TickTick task: DS9 Adaptor");
     });
 
-    it("stacks work category above status and keeps separate edit entries", () => {
+    it("stacks work category, status and weight while keeping the deadline standalone", () => {
         const block = createBlock();
         document.body.append(block);
         const onEditTask = vi.fn();
@@ -246,6 +262,7 @@ describe("task card renderer", () => {
         const status = statusButtons[0];
         const workMode = card.querySelector<HTMLButtonElement>(".ticktick-task-card__work-mode")!;
         const classification = card.querySelector<HTMLElement>(".ticktick-task-card__classification")!;
+        const priority = card.querySelector<HTMLButtonElement>(".ticktick-task-card__priority")!;
         const deadline = card.querySelector<HTMLButtonElement>(".ticktick-task-card__deadline")!;
 
         expect(card.querySelector(".ticktick-task-card__edit")).toBeNull();
@@ -253,7 +270,13 @@ describe("task card renderer", () => {
             .not.toContain("✏️ Edit");
         expect(statusButtons).toHaveLength(1);
         expect(workMode.textContent).toBe("🔎 评审-Review");
-        expect(Array.from(classification.children)).toEqual([workMode, status]);
+        // 分类列竖向：工作分类 → 状态 → 权重。
+        expect(Array.from(classification.children)).toEqual([workMode, status, priority]);
+        // 截止日期在自己的列里，保持原有尺寸；该用例没有推进动作，所以列里只有它。
+        const deadlineColumn = card.querySelector<HTMLElement>(".ticktick-task-card__deadline-column")!;
+        expect(Array.from(deadlineColumn.children)).toEqual([deadline]);
+        expect(priority.dataset.priority).toBe("high");
+        expect(priority.textContent).toBe("🔥 必须推进");
         expect(status.tagName).toBe("BUTTON");
         expect(status.type).toBe("button");
         expect(status.textContent).toBe("Status: ▶️ In progress");
@@ -531,5 +554,169 @@ describe("task card renderer", () => {
         await enhancer.enhanceKnownBlock(block);
         expect(loadAttributes).toHaveBeenCalledWith("20260712120000-newtask");
         expect(getTaskCardDecoration(block)).not.toBeNull();
+    });
+});
+
+describe("document card daily progress control", () => {
+    beforeEach(() => {
+        document.body.replaceChildren();
+    });
+
+    /** 用真实视图模型构造卡片，避免手写字段漏掉新增项。 */
+    function renderCard(
+        attributes: Record<string, unknown>,
+        actions: Parameters<typeof enhanceTaskBlock>[3],
+        options: { lastProgressedDate?: string; today?: string } = {},
+    ): HTMLElement {
+        const block = createBlock();
+        document.body.append(block);
+        const data = {
+            version: 1 as const,
+            title: "DS9 Adaptor",
+            url: "https://dida365.com/task/1",
+            status: (attributes[TASK_BLOCK_ATTRIBUTES.status] ?? "in-progress") as "in-progress" | "completed",
+            createdAt: "2026-07-12T08:30:00.000Z",
+            updatedAt: "2026-07-12T09:30:00.000Z",
+            ...(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority]
+                ? { priority: attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority] as "high" }
+                : {}),
+        };
+        enhanceTaskBlock(
+            block,
+            block.dataset.nodeId!,
+            createTaskCardViewModel(data, VIEW_MODEL.translate, options),
+            actions,
+        );
+        return getTaskCardDecoration(block)!;
+    }
+
+    it("shows an actionable control for a task that has not been pushed today", () => {
+        const card = renderCard({}, { onEditTask: vi.fn(), onToggleDailyProgress: vi.fn() });
+        const button = card.querySelector<HTMLButtonElement>(".ticktick-task-card__progress")!;
+        expect(button.textContent).toBe("🚀 Push today");
+        expect(button.dataset.progressedToday).toBe("false");
+        expect(button.disabled).toBe(false);
+    });
+
+    it("marks the pushed state for a task already recorded today", () => {
+        const card = renderCard({}, { onEditTask: vi.fn(), onToggleDailyProgress: vi.fn() }, {
+            lastProgressedDate: "2026-09-08",
+            today: "2026-09-08",
+        });
+        const button = card.querySelector<HTMLButtonElement>(".ticktick-task-card__progress")!;
+        expect(button.textContent).toBe("✨ Pushed today");
+        expect(button.dataset.progressedToday).toBe("true");
+        expect(button.getAttribute("aria-pressed")).toBe("true");
+    });
+
+    it("writes today when pushed and clears it when undone", () => {
+        const onToggleDailyProgress = vi.fn().mockResolvedValue(undefined);
+        const card = renderCard({}, { onEditTask: vi.fn(), onToggleDailyProgress });
+        const button = card.querySelector<HTMLButtonElement>(".ticktick-task-card__progress")!;
+        button.click();
+        expect(onToggleDailyProgress).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        );
+        // 写入未返回前禁用，避免重复提交。
+        expect(button.disabled).toBe(true);
+    });
+
+    it("undoes the pushed state with undefined", () => {
+        const onToggleDailyProgress = vi.fn().mockResolvedValue(undefined);
+        const card = renderCard({}, { onEditTask: vi.fn(), onToggleDailyProgress }, {
+            lastProgressedDate: "2026-09-08",
+            today: "2026-09-08",
+        });
+        card.querySelector<HTMLButtonElement>(".ticktick-task-card__progress")!.click();
+        expect(onToggleDailyProgress).toHaveBeenCalledWith(expect.any(String), undefined);
+    });
+
+    it("does not offer the control for a closed task", () => {
+        const card = renderCard(
+            { [TASK_BLOCK_ATTRIBUTES.status]: "completed" },
+            { onEditTask: vi.fn(), onToggleDailyProgress: vi.fn() },
+        );
+        expect(card.querySelector(".ticktick-task-card__progress")).toBeNull();
+    });
+
+    it("restores the button and reports the error when the write fails", async () => {
+        const error = new Error("write failed");
+        const onToggleDailyProgress = vi.fn().mockRejectedValue(error);
+        const onDailyProgressError = vi.fn();
+        const card = renderCard({}, { onEditTask: vi.fn(), onToggleDailyProgress, onDailyProgressError });
+        const button = card.querySelector<HTMLButtonElement>(".ticktick-task-card__progress")!;
+        button.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(onDailyProgressError).toHaveBeenCalledWith(error);
+        expect(button.disabled).toBe(false);
+    });
+
+    it("shows the configured weight on the card", () => {
+        const card = renderCard(
+            { [TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority]: "high" },
+            { onEditTask: vi.fn(), onSavePriority: vi.fn() },
+        );
+        const badge = card.querySelector<HTMLButtonElement>(".ticktick-task-card__priority")!;
+        expect(badge.dataset.priority).toBe("high");
+    });
+
+    it("shows the unset weight action when no level is stored", () => {
+        const card = renderCard({}, { onEditTask: vi.fn(), onSavePriority: vi.fn() });
+        const badge = card.querySelector<HTMLButtonElement>(".ticktick-task-card__priority")!;
+        expect(badge.dataset.priority).toBe("unset");
+    });
+});
+
+describe("document card deadline column", () => {
+    beforeEach(() => {
+        document.body.replaceChildren();
+    });
+
+    function render(attributes: Record<string, unknown>, actions: Parameters<typeof enhanceTaskBlock>[3]) {
+        const block = createBlock();
+        document.body.append(block);
+        enhanceTaskBlock(
+            block,
+            block.dataset.nodeId!,
+            createTaskCardViewModel({
+                version: 1,
+                title: "DS9 Adaptor",
+                url: "https://dida365.com/task/1",
+                status: (attributes[TASK_BLOCK_ATTRIBUTES.status] ?? "in-progress") as "in-progress",
+                createdAt: "2026-07-12T08:30:00.000Z",
+                updatedAt: "2026-07-12T09:30:00.000Z",
+            }, VIEW_MODEL.translate),
+            actions,
+        );
+        return getTaskCardDecoration(block)!;
+    }
+
+    it("puts the daily progress button under the deadline instead of beside it", () => {
+        const card = render({}, { onEditTask: vi.fn(), onToggleDailyProgress: vi.fn() });
+        const column = card.querySelector<HTMLElement>(".ticktick-task-card__deadline-column")!;
+        const deadline = card.querySelector<HTMLElement>(".ticktick-task-card__deadline")!;
+        const progress = card.querySelector<HTMLElement>(".ticktick-task-card__progress")!;
+
+        expect(Array.from(column.children)).toEqual([deadline, progress]);
+        // 推进按钮不再作为卡片的直接子元素出现在右侧。
+        expect(Array.from(card.children)).not.toContain(progress);
+    });
+
+    it("keeps only the deadline in the column for a closed task", () => {
+        const card = render(
+            { [TASK_BLOCK_ATTRIBUTES.status]: "completed" },
+            { onEditTask: vi.fn(), onToggleDailyProgress: vi.fn() },
+        );
+        const column = card.querySelector<HTMLElement>(".ticktick-task-card__deadline-column")!;
+        expect(column.querySelector(".ticktick-task-card__progress")).toBeNull();
+        expect(column.children).toHaveLength(1);
+    });
+
+    it("leaves a single deadline in the column when no progress handler is wired", () => {
+        const card = render({}, { onEditTask: vi.fn() });
+        const column = card.querySelector<HTMLElement>(".ticktick-task-card__deadline-column")!;
+        expect(column.children).toHaveLength(1);
     });
 });

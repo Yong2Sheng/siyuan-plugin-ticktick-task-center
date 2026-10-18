@@ -66,6 +66,7 @@ export async function createTaskBlock(
             url: request.task.url,
             status: request.task.status,
             workMode: request.task.workMode,
+            ...(request.task.priority ? { priority: request.task.priority } : {}),
             ...(request.task.deadline ? { deadline: request.task.deadline } : {}),
             createdAt: timestamp,
             updatedAt: timestamp,

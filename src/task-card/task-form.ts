@@ -3,6 +3,7 @@ import { Dialog, showMessage } from "siyuan";
 import { TASK_STATUS_CONFIG, TASK_STATUS_IDS } from "../domain/status";
 import { DEFAULT_TASK_STATUS } from "../domain/task";
 import { TASK_WORK_MODE_CONFIG, TASK_WORK_MODE_IDS } from "../domain/work-mode";
+import { withUnsetPriorityChoice } from "../domain/priority";
 import {
     normalizeTaskData,
     type NormalizedTaskData,
@@ -42,6 +43,7 @@ const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
     "url-siyuan-invalid": "validation.urlSiYuanInvalid",
     "status-invalid": "validation.statusInvalid",
     "work-mode-invalid": "validation.workModeInvalid",
+    "priority-invalid": "validation.priorityInvalid",
     "deadline-invalid": "validation.deadlineInvalid",
 };
 
@@ -87,6 +89,11 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
                 <input data-field="status" type="hidden">
             </div>
             <div class="b3-label">
+                <span data-field-label="priority"></span>
+                <div class="ticktick-task-form__choices ticktick-task-form__choices--priority" data-choice-group="priority" role="radiogroup"></div>
+                <input data-field="priority" type="hidden">
+            </div>
+            <div class="b3-label">
                 <span data-field-label="work-mode"></span>
                 <div class="ticktick-task-form__choices ticktick-task-form__choices--work-mode" data-choice-group="work-mode" role="radiogroup"></div>
                 <input data-field="work-mode" type="hidden">
@@ -112,6 +119,7 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     const urlInput = requireElement<HTMLInputElement>(form, '[data-field="url"]');
     const statusInput = requireElement<HTMLInputElement>(form, '[data-field="status"]');
     const workModeInput = requireElement<HTMLInputElement>(form, '[data-field="work-mode"]');
+    const priorityInput = requireElement<HTMLInputElement>(form, '[data-field="priority"]');
     const deadlineInput = requireElement<HTMLInputElement>(form, '[data-field="deadline"]');
     const errorElement = requireElement<HTMLElement>(form, '[data-field="error"]');
     const inboxDetails = requireElement<HTMLDetailsElement>(form, '[data-field="inbox"]');
@@ -125,6 +133,7 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
     requireElement<HTMLElement>(form, '[data-field-label="url"]').textContent = translate("taskCreate.urlLabel");
     requireElement<HTMLElement>(form, '[data-field-label="status"]').textContent = translate("taskCreate.statusLabel");
     requireElement<HTMLElement>(form, '[data-field-label="work-mode"]').textContent = translate("taskCreate.workModeLabel");
+    requireElement<HTMLElement>(form, '[data-field-label="priority"]').textContent = translate("taskCreate.priorityLabel");
     requireElement<HTMLElement>(form, '[data-field-label="deadline"]').textContent = translate("taskCreate.deadlineLabel");
     cancelButton.textContent = translate("common.cancel");
     createButton.textContent = translate("taskCreate.create");
@@ -178,6 +187,11 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
             text: `${TASK_WORK_MODE_CONFIG[workMode].icon} ${translate(TASK_WORK_MODE_CONFIG[workMode].labelKey)}`,
         })),
     });
+    const priorityChoices = createTaskChoiceGroup({
+        container: requireElement(form, '[data-choice-group="priority"]'),
+        input: priorityInput,
+        choices: withUnsetPriorityChoice(translate),
+    });
 
     cancelButton.addEventListener("click", () => {
         controller.cancel();
@@ -194,6 +208,7 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
         cancelButton.disabled = true;
         statusChoices.setDisabled(true);
         workModeChoices.setDisabled(true);
+        priorityChoices.setDisabled(true);
         createButton.textContent = translate("taskCreate.creating");
         hideError(errorElement);
 
@@ -202,6 +217,7 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
             url: urlInput.value,
             status: statusInput.value,
             workMode: workModeInput.value,
+            priority: priorityInput.value,
             deadline: deadlineInput.value,
         });
 

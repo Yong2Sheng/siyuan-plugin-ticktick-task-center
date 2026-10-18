@@ -86,6 +86,50 @@ describe("task center filtering", () => {
             .toEqual([overdue, today, later, undated]);
     });
 
+    it("puts task weight ahead of the deadline", () => {
+        // 高权重但截止很远的任务，应当排在同权重里最近到期的任务之前。
+        const highFarDeadline = { ...ITEMS[0], priority: "high" as const, deadline: "2026-12-31" };
+        const normalDueTomorrow = { ...ITEMS[1], deadline: "2026-08-13" };
+
+        expect(sortTaskCenterItemsByDeadline([normalDueTomorrow, highFarDeadline]))
+            .toEqual([highFarDeadline, normalDueTomorrow]);
+    });
+
+    it("stops an old soft deadline from holding the top position", () => {
+        // 两个月前自己定的软截止日期，权重正常；降为「有空再说」后应当退到列表末尾。
+        const softOverdue = { ...ITEMS[0], deadline: "2026-06-10" };
+        const upcoming = { ...ITEMS[1], deadline: "2026-08-20" };
+        const lowPriority = { ...ITEMS[2], priority: "low" as const, deadline: "2026-06-01" };
+
+        expect(sortTaskCenterItemsByDeadline([lowPriority, softOverdue, upcoming]))
+            .toEqual([softOverdue, upcoming, lowPriority]);
+    });
+
+    it("keeps undated tasks below dated ones inside the same weight band", () => {
+        const undatedHigh = { ...ITEMS[0], priority: "high" as const };
+        const datedNormal = { ...ITEMS[1], deadline: "2026-08-13" };
+
+        // 高权重仍然压过正常权重，即使它没有截止日期。
+        expect(sortTaskCenterItemsByDeadline([datedNormal, undatedHigh]))
+            .toEqual([undatedHigh, datedNormal]);
+
+        const undatedNormal = { ...ITEMS[2] };
+        expect(sortTaskCenterItemsByDeadline([undatedNormal, datedNormal]))
+            .toEqual([datedNormal, undatedNormal]);
+    });
+
+    it("treats unset weight exactly like the normal level when sorting", () => {
+        const unset = { ...ITEMS[0], deadline: "2026-08-13" };
+        const explicitNormal = { ...ITEMS[1], priority: "normal" as const, deadline: "2026-08-13" };
+
+        // 同权重同截止日期时退到更新时间倒序，因此只断言二者相邻且都在 low 之前。
+        const low = { ...ITEMS[2], priority: "low" as const, deadline: "2026-08-01" };
+        const sorted = sortTaskCenterItemsByDeadline([low, unset, explicitNormal]);
+        expect(sorted.slice(0, 2).map((entry) => entry.blockId).sort())
+            .toEqual([unset.blockId, explicitNormal.blockId].sort());
+        expect(sorted[2].blockId).toBe(low.blockId);
+    });
+
     it("sorts focus work by its persistent arrangement order", () => {
         const withFocus = (
             source: TaskCenterItem,

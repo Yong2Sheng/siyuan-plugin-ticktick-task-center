@@ -4,6 +4,8 @@ import {
     type PersistedTickTickTaskData,
 } from "../domain/task";
 import { isSiYuanId } from "../domain/siyuan-id";
+import { getLocalDate, readLocalDate } from "../domain/local-date";
+import { TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import type { Translate } from "../i18n";
 import { createTaskCardViewModel } from "./card-view-model";
 import {
@@ -21,7 +23,7 @@ import { parseTaskBlockAttributes, type TaskBlockParseFailure } from "./task-dat
 const TASK_CANDIDATE_SELECTOR = `[data-node-id][${TASK_BLOCK_ATTRIBUTES.card}="true"]`;
 
 type TaskDataLoadResult =
-    | { kind: "valid"; data: PersistedTickTickTaskData }
+    | { kind: "valid"; data: PersistedTickTickTaskData; lastProgressedDate?: string }
     | { kind: "invalid"; reason: TaskBlockParseFailure }
     | { kind: "error"; error: unknown };
 
@@ -187,7 +189,10 @@ export class TaskCardEnhancer {
         const enhanced = enhanceTaskBlock(
             blockElement,
             blockId,
-            createTaskCardViewModel(loaded.data, this.options.translate),
+            createTaskCardViewModel(loaded.data, this.options.translate, {
+                ...(loaded.lastProgressedDate ? { lastProgressedDate: loaded.lastProgressedDate } : {}),
+                today: getLocalDate(),
+            }),
             this.options.actions,
         );
         if (!enhanced) {
@@ -227,9 +232,19 @@ export class TaskCardEnhancer {
         }
 
         const parsed = parseTaskBlockAttributes(attributes);
-        return parsed.valid
-            ? { kind: "valid", data: parsed.data }
-            : { kind: "invalid", reason: parsed.reason };
+        if (!parsed.valid) {
+            return { kind: "invalid", reason: parsed.reason };
+        }
+        // 「今日推进」状态与任务数据分开解析：它不是任务字段，而是每日推进记录，
+        // 与任务中心 daily-progress 使用同一属性与同一语义。
+        const lastProgressedDate = readLocalDate(
+            attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate],
+        );
+        return {
+            kind: "valid",
+            data: parsed.data,
+            ...(lastProgressedDate ? { lastProgressedDate } : {}),
+        };
     }
 
     private async repairPollution(blockId: string, markdown: string): Promise<boolean> {

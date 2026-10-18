@@ -2,6 +2,42 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
+## 0.6.0 - 2026-10-18
+
+### Task weight (the second dimension of the active list)
+
+- Add the optional attribute `custom-ticktick-priority` with `high` / `normal` / `low`, shown as 🔥 Must advance, ➖ Normal, and ☕ When free.
+- Tasks without a weight — including every task created before this field existed — are treated as the normal level, so no migration is needed. That level sorts identically to "unset", so saving it clears the attribute instead of writing `"normal"`.
+- **🌤️ To progress today** now sorts by **weight → deadline → update time**: higher weight first, nearer deadlines first within the same weight, and undated tasks last in their weight band.
+- The **All tasks** view does not use weight ordering and keeps the descending `updated-at` sort.
+- Both the Task Center and in-document task cards show a weight badge; clicking it opens a three-level menu. An unset weight is shown as "➖ Set weight".
+- Every write is verified by re-reading the attribute. An unrecognized weight is skipped as an invalid attribute, exactly like other invalid attributes, instead of silently falling back to a level.
+
+### In-document task cards
+
+- Add a **🚀 Progress today** button that records today's progress and undoes it on a second click. After the write, only that card is rebuilt.
+- Daily progress reuses the same attributes and the same write path as the Task Center, so the two surfaces never keep separate records.
+- Add a weight badge that shares the same read/write path as the Task Center.
+- When a task has no target link, its title now really looks like plain text: the frame stays, but horizontal padding is restored, so text no longer touches the border and the frame no longer appears only on hover.
+
+### Focus dates decoupled from the deadline
+
+- Focus dates are no longer constrained by the deadline: dates after the deadline are no longer greyed out in the calendar, and the Today/Tomorrow shortcuts are no longer disabled.
+- Moving a deadline before an existing focus date no longer fails; the `after-deadline` rejection reason and its message are removed.
+- A self-imposed soft deadline is no longer treated as a hard constraint: weight expresses importance, the deadline expresses time.
+
+### Layout
+
+- The Task Center card keeps the Deadline control as a standalone 104px control with unchanged size and shape; work category, status, and weight stack vertically next to it.
+- The Task Center action area is split into two rows: planning controls (↑↓ / 📅 Plan / ⭐ Today / 🌙 Tomorrow) on top, execution controls (open task link / 🚀 Progress today / Locate) below.
+- Optional controls are placed at the left edge of their row (↑↓ and the open-link control), so adding or removing one only extends the row to the left and the right-hand buttons keep their horizontal position, which keeps cards vertically aligned.
+- In-document cards place the progress button below the Deadline control and use a grid container so the Deadline control is not stretched by a column flex context.
+
+### Compatibility
+
+- Published attribute names and meanings are unchanged; the new attribute is optional and defaults to the normal level, so existing tasks need no migration.
+- The data structure and meaning of `custom-ticktick-focus-plan` are unchanged; this release only drops the "a focus date cannot be later than the deadline" restriction, so existing data stays valid.
+
 ## 0.5.0 - 2026-10-14
 
 ### Inbox

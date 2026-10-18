@@ -8,6 +8,7 @@ import {
 import { isAllowedTaskTarget } from "../domain/task-target";
 import { readLocalDate } from "../domain/local-date";
 import { isTickTickTaskWorkMode } from "../domain/work-mode";
+import { parseTaskPriorityAttribute } from "../domain/priority";
 
 export type TaskBlockParseFailure =
     | "not-task-card"
@@ -16,6 +17,7 @@ export type TaskBlockParseFailure =
     | "invalid-url"
     | "invalid-status"
     | "invalid-work-mode"
+    | "invalid-priority"
     | "invalid-deadline"
     | "invalid-created-at"
     | "invalid-updated-at";
@@ -80,6 +82,16 @@ export function parseTaskBlockAttributes(
         return { valid: false, reason: "invalid-work-mode" };
     }
 
+    // 权重：缺失或空字符串表示「未设置」（等同正常档）；非法值不静默降级，
+    // 与其他属性一样走「属性无效」路径。
+    const parsedPriority = parseTaskPriorityAttribute(
+        attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority],
+    );
+    if (!parsedPriority.valid) {
+        return { valid: false, reason: "invalid-priority" };
+    }
+    const priority = parsedPriority.priority;
+
     return {
         valid: true,
         data: {
@@ -88,6 +100,7 @@ export function parseTaskBlockAttributes(
             url,
             status,
             ...(workMode ? { workMode } : {}),
+            ...(priority ? { priority } : {}),
             ...(deadline ? { deadline } : {}),
             createdAt,
             updatedAt,

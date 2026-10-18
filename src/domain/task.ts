@@ -1,5 +1,6 @@
 import type { TickTickTaskStatus } from "./status";
 import type { TickTickTaskWorkMode } from "./work-mode";
+import { serializeTaskPriority, type TickTickTaskPriority } from "./priority";
 
 export const TASK_DATA_VERSION = 1 as const;
 
@@ -19,6 +20,11 @@ export const TASK_BLOCK_OPTIONAL_ATTRIBUTES = {
     deadline: "custom-ticktick-deadline",
     focusPlan: "custom-ticktick-focus-plan",
     workMode: "custom-ticktick-work-mode",
+    /**
+     * 任务权重（第二维度）。未设置写空字符串，语义等同「正常推进」，
+     * 因此加入该属性之前的旧任务无需迁移。
+     */
+    priority: "custom-ticktick-priority",
 } as const;
 
 /**
@@ -55,6 +61,8 @@ export type TickTickTaskCardData = {
     url: string;
     status: TickTickTaskStatus;
     workMode?: TickTickTaskWorkMode;
+    /** 未设置表示「正常推进」，不是「无权重」。 */
+    priority?: TickTickTaskPriority;
     deadline?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -100,5 +108,6 @@ export function createTaskBlockAttributes(data: PersistedTickTickTaskData): Task
         [TASK_BLOCK_ATTRIBUTES.updatedAt]: data.updatedAt,
         [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: data.deadline ?? "",
         [TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]: data.workMode ?? "",
+        [TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority]: serializeTaskPriority(data.priority),
     };
 }

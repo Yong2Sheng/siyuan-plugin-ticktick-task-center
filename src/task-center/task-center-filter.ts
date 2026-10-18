@@ -2,6 +2,7 @@ import { TASK_STATUS_CONFIG } from "../domain/status";
 import type { Translate } from "../i18n";
 import type { TaskCenterItem } from "./task-center-data";
 import { getFocusDisposition, getFocusEntryOrder } from "../domain/focus-plan";
+import { getTaskPriorityOrder, resolveTaskPriority } from "../domain/priority";
 
 export const TASK_CENTER_FILTERS = ["active", "closed", "all"] as const;
 export type TaskCenterFilter = (typeof TASK_CENTER_FILTERS)[number];
@@ -38,10 +39,22 @@ export function sortTaskCenterItems(items: readonly TaskCenterItem[]): TaskCente
     return [...items].sort(compareByUpdatedTitleAndId);
 }
 
+/**
+ * 「今日待推进」的排序：任务权重优先，其次截止日期越近越前。
+ *
+ * 权重是第一主键而非截止日期，因为很多截止日期只是自己给自己定的软日期，过期也没有
+ * 真实代价；把软日期当主键会让两个月前的软截止任务一直霸占列表顶部。截止日期退为
+ * 同一档位内的相对先后，硬截止日期的紧迫感仍然保留。
+ */
 export function sortTaskCenterItemsByDeadline(
     items: readonly TaskCenterItem[],
 ): TaskCenterItem[] {
     return [...items].sort((left, right) => {
+        const priority = getTaskPriorityOrder(resolveTaskPriority(left.priority))
+            - getTaskPriorityOrder(resolveTaskPriority(right.priority));
+        if (priority !== 0) {
+            return priority;
+        }
         if (left.deadline && right.deadline) {
             const deadline = left.deadline.localeCompare(right.deadline);
             if (deadline !== 0) {

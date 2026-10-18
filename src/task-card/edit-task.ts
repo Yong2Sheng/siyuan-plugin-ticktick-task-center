@@ -8,7 +8,6 @@ import { getLocalDate } from "../domain/local-date";
 import type { NormalizedTaskData } from "../domain/validation";
 import { parseTaskBlockAttributes } from "./task-data";
 import {
-    hasFocusDateAfterDeadline,
     parseFocusPlanAttribute,
     serializeFocusPlan,
     setFocusPlanProgress,
@@ -37,7 +36,6 @@ export type TaskEditErrorCode =
     | "block-unavailable"
     | "current-data-invalid"
     | "edit-conflict"
-    | "focus-after-deadline"
     | "content-update-failed"
     | "attribute-write-failed"
     | "rollback-failed";
@@ -93,8 +91,12 @@ export async function editTask(
     const urlChanged = current.url !== request.next.url;
     const statusChanged = current.status !== request.next.status;
     const workModeChanged = current.workMode !== request.next.workMode;
+    const priorityChanged = current.priority !== request.next.priority;
     const deadlineChanged = current.deadline !== request.next.deadline;
-    if (!titleChanged && !urlChanged && !statusChanged && !workModeChanged && !deadlineChanged) {
+    if (
+        !titleChanged && !urlChanged && !statusChanged
+        && !workModeChanged && !priorityChanged && !deadlineChanged
+    ) {
         return { changed: false, data: current };
     }
 
@@ -108,6 +110,7 @@ export async function editTask(
             url: request.next.url,
             status: request.next.status,
             workMode: request.next.workMode,
+            ...(request.next.priority ? { priority: request.next.priority } : {}),
             ...(request.next.deadline ? { deadline: request.next.deadline } : {}),
             createdAt: current.createdAt,
             updatedAt: changedAt.toISOString(),
@@ -126,13 +129,6 @@ export async function editTask(
         && attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan] !== ""
     ) {
         throw new TaskEditError("current-data-invalid", request.blockId, "invalid-focus-plan");
-    }
-    if (
-        deadlineChanged
-        && focusPlan.valid
-        && hasFocusDateAfterDeadline(focusPlan.plan, nextData.deadline)
-    ) {
-        throw new TaskEditError("focus-after-deadline", request.blockId);
     }
     if (statusChanged && nextData.status === "completed") {
         const completedDate = getLocalDate(changedAt);

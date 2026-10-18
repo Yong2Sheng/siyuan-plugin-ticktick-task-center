@@ -26,6 +26,17 @@
     "review": "Review",
     "unclassified": "Unclassified"
   },
+  "priority": {
+    "high": "Must advance",
+    "normal": "Normal",
+    "low": "When free",
+    "unset": "Not set",
+    "unsetAction": "➖ Set weight",
+    "menuTitle": "Set task weight",
+    "menuLabel": "Task weight",
+    "menuAriaLabel": "Current weight: ${priority}. Click to change.",
+    "saveFailed": "Could not update the task weight. Please retry."
+  },
   "validation": {
     "titleRequired": "Task title is required.",
     "urlInvalid": "Enter a correctly formatted task target link.",
@@ -34,7 +45,8 @@
     "urlSiYuanInvalid": "A SiYuan link must use siyuan://blocks/<valid block ID>.",
     "statusInvalid": "The task status is invalid.",
     "workModeInvalid": "Select a work category.",
-    "deadlineInvalid": "The deadline is invalid."
+    "deadlineInvalid": "The deadline is invalid.",
+    "priorityInvalid": "The task weight is invalid."
   },
   "taskCreate": {
     "slashName": "Task card",
@@ -54,7 +66,8 @@
       "insertFailed": "Failed to insert the task block.",
       "attributeWriteFailed": "Failed to write task attributes. The inserted block was rolled back.",
       "rollbackFailed": "Failed to write task attributes and rollback failed. Manually inspect block ${blockId}."
-    }
+    },
+    "priorityLabel": "Task weight (optional)"
   },
   "taskCardView": {
     "identity": "SiYuan task",
@@ -96,7 +109,6 @@
       "blockUnavailable": "The current task could not be loaded.",
       "currentDataInvalid": "The current task data is invalid and cannot be edited.",
       "conflict": "This task was updated elsewhere. Close and reopen the editor before saving.",
-      "focusAfterDeadline": "Some focus dates are later than the new deadline. Remove those plans in the task center first.",
       "contentUpdateFailed": "Failed to update the task content.",
       "attributeWriteFailed": "Failed to update task attributes. The task was left unchanged.",
       "rollbackFailed": "The task update failed and the original content could not be restored. Manually inspect block ${blockId}."
@@ -142,7 +154,6 @@
     "focusTomorrow": "🌙 Tomorrow",
     "focusArrangeTitle": "Schedule as a focus for ${date}",
     "focusCancelTitle": "Cancel the focus scheduled for ${date}",
-    "focusAfterDeadline": "A focus date cannot be later than the task deadline.",
     "focusPlanFailed": "The focus plan could not be updated. Refresh and try again.",
     "focusSortRule": "Order: use ↑↓ to adjust; new plans are appended and carried work keeps its position",
     "focusStateToday": "⭐ Scheduled today",

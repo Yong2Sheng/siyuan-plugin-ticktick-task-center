@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
     EMPTY_FOCUS_PLAN,
     getFocusDisposition,
-    hasFocusDateAfterDeadline,
     isQuickFocusDateSelected,
     parseFocusPlanAttribute,
     serializeFocusPlan,
@@ -54,16 +53,23 @@ describe("focus plan", () => {
         expect(parseFocusPlanAttribute(value)).toEqual({ valid: false });
     });
 
-    it("toggles today and tomorrow while rejecting past and after-deadline dates", () => {
-        const today = toggleQuickFocusDate(EMPTY_FOCUS_PLAN, TUESDAY, TUESDAY, WEDNESDAY, PLANNED_AT);
+    it("toggles today and tomorrow while rejecting only past dates", () => {
+        const today = toggleQuickFocusDate(EMPTY_FOCUS_PLAN, TUESDAY, TUESDAY, PLANNED_AT);
         expect(today).toMatchObject({ changed: true, plan: { entries: [{ date: TUESDAY }] } });
         if (!today.changed) throw new Error("expected focus plan change");
-        const tomorrow = toggleQuickFocusDate(today.plan, WEDNESDAY, TUESDAY, WEDNESDAY, PLANNED_AT);
+        const tomorrow = toggleQuickFocusDate(today.plan, WEDNESDAY, TUESDAY, PLANNED_AT);
         expect(tomorrow).toMatchObject({ changed: true, plan: { entries: [{ date: TUESDAY }, { date: WEDNESDAY }] } });
-        expect(toggleQuickFocusDate(today.plan, MONDAY, TUESDAY, WEDNESDAY, PLANNED_AT))
+        expect(toggleQuickFocusDate(today.plan, MONDAY, TUESDAY, PLANNED_AT))
             .toEqual({ changed: false, reason: "past-date" });
-        expect(toggleQuickFocusDate(today.plan, THURSDAY, TUESDAY, WEDNESDAY, PLANNED_AT))
-            .toEqual({ changed: false, reason: "after-deadline" });
+    });
+
+    it("allows planning focus work beyond the deadline", () => {
+        // 截止日期是软日期时不应该限制重点安排：两个维度互不干涉。
+        const tomorrow = toggleQuickFocusDate(EMPTY_FOCUS_PLAN, WEDNESDAY, TUESDAY, PLANNED_AT);
+        expect(tomorrow).toMatchObject({ changed: true, plan: { entries: [{ date: WEDNESDAY }] } });
+
+        const farFuture = toggleFocusDate(EMPTY_FOCUS_PLAN, THURSDAY, TUESDAY, PLANNED_AT);
+        expect(farFuture).toMatchObject({ changed: true, plan: { entries: [{ date: THURSDAY }] } });
     });
 
     it("cancels all outstanding carried dates when today's focus is toggled off", () => {
@@ -71,7 +77,6 @@ describe("focus plan", () => {
             plan(MONDAY, TUESDAY),
             WEDNESDAY,
             WEDNESDAY,
-            TUESDAY,
             PLANNED_AT,
         );
         expect(result).toEqual({ changed: true, plan: EMPTY_FOCUS_PLAN });
@@ -83,7 +88,6 @@ describe("focus plan", () => {
             original,
             WEDNESDAY,
             WEDNESDAY,
-            THURSDAY,
             PLANNED_AT,
         );
         expect(added).toMatchObject({
@@ -95,7 +99,6 @@ describe("focus plan", () => {
             added.plan,
             TUESDAY,
             WEDNESDAY,
-            THURSDAY,
             PLANNED_AT,
         );
         expect(removed).toMatchObject({
@@ -133,6 +136,5 @@ describe("focus plan", () => {
             entry: multiple.entries[0],
         });
         expect(isQuickFocusDateSelected(multiple, WEDNESDAY, WEDNESDAY)).toBe(true);
-        expect(hasFocusDateAfterDeadline(multiple, TUESDAY)).toBe(true);
     });
 });

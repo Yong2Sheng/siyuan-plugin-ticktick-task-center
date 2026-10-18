@@ -38,6 +38,7 @@ const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
     "url-siyuan-invalid": "validation.urlSiYuanInvalid",
     "status-invalid": "validation.statusInvalid",
     "work-mode-invalid": "validation.workModeInvalid",
+    "priority-invalid": "validation.priorityInvalid",
     "deadline-invalid": "validation.deadlineInvalid",
 };
 

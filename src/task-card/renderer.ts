@@ -1,18 +1,34 @@
 import type { TaskCardViewModel } from "./card-view-model";
 import { getDeadlineState } from "../domain/deadline";
+import { getLocalDate } from "../domain/local-date";
 import { createDeadlineButton } from "./deadline-button";
 import { openTaskActionsMenu } from "./task-actions-menu";
+import { openTaskPriorityMenu } from "./priority-menu";
 import type { TaskTarget } from "../domain/task-target";
+import type { TickTickTaskPriority } from "../domain/priority";
 
 export const TASK_CARD_CONTAINER_ATTRIBUTE = "data-ticktick-task-enhancement";
 export const TASK_CARD_BLOCK_ID_ATTRIBUTE = "data-ticktick-task-block-id";
 
 export type TaskCardActions = {
-    onEditTask(blockId: string, options: { focus: "status" | "work-mode" | "deadline" }): void;
+    onEditTask(
+        blockId: string,
+        options: { focus: "status" | "work-mode" | "deadline" | "priority" },
+    ): void;
     onDeleteTask?(blockId: string, title: string): void;
     onOpenTaskCenter?(): void;
     onOpenSiYuanTarget?(blockId: string): void;
+    /** 标记/撤销今天已推进。写的是任务中心同一组属性。 */
+    onToggleDailyProgress?(blockId: string, date: string | undefined): Promise<void>;
+    onDailyProgressError?(error: unknown): void;
+    onSavePriority?(blockId: string, priority: TickTickTaskPriority): Promise<void>;
+    onPriorityError?(error: unknown): void;
 };
+
+/** 与任务中心一致的权重徽标样式类名。 */
+export const TASK_CARD_PRIORITY_CLASS = "ticktick-task-card__priority";
+/** 文档正文卡片的「今日推进」按钮类名。 */
+export const TASK_CARD_PROGRESS_CLASS = "ticktick-task-card__progress";
 
 export function enhanceTaskBlock(
     blockElement: HTMLElement,
@@ -98,6 +114,30 @@ export function enhanceTaskBlock(
     const classification = document.createElement("span");
     classification.className = "ticktick-task-card__classification";
 
+    const priority = document.createElement("button");
+    priority.type = "button";
+    priority.className = TASK_CARD_PRIORITY_CLASS;
+    priority.dataset.priority = viewModel.priorityConfigured ? viewModel.priority : "unset";
+    priority.textContent = viewModel.priorityText;
+    priority.title = viewModel.priorityTitle;
+    priority.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!actions?.onSavePriority) {
+            actions?.onEditTask(blockId, { focus: "priority" });
+            return;
+        }
+        openTaskPriorityMenu(priority, {
+            translate: viewModel.translate,
+            ...(viewModel.priorityConfigured ? { priority: viewModel.priority } : {}),
+            onSelect: (next) => {
+                void actions.onSavePriority?.(blockId, next).catch((error) => {
+                    actions.onPriorityError?.(error);
+                });
+            },
+        });
+    });
+
     const workMode = document.createElement("button");
     workMode.type = "button";
     workMode.className = "ticktick-task-card__work-mode";
@@ -122,10 +162,58 @@ export function enhanceTaskBlock(
         actions?.onEditTask(blockId, { focus: "status" });
     });
 
-    classification.append(workMode, status);
-    card.append(identity, main, classification, deadline);
+    // 分类列竖向堆叠：工作分类 → 状态 → 权重；截止日期仍是独立的原始控件。
+    classification.append(workMode, status, priority);
+
+    // 截止日期与「今日推进」竖向同列：推进按钮放到截止日期下方，省横向空间。
+    // 用 grid 而不是 flex 纵向容器——截止日期控件的 flex: 0 0 104px 在纵向 flex 里
+    // 会被当成高度（按钮会变成正方形）；grid 子项不受 flex 属性影响，尺寸保持不变。
+    const deadlineColumn = document.createElement("span");
+    deadlineColumn.className = "ticktick-task-card__deadline-column";
+    deadlineColumn.append(deadline);
+    // 已结束任务不再显示「今日推进」：推进记录对已结束任务没有意义。
+    if (!viewModel.statusTerminal && actions?.onToggleDailyProgress) {
+        deadlineColumn.append(createProgressButton(blockId, viewModel, actions));
+    }
+
+    card.append(identity, main, classification, deadlineColumn);
     blockElement.before(card);
     return true;
+}
+
+function createProgressButton(
+    blockId: string,
+    viewModel: TaskCardViewModel,
+    actions: TaskCardActions,
+): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = TASK_CARD_PROGRESS_CLASS;
+    button.dataset.progressedToday = String(viewModel.progressedToday);
+    button.textContent = viewModel.translate(
+        viewModel.progressedToday ? "taskCenterView.dailyProgressDone" : "taskCenterView.dailyProgressAction",
+    );
+    button.title = viewModel.translate(
+        viewModel.progressedToday
+            ? "taskCenterView.dailyProgressUndoTitle"
+            : "taskCenterView.dailyProgressTitle",
+    );
+    button.setAttribute("aria-pressed", String(viewModel.progressedToday));
+    button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (button.disabled) {
+            return;
+        }
+        // 先禁用自己，避免写入未返回时被重复点击。
+        button.disabled = true;
+        const next = viewModel.progressedToday ? undefined : getLocalDate();
+        void actions.onToggleDailyProgress?.(blockId, next).catch((error) => {
+            button.disabled = false;
+            actions.onDailyProgressError?.(error);
+        });
+    });
+    return button;
 }
 
 function createTargetControl(

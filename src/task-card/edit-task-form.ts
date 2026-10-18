@@ -3,6 +3,7 @@ import { Dialog, showMessage } from "siyuan";
 import { TASK_STATUS_CONFIG, TASK_STATUS_IDS } from "../domain/status";
 import type { PersistedTickTickTaskData } from "../domain/task";
 import { TASK_WORK_MODE_CONFIG, TASK_WORK_MODE_IDS } from "../domain/work-mode";
+import { withUnsetPriorityChoice } from "../domain/priority";
 import {
     normalizeTaskData,
     type NormalizedTaskData,
@@ -39,6 +40,7 @@ const VALIDATION_I18N_KEYS: Record<TaskValidationError, string> = {
     "url-siyuan-invalid": "validation.urlSiYuanInvalid",
     "status-invalid": "validation.statusInvalid",
     "work-mode-invalid": "validation.workModeInvalid",
+    "priority-invalid": "validation.priorityInvalid",
     "deadline-invalid": "validation.deadlineInvalid",
 };
 
@@ -77,6 +79,11 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
                 <input data-field="status" type="hidden">
             </div>
             <div class="b3-label">
+                <span data-field-label="priority"></span>
+                <div class="ticktick-task-form__choices ticktick-task-form__choices--priority" data-choice-group="priority" role="radiogroup"></div>
+                <input data-field="priority" type="hidden">
+            </div>
+            <div class="b3-label">
                 <span data-field-label="work-mode"></span>
                 <div class="ticktick-task-form__choices ticktick-task-form__choices--work-mode" data-choice-group="work-mode" role="radiogroup"></div>
                 <input data-field="work-mode" type="hidden">
@@ -102,6 +109,7 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
     const urlInput = requireElement<HTMLInputElement>(form, '[data-field="url"]');
     const statusInput = requireElement<HTMLInputElement>(form, '[data-field="status"]');
     const workModeInput = requireElement<HTMLInputElement>(form, '[data-field="work-mode"]');
+    const priorityInput = requireElement<HTMLInputElement>(form, '[data-field="priority"]');
     const deadlineInput = requireElement<HTMLInputElement>(form, '[data-field="deadline"]');
     const errorElement = requireElement<HTMLElement>(form, '[data-field="error"]');
     const cancelButton = requireElement<HTMLButtonElement>(form, '[data-action="cancel"]');
@@ -118,6 +126,7 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
     requireElement<HTMLElement>(form, '[data-field-label="url"]').textContent = translate("taskCreate.urlLabel");
     requireElement<HTMLElement>(form, '[data-field-label="status"]').textContent = translate("taskCreate.statusLabel");
     requireElement<HTMLElement>(form, '[data-field-label="work-mode"]').textContent = translate("taskCreate.workModeLabel");
+    requireElement<HTMLElement>(form, '[data-field-label="priority"]').textContent = translate("taskCreate.priorityLabel");
     requireElement<HTMLElement>(form, '[data-field-label="deadline"]').textContent = translate("taskCreate.deadlineLabel");
     cancelButton.textContent = translate("common.cancel");
     saveButton.textContent = translate("taskEdit.save");
@@ -143,6 +152,12 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
         })),
         ...(options.initial.workMode ? { initialValue: options.initial.workMode } : {}),
     });
+    const priorityChoices = createTaskChoiceGroup({
+        container: requireElement(form, '[data-choice-group="priority"]'),
+        input: priorityInput,
+        choices: withUnsetPriorityChoice(translate),
+        initialValue: options.initial.priority ?? "",
+    });
 
     cancelButton.addEventListener("click", () => {
         controller.cancel();
@@ -157,6 +172,7 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
         setDisabled(controls, true);
         statusChoices.setDisabled(true);
         workModeChoices.setDisabled(true);
+        priorityChoices.setDisabled(true);
         saveButton.textContent = translate("taskEdit.saving");
         hideError(errorElement);
 
@@ -165,6 +181,7 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
             url: urlInput.value,
             status: statusInput.value,
             workMode: workModeInput.value,
+            priority: priorityInput.value,
             deadline: deadlineInput.value,
         });
         if (!submission.accepted) {
@@ -182,6 +199,7 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
         setDisabled(controls, false);
         statusChoices.setDisabled(false);
         workModeChoices.setDisabled(false);
+        priorityChoices.setDisabled(false);
         saveButton.textContent = translate("taskEdit.save");
         if (submission.value.kind === "validation-error") {
             showError(
@@ -203,6 +221,7 @@ export function showEditTaskDialog(options: EditTaskDialogOptions): EditTaskDial
         focusStatus: () => statusChoices.focus(),
         focusWorkMode: () => workModeChoices.focus(),
         focusDeadline: () => deadlineInput.focus(),
+        focusPriority: () => priorityChoices.focus(),
     };
 }
 
@@ -215,7 +234,6 @@ function getEditErrorMessage(error: unknown, translate: Translate): string {
         "block-unavailable": "taskEdit.errors.blockUnavailable",
         "current-data-invalid": "taskEdit.errors.currentDataInvalid",
         "edit-conflict": "taskEdit.errors.conflict",
-        "focus-after-deadline": "taskEdit.errors.focusAfterDeadline",
         "content-update-failed": "taskEdit.errors.contentUpdateFailed",
         "attribute-write-failed": "taskEdit.errors.attributeWriteFailed",
     };

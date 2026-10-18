@@ -3,6 +3,7 @@ import type { TickTickTaskStatus } from "./status";
 import { readLocalDate } from "./local-date";
 import { parseTaskTarget } from "./task-target";
 import { isTickTickTaskWorkMode, type TickTickTaskWorkMode } from "./work-mode";
+import { parseTaskPriorityAttribute, type TickTickTaskPriority } from "./priority";
 
 export type TaskValidationError =
     | "title-required"
@@ -12,6 +13,7 @@ export type TaskValidationError =
     | "url-siyuan-invalid"
     | "status-invalid"
     | "work-mode-invalid"
+    | "priority-invalid"
     | "deadline-invalid";
 
 export type TaskDataCandidate = {
@@ -19,6 +21,8 @@ export type TaskDataCandidate = {
     url: unknown;
     status: unknown;
     workMode: unknown;
+    /** 空字符串表示「未设置权重」，等同正常档。 */
+    priority?: unknown;
     deadline?: unknown;
 };
 
@@ -28,6 +32,8 @@ export type NormalizedTaskData = {
     url: string;
     status: TickTickTaskStatus;
     workMode: TickTickTaskWorkMode;
+    /** undefined 表示未设置权重，不是「无权重」这一档。 */
+    priority?: TickTickTaskPriority;
     deadline?: string;
 };
 
@@ -81,6 +87,13 @@ export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationRes
         errors.push("deadline-invalid");
     }
 
+    // 权重可选：空字符串或缺失表示「未设置」；填了就必须是合法档位。
+    const parsedPriority = parseTaskPriorityAttribute(data.priority);
+    if (!parsedPriority.valid) {
+        errors.push("priority-invalid");
+    }
+    const priority = parsedPriority.valid ? parsedPriority.priority : undefined;
+
     if (
         errors.length > 0
         || !isTickTickTaskStatus(data.status)
@@ -96,6 +109,7 @@ export function normalizeTaskData(data: TaskDataCandidate): TaskNormalizationRes
             url: normalizedUrl,
             status: data.status,
             workMode: data.workMode,
+            ...(priority ? { priority } : {}),
             ...(deadline ? { deadline } : {}),
         },
     };

@@ -1,79 +1,69 @@
-# 思源任务中心 v0.5.0
+# 思源任务中心 v0.6.0
 
-本版本为任务中心增加“收件箱”：在任务还不成形的时候，先用“标题 + 可选正文”把想法记下来，之后再决定是就地完成，还是变成一篇真正的任务文档。它把“灵感到来时先抓住”和“想清楚之后再建任务”分开，同时继续以原始思源任务块作为任务的唯一数据源。任务链接同时改为可选字段。
+本版本给活跃列表引入**第二维度：任务权重**。此前“今日待推进”只按截止日期排序，而很多截止日期是自己给自己定的软日期，过期也没有真实代价——两个月前的软截止任务会一直霸占列表顶部。现在权重是第一主键、截止日期退为同档内的相对先后；同时把文档内任务卡片的“今日推进”补齐，并把重点安排从截止日期上解绑。
 
 ## 主要更新
 
-- 任务中心增加“收件箱”页签：标题框回车即存，正文框回车换行、`⌘/Ctrl + 回车` 保存；正文可选。
-- 便条分为“⚡ 快速事项”和“🔬 正式任务”两级。快速事项可以就地完成并进入“✓ 今日已完成”；正式任务没有完成按钮，只能移入任务清单。
-- 每条便条按“标题加粗 + 正文折叠”显示。正文超过两行时出现“展开正文”，展开后按基础 Markdown 渲染段落、粗体、斜体、行内代码、链接、无序列表和引用。
-- 思源顶栏增加“快速记录”按钮，在任意位置都能唤出小弹窗记一笔；其中的“保存并继续”适合灵感连着冒出来时一条接一条地记。
-- “移入任务清单”会新建一篇任务文档并写入任务块：任务标题取便条标题，便条正文写进同一篇文档。
-- 目标位置选择器改为回答“新任务文档放在哪”：点笔记本＝建在它根下，点文档＝建在它下面；常驻显示将要创建的完整路径和可编辑的文档名。
-- 任务链接由必需改为可选：不填链接同样可以创建和保存任务，卡片以纯文本显示标题。
+- 任务权重分三档：**🔥 必须推进 / ➖ 正常推进 / ☕ 有空再说**，保存在可选属性 `custom-ticktick-priority` 中。
+- “🌤️ 今日待推进”排序改为 **权重 → 截止日期 → 更新时间**：权重高者在前，同一权重内截止日期越近越前，未设置截止日期的排在同权重末尾。“全部任务”视图不受影响，仍按更新时间。
+- 任务中心与文档内任务卡片都显示权重徽标，点击弹出三档菜单；未设置时显示“➖ 设置权重”。
+- 文档内任务卡片新增 **🚀 今日推进** 按钮：点一下记录今天推进过，再点撤销，与任务中心共用同一组属性和同一套写入逻辑。
+- 重点日期不再受截止日期限制：月历里晚于截止日期的日期不再置灰，“今天 / 明天”快捷按钮不再禁用，编辑任务把截止日期提前到已有重点日期之前也不再报错。
+- 任务中心操作区拆成两行——计划组（↑↓ / 📅 计划 / ⭐ 今天 / 🌙 明天）在上，推进组（打开任务链接 / 🚀 今日推进 / 定位原块）在下；可能缺席的控件放在行首，使不同卡片的按钮保持竖向对齐。
+- 无目标链接的任务标题恢复为普通文本外观：保留外框但补回左右内边距，不再出现文字顶住框线、以及只有悬停才冒出外框的现象。
 
 ## 数据与兼容性
 
-- 便条不是任务：只保存文字、分级和创建时间，不携带状态、截止日期、工作分类、重点计划或链接等任何任务字段。
-- 收件箱数据保存在插件数据文件 `inbox.json` 中，并在同一目录轮换保留三份备份；收件箱不会创建、修改或隐藏任何文档与笔记本，文档树里不会出现任何痕迹。
-- 便条只有在“移入任务清单”时才转换成真实任务块，并同时从插件数据中删除；不存在“既是便条又是任务”的中间态。
-- 移入的执行顺序固定为“建任务块 → 写正文 → 删便条”。正文写入失败时保留便条，便条删除失败时保留任务块，两种情况都如实提示，不静默丢失内容。
-- `custom-ticktick-url` 由必需变为可选，只放宽必填要求，属性含义与格式校验不变；非空但非法的链接仍然被拒绝。
-- 必需结构化属性由七项变为六项，其它已发布属性名与含义均未改变，已有任务无需迁移。
-- 快速记录弹窗与收件箱捕获框共用同一份数据和同一个控制器，不会产生第二份收件箱；分级选择在两个入口之间共用。
+- 新增属性可选。未设置权重（包括本版本之前的全部旧任务）一律按“正常推进”处理，**不需要任何数据迁移**。
+- “正常推进”与“未设置”在排序上完全等价，因此保存这一档时清空属性，而不是写入 `"normal"`；存储层只有“某一档”和“空”两种状态。
+- 无法识别的权重值与其他非法属性一样按“属性无效”跳过，不会静默降级成某一档。
+- 已发布属性名与含义均未改变；`custom-ticktick-focus-plan` 的数据结构不变，本次只是取消了“重点日期不能晚于截止日期”的限制，旧数据继续有效。
+- 取消限制后，此前因为该限制而无法保存的重点安排可以正常写入；已经存在的、晚于截止日期的重点条目保持原样。
 
 ## 可靠性与验证
 
-- 收件箱控制器在成功读取数据文件之前拒绝任何写入，避免刚启动思源时用内存里的空状态覆盖已有便条。
-- 只填写正文、不填标题时拒绝写入，避免存下一张没有标题的便条。
-- 便条正文的 Markdown 渲染器自行实现、直接构造 DOM 节点，不使用 `innerHTML`、不引入第三方依赖；链接只接受 `http` 和 `https`，其它协议按普通文字处理。
-- 文档树三角放大到 22×22 点击区并改用实体 `▶ / ▼`，修复原有三角会被误读成小圆点、以及展开后列表跳回顶部的问题。
-- 49 个测试文件、505 项测试全部通过；类型检查为 0 错误、0 警告，生产构建与 `package.zip` 完整性校验均通过。
-- 主要验收环境为 macOS 思源桌面版；HarmonyOS 原生移动端仍属于实验性支持。
+- 权重与今日推进的写入都在写后重新读取属性复核，复核不一致即报错，不把部分成功当成成功。
+- 今日推进不修改任务的 `updated-at`，因此不会把任务顶到按更新时间排序的列表前面。
+- 布局改动遵循“不改动既有控件的尺寸与形状”：截止日期仍是独立的 104px 控件；文档卡片用 grid 容器承载“截止日期 + 今日推进”，避免纵向 flex 把控件拉伸变形。
+- 完整测试 561 个用例通过，类型检查 0 错误 0 警告，生产构建与 `package.zip` 校验正常。
 
 ## 安装
 
-请下载本 Release 附件中的 `package.zip`。不要使用 GitHub 自动生成的 Source code 压缩包作为思源插件包。解压后确保 `plugin.json` 直接位于插件目录根部，并重新加载或重启插件。
-
-完整记录见 [CHANGELOG.md](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/blob/v0.5.0/CHANGELOG.md)。
+- 在思源“集市 → 已下载”中更新，或从本 Release 附件下载 `package.zip` 解压到工作空间的 `data/plugins/` 目录。
+- 更新后如界面未刷新，可在“设置 → 集市 → 已下载”里对该插件执行一次“禁用/启用”，或重启思源。
 
 ---
 
-# SiYuan Task Center v0.5.0
+# SiYuan Task Center v0.6.0
 
-This release adds an Inbox to the Task Center: capture an idea as a title plus an optional body while it is still unformed, then decide later whether to finish it in place or turn it into a real task document. It separates catching an idea from creating a task, while the original SiYuan task block remains the only source of task data. The task link also becomes optional.
+This release adds a **second dimension to the active list: task weight**. Previously "To progress today" was sorted by deadline alone, but many deadlines are self-imposed soft dates whose passing costs nothing — a task with a soft deadline from two months ago would sit at the top of the list forever. Weight is now the primary key and the deadline only breaks ties inside a weight band. This release also brings "Progress today" to in-document task cards and decouples focus planning from the deadline.
 
 ## Highlights
 
-- Add the Inbox tab to the Task Center. Enter in the title saves; Enter in the body inserts a newline and ⌘/Ctrl + Enter saves. The body is optional.
-- Notes come in two tiers, ⚡ Quick errand and 🔬 Formal task. A quick errand can be finished in place and moves into ✓ Done today; a formal task has no complete button and can only be moved to the task list.
-- Each note renders as a bold title plus a collapsed body. A body longer than two lines gets a Show full text control and is then rendered as basic Markdown: paragraphs, bold, italic, inline code, links, unordered lists, and quotes.
-- Add a Quick capture button to the SiYuan top bar so a note can be captured from anywhere; Save and continue is meant for jotting down several ideas in a row.
-- Move to task list creates a new task document and writes the task block into it: the task title comes from the note title and the note body is written into the same document.
-- The target picker now answers where the new task document goes: select a notebook to create it at the notebook root, select a document to create it underneath. A persistent line shows the full path that will be created together with an editable document name.
-- The task link changed from required to optional: a task can be created and saved without one, and the card then shows the title as plain text.
+- Task weight has three levels: **🔥 Must advance / ➖ Normal / ☕ When free**, stored in the optional attribute `custom-ticktick-priority`.
+- **🌤️ To progress today** now sorts by **weight → deadline → update time**: higher weight first, nearer deadlines first within the same weight, and undated tasks last in their weight band. The **All tasks** view is unchanged and still sorts by update time.
+- Both the Task Center and in-document task cards show a weight badge; clicking it opens a three-level menu. An unset weight is shown as "➖ Set weight".
+- In-document task cards gain a **🚀 Progress today** button that records today's progress and undoes it on a second click, sharing the same attributes and write path as the Task Center.
+- Focus dates are no longer constrained by the deadline: dates after the deadline are not greyed out in the calendar, the Today/Tomorrow shortcuts are not disabled, and moving a deadline before an existing focus date no longer fails.
+- The Task Center action area is split into two rows — planning controls (↑↓ / 📅 Plan / ⭐ Today / 🌙 Tomorrow) on top, execution controls (open task link / 🚀 Progress today / Locate) below. Optional controls sit at the left edge of their row so buttons stay vertically aligned across cards.
+- Tasks without a target link now render their title as plain text: the frame stays but horizontal padding is restored, so text no longer touches the border and the frame no longer appears only on hover.
 
 ## Data and compatibility
 
-- A note is not a task: it stores only text, a tier, and a creation time, and carries no status, deadline, work category, focus plan, or link.
-- Inbox data is stored in the plugin data file `inbox.json`, with three rotating copies in the same directory. The Inbox never creates, modifies, or hides a document or notebook, so nothing appears in the document tree.
-- A note becomes a real task block only when it is moved to the task list, and it is deleted from the plugin data at the same time. There is no intermediate state where something is both a note and a task.
-- The order is fixed as create task block → write body → delete note. A failed body write keeps the note, a failed note deletion keeps the task block, and both report the real outcome instead of silently dropping content.
-- `custom-ticktick-url` changed from required to optional. This only relaxes the requirement; attribute meaning and format validation are unchanged, and a present but invalid link is still rejected.
-- The number of required structured attributes drops from seven to six. All other published attribute names and meanings are unchanged, and existing tasks need no migration.
-- The Quick capture dialog and the Inbox capture box share one data set and one controller, so there is never a second inbox, and the tier choice is shared across both entry points.
+- The new attribute is optional. Tasks without a weight — including every task created before this version — are treated as the normal level, so **no migration is required**.
+- "Normal" and "unset" sort identically, so saving that level clears the attribute instead of writing `"normal"`; storage only ever holds a level or an empty value.
+- An unrecognized weight is skipped as an invalid attribute, exactly like other invalid attributes, instead of silently falling back to a level.
+- Published attribute names and meanings are unchanged. The `custom-ticktick-focus-plan` structure is unchanged; this release only drops "a focus date cannot be later than the deadline", so existing data stays valid.
+- Focus entries that used to be rejected can now be saved normally; existing entries later than their deadline are left as they are.
 
 ## Reliability and verification
 
-- Refuse any Inbox write until the data file has been read successfully, so an empty in-memory state right after startup can no longer overwrite existing notes.
-- Refuse to save a note that has a body but no title, which previously produced a title-less note.
-- The note-body Markdown renderer is implemented in-house and builds DOM nodes directly, with no `innerHTML` and no third-party dependency. Links accept `http` and `https` only; any other scheme is treated as plain text.
-- Enlarge the document-tree triangle to a 22×22 hit area with solid ▶ / ▼ glyphs, fixing both the outline triangle that read as a small dot and the tree jumping back to the top after expanding.
-- All 505 tests across 49 test files pass; the type check reports 0 errors and 0 warnings, and the production build plus `package.zip` integrity verification pass.
-- The primary acceptance environment is SiYuan Desktop on macOS; HarmonyOS native mobile remains experimental.
+- Weight and daily-progress writes are verified by re-reading the attribute right after writing; a mismatch is reported instead of being treated as success.
+- Daily progress does not touch `updated-at`, so it never moves a task to the front of a list sorted by update time.
+- Layout changes respect "do not alter the size or shape of existing controls": the Deadline control is still a standalone 104px control, and in-document cards use a grid container for "Deadline + Progress today" so a column flex context cannot stretch it.
+- All 561 tests pass, type checking reports 0 errors and 0 warnings, and the production build plus `package.zip` verification succeed.
 
 ## Installation
 
-Download `package.zip` from the assets of this release. Do not use the GitHub-generated Source code archives as a SiYuan plugin package. After extracting, make sure `plugin.json` sits directly at the root of the plugin directory, then reload or restart the plugin.
-
-See [CHANGELOG.en.md](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/blob/v0.5.0/CHANGELOG.en.md) for the complete record.
+- Update from **Bazaar → Downloaded** in SiYuan, or download `package.zip` from this Release and extract it into `data/plugins/` of your workspace.
+- If the UI does not refresh, disable and re-enable the plugin under **Settings → Bazaar → Downloaded**, or restart SiYuan.

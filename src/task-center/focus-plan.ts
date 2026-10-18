@@ -22,7 +22,6 @@ export type FocusPlanErrorCode =
     | "focus-plan-invalid"
     | "invalid-date"
     | "past-date"
-    | "after-deadline"
     | "focus-date-missing"
     | "invalid-order"
     | "write-failed"
@@ -69,11 +68,11 @@ export async function toggleTaskFocusDate(
         throw new FocusPlanError("focus-plan-invalid", blockId);
     }
 
+    // 重点日期只受「不能排到过去」约束，与截止日期解耦。
     const updated = (mode === "quick" ? toggleQuickFocusDate : toggleFocusDate)(
         parsedPlan.plan,
         targetDate,
         today,
-        task.data.deadline,
         now().toISOString(),
     );
     if (!updated.changed) {

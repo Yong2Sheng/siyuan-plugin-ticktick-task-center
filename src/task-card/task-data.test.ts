@@ -76,3 +76,47 @@ describe("parseTaskBlockAttributes", () => {
         })).toEqual({ valid: false, reason: "invalid-work-mode" });
     });
 });
+
+describe("task priority parsing", () => {
+    const base = {
+        [TASK_BLOCK_ATTRIBUTES.card]: "true",
+        [TASK_BLOCK_ATTRIBUTES.version]: "1",
+        [TASK_BLOCK_ATTRIBUTES.title]: "Task",
+        [TASK_BLOCK_ATTRIBUTES.url]: "https://ticktick.com/t/1",
+        [TASK_BLOCK_ATTRIBUTES.status]: "in-progress",
+        [TASK_BLOCK_ATTRIBUTES.createdAt]: "2026-07-12T08:30:00.000Z",
+        [TASK_BLOCK_ATTRIBUTES.updatedAt]: "2026-07-12T09:30:00.000Z",
+    };
+
+    it("treats a missing or empty priority as unset instead of failing the block", () => {
+        // 新增属性必须向后兼容：老任务没有这个属性，仍然必须解析成功。
+        expect(parseTaskBlockAttributes(base)).toMatchObject({
+            valid: true,
+            data: { title: "Task" },
+        });
+        const withEmpty = parseTaskBlockAttributes({
+            ...base,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority]: "",
+        });
+        expect(withEmpty.valid).toBe(true);
+        if (!withEmpty.valid) throw new Error("expected valid task data");
+        expect(withEmpty.data.priority).toBeUndefined();
+    });
+
+    it.each([["high"], ["normal"], ["low"]])("reads the stored level %s", (priority) => {
+        const parsed = parseTaskBlockAttributes({
+            ...base,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority]: priority,
+        });
+        expect(parsed.valid).toBe(true);
+        if (!parsed.valid) throw new Error("expected valid task data");
+        expect(parsed.data.priority).toBe(priority);
+    });
+
+    it("rejects an unrecognized priority instead of silently downgrading it", () => {
+        expect(parseTaskBlockAttributes({
+            ...base,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority]: "urgent",
+        })).toEqual({ valid: false, reason: "invalid-priority" });
+    });
+});

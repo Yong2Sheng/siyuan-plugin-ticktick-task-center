@@ -48,8 +48,8 @@ import {
     TaskCenterController,
 } from "./task-center/task-center-controller";
 import { saveDailyProgress } from "./task-center/daily-progress";
+import { saveTaskPriority } from "./task-center/task-priority";
 import {
-    FocusPlanError,
     setTaskFocusOrder,
     toggleTaskFocusDate,
 } from "./task-center/focus-plan";
@@ -135,6 +135,28 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 },
                 onOpenSiYuanTarget: (blockId) => {
                     void this.openSiYuanTarget(blockId, translate);
+                },
+                onToggleDailyProgress: async (blockId, date) => {
+                    await saveDailyProgress(
+                        { loadAttributes: getBlockAttributes, setBlockAttributes },
+                        blockId,
+                        date,
+                    );
+                    // 写后重新读取该块属性并局部重建卡片，让按钮状态跟上。
+                    await this.taskCardLifecycle?.refreshBlockById(blockId);
+                },
+                onDailyProgressError: (error) => {
+                    console.error("Failed to update daily TickTick task progress", error);
+                    showMessage(translate("taskCenterView.dailyProgressFailed"), 5000, "error");
+                },
+                onSavePriority: (blockId, priority) => saveTaskPriority(
+                    { loadAttributes: getBlockAttributes, setBlockAttributes },
+                    blockId,
+                    priority,
+                ),
+                onPriorityError: (error) => {
+                    console.error("Failed to update TickTick task priority", error);
+                    showMessage(translate("priority.saveFailed"), 5000, "error");
                 },
             },
         });
@@ -350,6 +372,15 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 console.error("Failed to update daily TickTick task progress", error);
                 showMessage(translate("taskCenterView.dailyProgressFailed"), 5000, "error");
             },
+            onSavePriority: (blockId, priority) => saveTaskPriority(
+                { loadAttributes: getBlockAttributes, setBlockAttributes },
+                blockId,
+                priority,
+            ),
+            onPriorityError: (error) => {
+                console.error("Failed to update TickTick task priority", error);
+                showMessage(translate("priority.saveFailed"), 5000, "error");
+            },
             onToggleFocusDate: (blockId, targetDate, today, mode) => toggleTaskFocusDate(
                 { loadAttributes: getBlockAttributes, setBlockAttributes },
                 blockId,
@@ -365,10 +396,8 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             ),
             onFocusPlanError: (error) => {
                 console.error("Failed to update TickTick task focus plan", error);
-                const key = error instanceof FocusPlanError && error.code === "after-deadline"
-                    ? "taskCenterView.focusAfterDeadline"
-                    : "taskCenterView.focusPlanFailed";
-                showMessage(translate(key), 5000, "error");
+                // 重点日期已与截止日期解耦，不再有「晚于截止日期」这一类失败。
+                showMessage(translate("taskCenterView.focusPlanFailed"), 5000, "error");
             },
             knowledgeController,
             onOpenKnowledgeDocument: (documentId) => openSiYuanBlock(this.app, documentId),

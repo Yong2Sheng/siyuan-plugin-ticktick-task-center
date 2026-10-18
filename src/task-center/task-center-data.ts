@@ -9,6 +9,7 @@ import { readLocalDate } from "../domain/local-date";
 import { parseTaskBlockAttributes, type TaskBlockParseFailure } from "../task-card/task-data";
 import type { TickTickTaskWorkMode } from "../domain/work-mode";
 import { parseFocusPlanAttribute, type FocusPlan } from "../domain/focus-plan";
+import { parseTaskPriorityAttribute, type TickTickTaskPriority } from "../domain/priority";
 import { parseProgressLogAttribute, type ProgressLog } from "../domain/progress-log";
 
 export type TaskCenterItem = {
@@ -22,6 +23,8 @@ export type TaskCenterItem = {
     url: string;
     status: TickTickTaskStatus;
     workMode?: TickTickTaskWorkMode;
+    /** 未设置表示「正常推进」，排序时按正常档处理。 */
+    priority?: TickTickTaskPriority;
     createdAt: string;
     updatedAt: string;
     deadline?: string;
@@ -149,6 +152,10 @@ export function aggregateTaskCenterRows(
         const deadline = readLocalDate(
             aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline],
         );
+        const parsedPriority = parseTaskPriorityAttribute(
+            aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority],
+        );
+        const priority = parsedPriority.valid ? parsedPriority.priority : undefined;
         const focusPlan = parseFocusPlanAttribute(
             aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.focusPlan],
         );
@@ -166,6 +173,7 @@ export function aggregateTaskCenterRows(
             url: parsed.data.url,
             status: parsed.data.status,
             ...(parsed.data.workMode ? { workMode: parsed.data.workMode } : {}),
+            ...(priority ? { priority } : {}),
             createdAt: parsed.data.createdAt,
             updatedAt: parsed.data.updatedAt,
             ...(deadline ? { deadline } : {}),

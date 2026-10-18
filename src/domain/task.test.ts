@@ -48,7 +48,7 @@ describe("task block attributes", () => {
     });
 
     it("creates the seven required attributes and clearable optional fields", () => {
-        expect(Object.keys(attributes)).toHaveLength(9);
+        expect(Object.keys(attributes)).toHaveLength(10);
         expect(attributes).toEqual({
             [TASK_BLOCK_ATTRIBUTES.card]: "true",
             [TASK_BLOCK_ATTRIBUTES.version]: "1",
@@ -59,7 +59,26 @@ describe("task block attributes", () => {
             [TASK_BLOCK_ATTRIBUTES.updatedAt]: timestamp,
             [TASK_BLOCK_OPTIONAL_ATTRIBUTES.deadline]: "",
             [TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]: "",
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority]: "",
         });
+    });
+
+    it("persists a configured priority and clears it back to unset", () => {
+        const base = {
+            version: TASK_DATA_VERSION,
+            title: "Task",
+            url: "https://ticktick.com/t/1",
+            status: "in-progress" as const,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+        };
+        expect(createTaskBlockAttributes({ ...base, priority: "high" })[
+            TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority
+        ]).toBe("high");
+        // 未设置与「正常推进」等价：写空字符串，不写 "normal"。
+        expect(createTaskBlockAttributes(base)[
+            TASK_BLOCK_OPTIONAL_ATTRIBUTES.priority
+        ]).toBe("");
     });
 
     it("persists a configured deadline", () => {

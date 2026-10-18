@@ -7,7 +7,7 @@ import type { TickTickTaskStatus } from "../domain/status";
 import { getLocalDate } from "./daily-progress";
 import type { TaskCenterItem } from "./task-center-data";
 import { TaskCenterController } from "./task-center-controller";
-import { TaskCenterView } from "./task-center-view";
+import { TaskCenterView, type TaskCenterViewOptions } from "./task-center-view";
 import { KnowledgeCenterController } from "../knowledge/knowledge-controller";
 import { createEmptyKnowledgeIndex } from "../knowledge/knowledge-index";
 import { addLocalCalendarDays } from "../domain/local-date";
@@ -53,8 +53,15 @@ const dictionary: Record<string, string> = {
     "taskCenterView.focusTomorrow": "🌙 Tomorrow",
     "taskCenterView.focusArrangeTitle": "Arrange ${date}",
     "taskCenterView.focusCancelTitle": "Cancel ${date}",
-    "taskCenterView.focusAfterDeadline": "After deadline",
     "taskCenterView.focusSortRule": "Use arrows; new plans append",
+    "priority.high": "Must advance",
+    "priority.normal": "Normal",
+    "priority.low": "When free",
+    "priority.unset": "Not set",
+    "priority.unsetAction": "➖ Set weight",
+    "priority.menuTitle": "Set task weight",
+    "priority.menuLabel": "Task weight",
+    "priority.menuAriaLabel": "Current weight: ${priority}. Click to change.",
     "taskCenterView.focusStateToday": "⭐ Scheduled today",
     "taskCenterView.focusStateCarried": "↪ Carried from ${date}",
     "taskCenterView.focusStateOverdue": "⚠️ Overdue from ${date}",
@@ -133,11 +140,14 @@ const TODAY_UPDATED_AT = (() => {
     return date.toISOString();
 })();
 
-async function createView(load = vi.fn().mockResolvedValue({
-    items: [ACTIVE, CLOSED],
-    invalidBlocks: [],
-    incompleteBlocks: [],
-})) {
+async function createView(
+    load = vi.fn().mockResolvedValue({
+        items: [ACTIVE, CLOSED],
+        invalidBlocks: [],
+        incompleteBlocks: [],
+    }),
+    overrides: Partial<TaskCenterViewOptions> = {},
+) {
     const target = document.createElement("div");
     document.body.append(target);
     const controller = new TaskCenterController({ load });
@@ -155,6 +165,8 @@ async function createView(load = vi.fn().mockResolvedValue({
     }));
     const onDeleteTask = vi.fn().mockResolvedValue(true);
     const onDailyProgressError = vi.fn();
+    const onSavePriority = vi.fn().mockResolvedValue(undefined);
+    const onPriorityError = vi.fn();
     const onToggleLanguage = vi.fn().mockResolvedValue(undefined);
     const knowledgeController = createKnowledgeController();
     const onOpenKnowledgeDocument = vi.fn().mockResolvedValue(undefined);
@@ -173,12 +185,15 @@ async function createView(load = vi.fn().mockResolvedValue({
         onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
+        onSavePriority,
+        onPriorityError,
         onToggleFocusDate,
         onSetFocusOrder,
         onFocusPlanError: vi.fn(),
         knowledgeController,
         onOpenKnowledgeDocument,
         onOpenKnowledgeSource,
+        ...overrides,
     });
     await Promise.all([controller.start(), knowledgeController.start()]);
     return {
@@ -192,6 +207,8 @@ async function createView(load = vi.fn().mockResolvedValue({
         onDeleteTask,
         onSaveDailyProgress,
         onDailyProgressError,
+        onSavePriority,
+        onPriorityError,
         onToggleFocusDate,
         onSetFocusOrder,
         onToggleLanguage,
@@ -264,18 +281,25 @@ describe("TaskCenterView", () => {
         expect(load).toHaveBeenCalledOnce();
     });
 
-    it("stacks work category above status and reuses edit and locate actions", async () => {
+    it("stacks work category, status and weight while keeping the deadline standalone", async () => {
         const { target, onEditTask, onLocateTask } = await createView();
         const article = target.querySelector<HTMLElement>(".ticktick-task-center__item")!;
         const status = article.querySelector<HTMLButtonElement>(".ticktick-task-center__status")!;
         const workMode = article.querySelector<HTMLButtonElement>(".ticktick-task-center__work-mode")!;
         const classification = article.querySelector<HTMLElement>(".ticktick-task-center__classification")!;
+        const priority = article.querySelector<HTMLButtonElement>(".ticktick-task-center__priority")!;
+        const deadline = article.querySelector<HTMLButtonElement>(".ticktick-task-center__deadline")!;
         const title = article.querySelector<HTMLButtonElement>(".ticktick-task-center__title")!;
 
         expect(article.dataset.statusTone).toBe("primary");
         expect(status.textContent).toBe("▶️ In progress");
         expect(workMode.textContent).toBe("🔎 评审-Review");
-        expect(Array.from(classification.children)).toEqual([workMode, status]);
+        // 截止日期仍是卡片的直接子元素（保持原始尺寸与形状）。
+        expect(article.children[0]).toBe(deadline);
+        // 分类列自上而下：工作分类 → 状态 → 权重。
+        expect(Array.from(classification.children)).toEqual([workMode, status, priority]);
+        expect(priority.dataset.priority).toBe("unset");
+        expect(priority.textContent).toBe("➖ Set weight");
         workMode.click();
         status.click();
         title.click();
@@ -452,6 +476,7 @@ describe("TaskCenterView", () => {
             onLocateTask: vi.fn(),
             onDeleteTask: vi.fn().mockResolvedValue(true),
             onSaveDailyProgress: vi.fn().mockResolvedValue({}),
+            onSavePriority: vi.fn().mockResolvedValue(undefined),
             onToggleFocusDate: vi.fn().mockResolvedValue({ version: 1, entries: [] }),
             onSetFocusOrder: vi.fn().mockResolvedValue({ version: 1, entries: [] }),
             knowledgeController,
@@ -645,8 +670,9 @@ describe("TaskCenterView", () => {
             disabled: false,
             ariaPressed: "true",
         });
+        // 重点日期与截止日期已解耦：晚于截止日期不再禁用。
         expect(target.querySelector<HTMLButtonElement>('[data-focus-date="tomorrow"]')?.disabled)
-            .toBe(true);
+            .toBe(false);
     });
 
     it("opens a full calendar, navigates across months, and toggles an exact allowed date", async () => {
@@ -665,8 +691,9 @@ describe("TaskCenterView", () => {
         expect(harness.target.querySelectorAll(
             ".ticktick-task-center__focus-calendar-weekday",
         )).toHaveLength(7);
+        // 晚于截止日期的格子不再置灰：软截止日期不该拦住重点安排。
         expect(harness.target.querySelector<HTMLButtonElement>(`[data-date="${afterDeadline}"]`)?.disabled)
-            .toBe(true);
+            .toBe(false);
 
         const initialHeading = harness.target.querySelector(
             ".ticktick-task-center__focus-calendar-header strong",
@@ -890,5 +917,192 @@ describe("TaskCenterView", () => {
         expect(Array.from(target.querySelectorAll(".ticktick-task-center__title"), (node) => node.textContent))
             .toEqual(["DS9 Older edited", "DS9 Newer"]);
         expect(load).toHaveBeenCalledOnce();
+    });
+});
+
+/** 只取最新打开的那个权重菜单：body 上可能残留此前用例打开的菜单。 */
+function currentPriorityMenuItems(): HTMLButtonElement[] {
+    const menus = Array.from(document.body.querySelectorAll<HTMLElement>(
+        "#ticktick-task-priority-menu",
+    ));
+    const menu = menus[menus.length - 1];
+    if (!menu) {
+        throw new Error("priority menu was not opened");
+    }
+    return Array.from(menu.querySelectorAll<HTMLButtonElement>(".b3-menu__item"))
+        .filter((item) => item.dataset.type !== "readonly");
+}
+
+describe("TaskCenterView task weight", () => {
+    it("shows the unset action and writes the chosen level through the menu", async () => {
+        const onSavePriority = vi.fn().mockResolvedValue(undefined);
+        const harness = await createView(undefined, { onSavePriority });
+        const badge = harness.target.querySelector<HTMLButtonElement>(
+            ".ticktick-task-center__priority",
+        )!;
+        expect(badge.dataset.priority).toBe("unset");
+        expect(badge.textContent).toBe("➖ Set weight");
+
+        badge.click();
+        const choices = currentPriorityMenuItems();
+        choices[0].click();
+
+        expect(onSavePriority).toHaveBeenCalledWith(ACTIVE.blockId, "high");
+    });
+
+    it("shows the stored level on the badge", async () => {
+        const withPriority = { ...ACTIVE, priority: "low" as const };
+        const harness = await createView(vi.fn().mockResolvedValue({
+            items: [withPriority],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        const badge = harness.target.querySelector<HTMLButtonElement>(
+            ".ticktick-task-center__priority",
+        )!;
+        expect(badge.dataset.priority).toBe("low");
+        expect(badge.textContent).toBe("☕ When free");
+        expect(harness.target.querySelector<HTMLElement>(".ticktick-task-center__item")?.dataset.priority)
+            .toBe("low");
+    });
+
+    it("reports a failed weight write without leaving the badge disabled", async () => {
+        const onSavePriority = vi.fn().mockRejectedValue(new Error("write failed"));
+        const onPriorityError = vi.fn();
+        const harness = await createView(undefined, { onSavePriority, onPriorityError });
+        harness.target.querySelector<HTMLButtonElement>(".ticktick-task-center__priority")!.click();
+        currentPriorityMenuItems()[1].click();
+        // 写入、失败回调、重新渲染分别在不同微任务里完成。
+        for (let tick = 0; tick < 8; tick += 1) {
+            await Promise.resolve();
+        }
+
+        expect(onSavePriority).toHaveBeenCalledWith(ACTIVE.blockId, "normal");
+        expect(onPriorityError).toHaveBeenCalled();
+        expect(harness.target.querySelector<HTMLButtonElement>(".ticktick-task-center__priority")?.disabled)
+            .toBe(false);
+    });
+});
+
+describe("TaskCenterView action grouping", () => {
+    it("puts planning controls above push and open controls", async () => {
+        const { target } = await createView();
+        const actions = target.querySelector<HTMLElement>(".ticktick-task-center__actions")!;
+        const rows = Array.from(actions.children) as HTMLElement[];
+
+        expect(rows).toHaveLength(2);
+        expect(rows[0].classList.contains("ticktick-task-center__actions-row--plan")).toBe(true);
+        expect(rows[1].classList.contains("ticktick-task-center__actions-row--run")).toBe(true);
+
+        // 第一行：日历计划 + 今天 / 明天
+        expect(rows[0].querySelector(".ticktick-task-center__focus-calendar-toggle")).not.toBeNull();
+        expect(rows[0].querySelectorAll(".ticktick-task-center__focus-plan")).toHaveLength(2);
+        expect(rows[0].querySelector(".ticktick-task-center__locate")).toBeNull();
+
+        // 第二行：今日推进 + 定位原块 + 打开链接
+        expect(rows[1].querySelector(".ticktick-task-center__daily-progress")).not.toBeNull();
+        expect(rows[1].querySelector(".ticktick-task-center__locate")).not.toBeNull();
+        expect(rows[1].querySelector(".ticktick-task-center__focus-plan")).toBeNull();
+    });
+
+    it("keeps focus order arrows in the planning row", async () => {
+        const focused = {
+            ...ACTIVE,
+            focusPlan: {
+                version: 1 as const,
+                entries: [{ date: TODAY, plannedAt: "2026-09-07T20:00:00.000Z" }],
+            },
+        };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [focused],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        const rows = Array.from(
+            target.querySelectorAll<HTMLElement>(".ticktick-task-center__actions-row"),
+        );
+        expect(rows[0].querySelectorAll(".ticktick-task-center__focus-order").length).toBe(2);
+        expect(rows[1].querySelector(".ticktick-task-center__focus-order")).toBeNull();
+    });
+
+    it("omits the planning row entirely for a closed task", async () => {
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [CLOSED],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        // 已结束任务在活跃列表里不显示，切到「已结束」筛选下再看动作分组。
+        const harness = await createView(vi.fn().mockResolvedValue({
+            items: [CLOSED],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        harness.target.querySelector<HTMLButtonElement>('[data-filter="closed"]')?.click();
+        const rows = Array.from(
+            harness.target.querySelectorAll<HTMLElement>(".ticktick-task-center__actions-row"),
+        );
+        expect(rows.every((row) => row.classList.contains("ticktick-task-center__actions-row--run")))
+            .toBe(true);
+        expect(target.querySelector(".ticktick-task-center__actions-row--plan")).toBeNull();
+    });
+});
+
+describe("TaskCenterView action alignment", () => {
+    function rowChildren(row: HTMLElement): string[] {
+        return Array.from(row.children).map((child) => {
+            const el = child as HTMLElement;
+            if (el.classList.contains("ticktick-task-center__focus-order")) return "order";
+            if (el.classList.contains("ticktick-task-center__focus-calendar-toggle")) return "calendar";
+            if (el.classList.contains("ticktick-task-center__focus-plan")) return "plan";
+            if (el.classList.contains("ticktick-task-center__daily-progress")) return "progress";
+            if (el.classList.contains("ticktick-task-center__locate")) return "locate";
+            if (el.classList.contains("ticktick-task-center__external")
+                || el.classList.contains("ticktick-task-center__siyuan-target")) return "target";
+            return "other";
+        });
+    }
+
+    it("keeps optional controls at the left edge of each row so the rest stays aligned", async () => {
+        // 没有重点安排、有链接：第一行没有箭头，第二行最左是打开链接。
+        const { target } = await createView();
+        const rows = Array.from(
+            target.querySelectorAll<HTMLElement>(".ticktick-task-center__actions-row"),
+        );
+        expect(rowChildren(rows[0])).toEqual(["calendar", "plan", "plan"]);
+        expect(rowChildren(rows[1])).toEqual(["target", "progress", "locate"]);
+    });
+
+    it("prepends the sort arrows without moving the planning buttons", async () => {
+        const focused = {
+            ...ACTIVE,
+            focusPlan: {
+                version: 1 as const,
+                entries: [{ date: TODAY, plannedAt: "2026-09-07T20:00:00.000Z" }],
+            },
+        };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [focused],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        const rows = Array.from(
+            target.querySelectorAll<HTMLElement>(".ticktick-task-center__actions-row"),
+        );
+        // 箭头在最左；计划按钮相对右侧的位置不变（仍是 calendar/plan/plan 的顺序）。
+        expect(rowChildren(rows[0])).toEqual(["order", "order", "calendar", "plan", "plan"]);
+    });
+
+    it("drops the open-link control from the left edge when the task has no link", async () => {
+        const withoutUrl = { ...ACTIVE, url: "" };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [withoutUrl],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        const rows = Array.from(
+            target.querySelectorAll<HTMLElement>(".ticktick-task-center__actions-row"),
+        );
+        // 定位原块始终在最右端，不会因为没有链接而右移。
+        expect(rowChildren(rows[1])).toEqual(["progress", "locate"]);
     });
 });

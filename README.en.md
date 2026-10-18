@@ -23,6 +23,7 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Store the task title, six required attributes, and optional link, work-category, deadline, focus-plan, and progress-history attributes in one ordinary SiYuan block.
 - Keep ordinary Markdown containing the title and link in the source block, so the task remains readable and clickable while the plugin is disabled.
 - Non-destructively enhance the block as a task card with an original checklist icon that opens the Task Center, a task link, a work-category button, a semantically colored status badge, and a Deadline button. The work category is stacked above the status.
+- Task cards also show a **task weight badge** and a **🚀 Progress today** button: the weight sits below the work category and status, the progress button below the Deadline control. Clicking the weight opens a three-level menu; the progress button records or undoes today's progress.
 - Open the complete editor from the work-category, status, or Deadline button to change the title, URL, work category, status, or deadline. Work categories and statuses are both selected from directly visible button groups.
 - Right-click anywhere on a document task card or Task Center item to edit it or delete its SiYuan task card after confirmation. Deletion never affects the linked task, document, or resource.
 - Show the deadline as remaining days, an eight-segment urgency track, and the calendar date. An undated task keeps the same track layout and a clear setup entry point.
@@ -46,10 +47,12 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Filter Active, Closed, or All tasks and search task titles, source documents, source paths, and localized status names.
 - Display All, Active, Closed, and today's progress statistics. Ordinary lists use a stable descending sort based on the task attribute `updated-at`.
 - Show **🌤️ To progress today** and **✨ Today's progress** in the Active view. Today's progress is further divided into **🚀 Advanced** and **🏆 Completed today**.
-- Show **⭐ Today's focus** above pending work. Schedule today or tomorrow quickly, or select multiple focus dates from a task calendar; unfinished focus work carries forward without creating a date after its deadline.
+- Show **⭐ Today's focus** above pending work. Schedule today or tomorrow quickly, or select multiple focus dates from a task calendar; unfinished focus work carries forward, and focus dates are no longer constrained by the deadline.
 - Persist the execution order of today's focus with up/down controls; progress moves an item into Today's progress, while undo restores it to today's focus.
 - Switch between the task list and a monthly calendar that shows daily planned and actual counts with five theme-adaptive progress heat levels.
-- Force **To progress today** into deadline order: overdue and nearer deadlines first, undated tasks last, then descending update time when deadlines match.
+- Split task weight into **🔥 Must advance / ➖ Normal / ☕ When free**, stored in the optional attribute `custom-ticktick-priority`. An absent value means the normal level, so older tasks need no migration.
+- Sort **To progress today** by **weight → deadline → update time**: higher weight first, nearer deadlines first within the same weight, undated tasks last in their weight band.
+- The **All tasks** view does not use weight ordering and keeps the stable descending `updated-at` sort.
 - To do, In progress, Waiting for response, and Blocked tasks all participate in daily progress. Moving a task to Completed automatically records it as progress for the day.
 - Use **🚀 Progress today** and **✨ Progressed today** to mark or undo today's record without changing the task status or its existing `updated-at`.
 - Determine “today” from the system's local timezone and regroup automatically after local midnight without a background attribute-reset job.
@@ -98,7 +101,15 @@ The work category describes how a task is approached and remains independent of 
 ## Development status and changelog
 
 > [!NOTE]
-> `v0.5.0` was published on 2026-10-14. The project is not yet listed in the SiYuan Marketplace.
+> `v0.6.0` was published on 2026-10-18. The project is not yet listed in the SiYuan Marketplace.
+
+### 0.6.0 (2026-10-18)
+
+- Add the optional task weight attribute `custom-ticktick-priority` with three levels: 🔥 Must advance / ➖ Normal / ☕ When free. An absent value means normal, so older tasks need no migration.
+- Sort To progress today by weight → deadline → update time; the All tasks view still sorts by update time.
+- Add a 🚀 Progress today button and a weight badge to in-document task cards, sharing the same attributes and write path as the Task Center.
+- Focus dates are no longer constrained by the deadline: the calendar is not greyed out, Today/Tomorrow are not disabled, and moving a deadline before a focus date no longer fails.
+- Split the Task Center action area into a planning row and an execution row, with optional controls at the row start so buttons stay vertically aligned across cards.
 
 ### 0.5.0 (2026-10-14)
 
@@ -140,7 +151,7 @@ See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development rec
 
 The plugin is not currently listed in the SiYuan Marketplace, but it can be installed manually from GitHub Releases.
 
-Download `package.zip` from the [v0.5.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.5.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
+Download `package.zip` from the [v0.6.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.6.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
 
 ### Development installation
 
@@ -242,7 +253,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 - Select an item's Deadline button to edit or clear its deadline directly.
 - Right-click anywhere on an item to edit it or delete its task card. A successful Task Center deletion updates the current list immediately, while SiYuan removes the source block from any open source document.
 - After saving an edit from the Task Center, its list, filtered results, ordering, and statistics update immediately without a refresh.
-- **To progress today** prioritizes overdue and upcoming tasks, with undated tasks placed last.
+- **To progress today** is sorted automatically by **weight → deadline → update time**: higher weight first, nearer deadlines first within the same weight, undated tasks last in their weight band. Pending work has no manual ordering.
 
 ### 8. Track today's progress
 
@@ -260,7 +271,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 ### 9. Plan today's focus
 
 1. Select **⭐ Today** or **🌙 Tomorrow** on an active task to schedule or cancel that date quickly.
-2. Open the task's **📅 Plan** calendar to select multiple dates across months. New plans cannot use past dates or dates after the deadline.
+2. Open the task's **📅 Plan** calendar to select multiple dates across months. Only past dates are rejected; the deadline no longer constrains focus dates.
 3. On its focus date, the task appears under **⭐ Today's focus**. Unprogressed focus work carries into later days and is shown as overdue after its deadline until progressed or manually cancelled.
 4. Use ↑↓ to arrange multiple focus tasks into an execution order stored on the original task block.
 5. Progress moves a focus task into **✨ Today's progress**; undoing today's progress restores it to today's focus.

@@ -19,6 +19,12 @@ import {
 import { getDeadlineState } from "../domain/deadline";
 import { createDeadlineButton } from "../task-card/deadline-button";
 import { TASK_WORK_MODE_CONFIG } from "../domain/work-mode";
+import {
+    resolveTaskPriority,
+    TASK_PRIORITY_CONFIG,
+    type TickTickTaskPriority,
+} from "../domain/priority";
+import { openTaskPriorityMenu } from "../task-card/priority-menu";
 import { openTaskActionsMenu } from "../task-card/task-actions-menu";
 import { parseTaskTarget, TASK_TARGET_OPEN_LABEL_KEYS } from "../domain/task-target";
 import type { KnowledgeCenterController } from "../knowledge/knowledge-controller";
@@ -50,12 +56,14 @@ export type TaskCenterViewOptions = {
     translate: Translate;
     locale?: string | (() => string);
     onToggleLanguage(): Promise<void>;
-    onEditTask(blockId: string, focus: "status" | "work-mode" | "deadline"): void;
+    onEditTask(blockId: string, focus: "status" | "work-mode" | "deadline" | "priority"): void;
     onLocateTask(blockId: string, rootId: string, notebookId?: string): void;
     onOpenSiYuanTarget?(blockId: string): void;
     onDeleteTask(blockId: string, title: string): Promise<boolean>;
     onSaveDailyProgress(blockId: string, date: string | undefined): Promise<DailyProgressSaveResult>;
     onDailyProgressError?(error: unknown): void;
+    onSavePriority(blockId: string, priority: TickTickTaskPriority): Promise<void>;
+    onPriorityError?(error: unknown): void;
     onToggleFocusDate(
         blockId: string,
         targetDate: string,
@@ -94,6 +102,7 @@ export class TaskCenterView {
     private readonly feedback = document.createElement("div");
     private readonly list = document.createElement("div");
     private readonly pendingDailyProgress = new Set<string>();
+    private readonly pendingPriorities = new Set<string>();
     private readonly pendingFocusPlans = new Set<string>();
     private readonly calendarMonths = new Map<string, string>();
     private readonly unsubscribe: () => void;
@@ -691,6 +700,7 @@ export class TaskCenterView {
             { closed: status.terminal },
         ).kind);
         article.setAttribute("role", "listitem");
+        article.dataset.priority = resolveTaskPriority(item.priority);
         article.addEventListener("contextmenu", (event) => {
             openTaskActionsMenu(event, {
                 translate,
@@ -725,9 +735,7 @@ export class TaskCenterView {
         );
         workModeButton.addEventListener("click", () => this.options.onEditTask(item.blockId, "work-mode"));
 
-        const classification = document.createElement("div");
-        classification.className = "ticktick-task-center__classification";
-        classification.append(workModeButton, statusButton);
+        const priorityButton = this.createPriorityButton(item, status.terminal);
 
         const deadlineButton = createDeadlineButton({
             className: "ticktick-task-center__deadline",
@@ -772,19 +780,31 @@ export class TaskCenterView {
         }
         content.append(source, path, updated);
 
+        // 操作区拆成两行竖向排列，避免窗口变窄时整块按钮被挤到卡片底部：
+        // 第一行是「计划」（安排哪天的重点），第二行是「推进与跳转」。
         const actions = document.createElement("div");
         actions.className = "ticktick-task-center__actions";
-        if (!status.terminal) {
-            actions.append(this.createCalendarToggleButton(item, today));
-            actions.append(...this.createFocusPlanButtons(item, today));
-        }
+
+        // 每行都是右对齐，因此「可能缺席」的控件必须放在该行最左端：
+        // 它多一个少一个只会向左延伸/收缩，右侧控件的横向位置保持不变，
+        // 卡片之间的竖向排版才能对齐。反过来（可缺省项在右侧）会让整行左移右移。
+        const planActions = document.createElement("div");
+        planActions.className = "ticktick-task-center__actions-row ticktick-task-center__actions-row--plan";
         if (focusPosition) {
-            actions.append(...this.createFocusOrderButtons(item, today, focusPosition));
+            // 今日重点独有：手动排序箭头，放在计划按钮左侧。
+            planActions.append(...this.createFocusOrderButtons(item, today, focusPosition));
         }
+        if (!status.terminal) {
+            planActions.append(this.createCalendarToggleButton(item, today));
+            planActions.append(...this.createFocusPlanButtons(item, today));
+        }
+
+        const runActions = document.createElement("div");
+        runActions.className = "ticktick-task-center__actions-row ticktick-task-center__actions-row--run";
         if (dailyAction === "toggle") {
-            actions.append(this.createDailyProgressButton(item, today));
+            runActions.append(this.createDailyProgressButton(item, today));
         } else if (dailyAction === "completed") {
-            actions.append(this.createDailyCompletedBadge());
+            runActions.append(this.createDailyCompletedBadge());
         }
         const locate = document.createElement("button");
         locate.type = "button";
@@ -800,13 +820,29 @@ export class TaskCenterView {
         if (parsedTarget && !parsedTarget.valid) {
             throw new Error(`Cannot render invalid task target: ${parsedTarget.reason}`);
         }
-        actions.append(locate);
+        runActions.append(locate);
         if (parsedTarget?.valid) {
             const targetLabel = `${translate(TASK_TARGET_OPEN_LABEL_KEYS[parsedTarget.target.kind])} ↗️`;
-            actions.append(parsedTarget.target.kind === "siyuan-block"
+            // 「打开任务链接」可能缺席（任务没有链接），因此放到这一行最左端，
+            // 不参与右侧固定位置的计算。
+            runActions.prepend(parsedTarget.target.kind === "siyuan-block"
                 ? this.createSiYuanTargetButton(parsedTarget.target.blockId, targetLabel)
                 : createExternalTargetLink(parsedTarget.target.url, targetLabel));
         }
+
+        // 空行不渲染，避免已结束任务出现一条空白占位。
+        if (planActions.childElementCount > 0) {
+            actions.append(planActions);
+        }
+        if (runActions.childElementCount > 0) {
+            actions.append(runActions);
+        }
+
+        // 截止日期保持独立的原始按钮（尺寸与形状不改动）；
+        // 分类列竖向堆叠：工作分类 → 状态 → 权重。
+        const classification = document.createElement("div");
+        classification.className = "ticktick-task-center__classification";
+        classification.append(workModeButton, statusButton, priorityButton);
 
         article.append(deadlineButton, classification, content, actions);
         const calendarMonth = this.calendarMonths.get(item.blockId);
@@ -924,7 +960,6 @@ export class TaskCenterView {
     ): HTMLButtonElement {
         const entry = item.focusPlan?.entries.find((candidate) => candidate.date === date);
         const selected = entry !== undefined;
-        const afterDeadline = item.deadline !== undefined && date > item.deadline;
         const beforeToday = date < today;
         const progressedToday = date === today
             && isProgressedToday(item.lastProgressedDate, today)
@@ -940,17 +975,15 @@ export class TaskCenterView {
         button.dataset.completed = String(entry?.completedOn !== undefined);
         button.dataset.deadline = String(date === item.deadline);
         button.setAttribute("aria-pressed", String(selected));
-        button.disabled = pending || beforeToday || afterDeadline || progressedToday;
+        button.disabled = pending || beforeToday || progressedToday;
         button.title = this.options.translate(
             beforeToday
                 ? "taskCenterView.focusPastDate"
-                : afterDeadline
-                    ? "taskCenterView.focusAfterDeadline"
-                    : progressedToday
-                        ? "taskCenterView.focusProgressedToday"
-                        : selected
-                            ? "taskCenterView.focusCancelTitle"
-                            : "taskCenterView.focusArrangeTitle",
+                : progressedToday
+                    ? "taskCenterView.focusProgressedToday"
+                    : selected
+                        ? "taskCenterView.focusCancelTitle"
+                        : "taskCenterView.focusArrangeTitle",
         ).replace("${date}", date);
         button.addEventListener("click", () => {
             void this.toggleFocusPlan(item, date, today, "exact");
@@ -988,7 +1021,6 @@ export class TaskCenterView {
     ): HTMLButtonElement {
         const selected = isQuickFocusDateSelected(item.focusPlan, targetDate, today);
         const pending = this.pendingFocusPlans.has(item.blockId);
-        const afterDeadline = item.deadline !== undefined && targetDate > item.deadline;
         const button = document.createElement("button");
         button.type = "button";
         button.className = "b3-button b3-button--outline ticktick-task-center__focus-plan";
@@ -998,13 +1030,11 @@ export class TaskCenterView {
             kind === "today" ? "taskCenterView.focusToday" : "taskCenterView.focusTomorrow",
         );
         button.setAttribute("aria-pressed", String(selected));
-        button.disabled = pending || (afterDeadline && !selected);
+        button.disabled = pending;
         button.title = this.options.translate(
             selected
                 ? "taskCenterView.focusCancelTitle"
-                : afterDeadline
-                    ? "taskCenterView.focusAfterDeadline"
-                    : "taskCenterView.focusArrangeTitle",
+                : "taskCenterView.focusArrangeTitle",
         ).replace("${date}", targetDate);
         button.addEventListener("click", () => {
             void this.toggleFocusPlan(item, targetDate, today, "quick");
@@ -1139,6 +1169,67 @@ export class TaskCenterView {
         badge.className = "ticktick-task-center__daily-completed";
         badge.textContent = this.options.translate("taskCenterView.dailyCompletedBadge");
         return badge;
+    }
+
+    /**
+     * 任务权重徽标。未设置时显示「设置权重」，与已设置的档位区分开；
+     * 排序上二者相同（都按正常档）。
+     */
+    private createPriorityButton(item: TaskCenterItem, closed: boolean): HTMLButtonElement {
+        const priority = resolveTaskPriority(item.priority);
+        const configured = item.priority !== undefined;
+        const config = TASK_PRIORITY_CONFIG[priority];
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ticktick-task-center__priority";
+        button.dataset.priority = configured ? priority : "unset";
+        button.textContent = configured
+            ? `${config.icon} ${this.options.translate(config.labelKey)}`
+            : this.options.translate("priority.unsetAction");
+        button.title = this.options.translate("priority.menuTitle");
+        button.setAttribute(
+            "aria-label",
+            this.options.translate("priority.menuAriaLabel").replace(
+                "${priority}",
+                configured
+                    ? this.options.translate(config.labelKey)
+                    : this.options.translate("priority.unset"),
+            ),
+        );
+        button.disabled = closed || this.pendingPriorities.has(item.blockId);
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            openTaskPriorityMenu(button, {
+                translate: this.options.translate,
+                ...(configured ? { priority } : {}),
+                disabled: this.pendingPriorities.has(item.blockId),
+                onSelect: (next) => void this.savePriority(item, next),
+            });
+        });
+        return button;
+    }
+
+    private async savePriority(
+        item: TaskCenterItem,
+        priority: TickTickTaskPriority,
+    ): Promise<void> {
+        if (this.pendingPriorities.has(item.blockId)) {
+            return;
+        }
+        this.pendingPriorities.add(item.blockId);
+        this.render(this.options.controller.getState());
+        try {
+            await this.options.onSavePriority(item.blockId, priority);
+            // 权重参与排序，改完必须重新查询才能得到正确顺序。
+            await this.options.controller.refresh();
+        } catch (error) {
+            this.options.onPriorityError?.(error);
+        } finally {
+            this.pendingPriorities.delete(item.blockId);
+            if (!this.destroyed) {
+                this.render(this.options.controller.getState());
+            }
+        }
     }
 
     private createDailyProgressButton(item: TaskCenterItem, today: string): HTMLButtonElement {
