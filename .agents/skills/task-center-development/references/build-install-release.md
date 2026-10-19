@@ -28,11 +28,13 @@ CI=true pnpm build
 
 ## 自动安装到本机思源
 
-完成所需测试和构建后运行：
+用户确认方案后，完成所需测试和构建即直接运行下面的命令，不再单独询问是否安装：
 
 ```bash
 CI=true pnpm run make-install
 ```
+
+安装完成后汇报目标空间和校验结果，由用户在真实思源中审核装机效果；安装不等于 commit / push 授权。
 
 `make-install` 会再次构建，因此也会刷新 `package.zip`，随后把 `dist/` 复制到：
 
