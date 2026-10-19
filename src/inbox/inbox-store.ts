@@ -137,6 +137,38 @@ export function removeInboxNote(store: InboxStore, id: string): InboxStore {
     };
 }
 
+/**
+ * 修改便条的文字和分级。
+ *
+ * id、创建时间和完成时间都保持不变：编辑不是重记一条，
+ * 记录时间不能让便条跳到列表顶部，完成状态也不能被编辑顺手抹掉。
+ */
+export function updateInboxNote(
+    store: InboxStore,
+    id: string,
+    update: { text: string; tier: InboxNoteTier },
+): InboxMutationResult {
+    if (!store.notes.some((note) => note.id === id)) {
+        return { ok: false, reason: "note-not-found" };
+    }
+    const text = normalizeInboxNoteText(update.text);
+    if (!text.valid) {
+        return { ok: false, reason: text.reason };
+    }
+    if (!isInboxNoteTier(update.tier)) {
+        return { ok: false, reason: "invalid-tier" };
+    }
+    return {
+        ok: true,
+        store: {
+            version: INBOX_STORE_VERSION,
+            notes: store.notes.map((note) => (
+                note.id === id ? { ...note, text: text.text, tier: update.tier } : note
+            )),
+        },
+    };
+}
+
 export function setInboxNoteTier(
     store: InboxStore,
     id: string,

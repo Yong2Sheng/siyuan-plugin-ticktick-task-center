@@ -37,6 +37,7 @@ import type { InboxNote } from "./inbox/inbox-note";
 import { selectPendingInboxNotes } from "./inbox/inbox-store";
 import { showPromoteInboxNoteDialog } from "./inbox/promote-dialog";
 import { showQuickCaptureDialog } from "./inbox/quick-capture-dialog";
+import { showEditInboxNoteDialog } from "./inbox/edit-note-dialog";
 import { DEFAULT_INBOX_NOTE_TIER, type InboxNoteTier } from "./inbox/inbox-note";
 import {
     promoteToTaskList,
@@ -346,6 +347,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             controller,
             inboxController,
             onPromoteInboxNote: (note) => this.openPromoteDialog(note, translate, controller),
+            onEditInboxNote: (note) => this.openInboxNoteEditDialog(note, translate),
             onInboxActionFailed: (failure) => this.showInboxActionFailure(failure),
             translate,
             locale: () => this.interfaceLanguage === "zh-CN" ? "zh-CN" : "en-US",
@@ -471,6 +473,25 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             throw new Error("The SiYuan Task Center inbox controller is not ready");
         }
         return controller;
+    }
+
+    /**
+     * 编辑收件箱便条：只改插件数据文件里的文字与分级，
+     * 不创建任务块，也不写任何思源笔记内容。
+     */
+    private openInboxNoteEditDialog(note: InboxNote, translate: Translate): void {
+        const controller = this.requireInboxController();
+        let dialog: Dialog;
+        dialog = showEditInboxNoteDialog({
+            translate,
+            note,
+            locale: this.interfaceLanguage === "zh-CN" ? "zh-CN" : "en-US",
+            onSave: (text, tier) => controller.update(note.id, text, tier),
+            onDestroy: () => {
+                this.activeDialogs.delete(dialog);
+            },
+        });
+        this.activeDialogs.add(dialog);
     }
 
     /**

@@ -2,6 +2,27 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
+## 0.7.0 - 2026-10-19
+
+### Inbox note editing
+
+- Every pending note now has an Edit entry, for both quick errands and formal tasks. The dialog edits the title, body, and tier.
+- Editing keeps the original `id`, recorded time, and order: the list updates in place, the note does not jump to the top, and no task block is created.
+- When the title or body is invalid, a write fails, or the note has already been moved to the task list or deleted, the dialog stays open with the input intact and shows the matching message.
+- Editing changes only the note text and tier in the plugin data file. It does not write to SiYuan notes, add task fields, or change the data version.
+
+### Live Markdown preview
+
+- The edit dialog now renders a read-only preview below the body using the same renderer as the Inbox list (`src/inbox/inbox-markdown.ts`), so both surfaces agree.
+- The preview refreshes 250 ms after typing stops without reflowing or stealing focus. It can be collapsed; the collapsed state is not remembered and every open starts expanded.
+- An empty body shows a one-line hint instead of an empty preview box. Long bodies scroll inside the preview (200 px, 140 px on narrow or short windows).
+- The preview only affects display: saving still stores the original Markdown. It adds no fields, performs no separate writes, makes no network requests, and is released when the dialog closes.
+- Add the preview, hide/show, and empty-body strings in both Chinese and English.
+
+### Verification
+
+- Add 5 edit-dialog preview tests. The full suite passes with 583 tests, the type check reports 0 errors and 0 warnings, and the production build and `package.zip` validation succeed.
+
 ## 0.6.0 - 2026-10-18
 
 ### Task weight (the second dimension of the active list)

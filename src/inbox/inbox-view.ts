@@ -23,13 +23,15 @@ export type InboxViewOptions = {
     locale?: string | (() => string);
     /** 打开「移入任务清单」弹窗；真正的建块与删便条由插件层完成。 */
     onPromote(note: InboxNote): void;
+    /** 打开编辑便条的弹窗；保存仍走控制器。 */
+    onEdit(note: InboxNote): void;
     onActionFailed(failure: InboxActionFailure): void;
 };
 
 /**
  * 收件箱分区。
  *
- * 便条只展示「文字 + 时间」，操作只有完成、移入任务清单、改级和删除四种，
+ * 便条只展示「文字 + 时间」，操作只有完成、移入任务清单、编辑、改级和删除五种，
  * 没有状态、截止日期、工作分类——那些一旦出现在便条上就变成任务字段了。
  */
 export class InboxView {
@@ -354,7 +356,7 @@ export class InboxView {
         const actions = document.createElement("div");
         actions.className = "ticktick-task-center__inbox-item-actions";
         const pending = this.pendingNoteIds.has(note.id);
-        // 位置固定：完成（仅快速事项）→ 移入任务清单 → 删除。
+        // 位置固定：完成（仅快速事项）→ 移入任务清单 → 编辑 → 删除。
         // 正式任务没有「完成」——它必须先移入任务清单，不可能在收件箱里完成。
         if (note.tier === "quick") {
             actions.append(this.createActionButton("inbox.complete", {
@@ -367,6 +369,11 @@ export class InboxView {
             primary: note.tier === "formal",
             disabled: pending,
             onClick: () => this.options.onPromote(note),
+        }));
+        actions.append(this.createActionButton("inbox.edit", {
+            disabled: pending,
+            title: translate("inbox.editTitle"),
+            onClick: () => this.options.onEdit(note),
         }));
         actions.append(this.createActionButton("inbox.delete", {
             icon: true,

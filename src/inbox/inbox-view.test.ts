@@ -31,6 +31,8 @@ const translate = ((key: string) => ({
     "inbox.promote": "→ 移入任务清单",
     "inbox.delete": "🗑",
     "inbox.deleteTitle": "删除这张便条",
+    "inbox.edit": "编辑",
+    "inbox.editTitle": "编辑便条",
     "inbox.retierToFormal": "改为正式任务",
     "inbox.retierToQuick": "改为快速事项",
     "inbox.doneToday": "✓ 今日已完成 ${count}",
@@ -69,6 +71,7 @@ function setup(initialNotes: InboxStore["notes"] = [], options: { loadError?: bo
         now: () => TODAY,
     });
     const onPromote = vi.fn();
+    const onEdit = vi.fn();
     const onActionFailed = vi.fn();
     const target = document.createElement("div");
     document.body.append(target);
@@ -77,9 +80,10 @@ function setup(initialNotes: InboxStore["notes"] = [], options: { loadError?: bo
         translate,
         locale: "zh-CN",
         onPromote,
+        onEdit,
         onActionFailed,
     });
-    return { controller, view, target, onPromote, onActionFailed, getStore: () => store };
+    return { controller, view, target, onPromote, onEdit, onActionFailed, getStore: () => store };
 }
 
 function summaryValues(target: HTMLElement): string[] {
@@ -124,13 +128,33 @@ describe("InboxView 结构", () => {
 
         const quick = target.querySelector('[data-note-id="a"]')!;
         const formal = target.querySelector('[data-note-id="b"]')!;
-        // 位置固定：完成（仅快速事项）→ 移入任务清单 → 删除
-        expect(actionLabels(quick)).toEqual(["✓ 完成", "→ 移入任务清单", "🗑"]);
-        expect(actionLabels(formal)).toEqual(["→ 移入任务清单", "🗑"]);
+        // 位置固定：完成（仅快速事项）→ 移入任务清单 → 编辑 → 删除
+        expect(actionLabels(quick)).toEqual(["✓ 完成", "→ 移入任务清单", "编辑", "🗑"]);
+        expect(actionLabels(formal)).toEqual(["→ 移入任务清单", "编辑", "🗑"]);
         expect(quick.querySelector(".ticktick-task-center__inbox-action--primary")?.textContent)
             .toBe("✓ 完成");
         expect(formal.querySelector(".ticktick-task-center__inbox-action--primary")?.textContent)
             .toBe("→ 移入任务清单");
+    });
+
+    it("两张便条的「编辑」都把对应便条交给插件层", async () => {
+        const { controller, target, onEdit } = setup([
+            note("a", "帮师兄找份观测记录", "quick", TODAY),
+            note("b", "给 GRB 写一段可复现的说明", "formal", TODAY),
+        ]);
+        await controller.start();
+
+        for (const noteId of ["a", "b"]) {
+            const edit = Array.from(
+                target.querySelectorAll<HTMLButtonElement>(`[data-note-id="${noteId}"] .ticktick-task-center__inbox-action`),
+            ).find((button) => button.textContent === "编辑");
+            expect(edit).toBeDefined();
+            edit!.click();
+        }
+
+        expect(onEdit).toHaveBeenCalledTimes(2);
+        expect(onEdit.mock.calls[0]?.[0]).toMatchObject({ id: "a", text: "帮师兄找份观测记录" });
+        expect(onEdit.mock.calls[1]?.[0]).toMatchObject({ id: "b", text: "给 GRB 写一段可复现的说明" });
     });
 
     it("汇总条把待处理与今日完成分开计数", async () => {
@@ -258,6 +282,9 @@ describe("InboxView 动作", () => {
         const done = target.querySelector(".ticktick-task-center__inbox-done")!;
         expect(done.querySelector("summary")?.textContent).toContain("今日已完成 1");
         expect(done.querySelector("summary")?.textContent).toContain("不计入任务统计");
+        // 已完成只是划掉的记录，没有编辑入口
+        expect(done.querySelector(".ticktick-task-center__inbox-action")).toBeNull();
+        expect(done.textContent).not.toContain("编辑");
     });
 
     it("改级把便条换到另一组", async () => {
@@ -330,6 +357,7 @@ describe("InboxView 状态", () => {
             controller,
             translate: ((key: string) => key) as Translate,
             onPromote: vi.fn(),
+            onEdit: vi.fn(),
             onActionFailed: vi.fn(),
         });
         await controller.start();

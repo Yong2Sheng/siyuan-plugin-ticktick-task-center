@@ -15,8 +15,10 @@ import {
     selectInboxNotesCompletedOn,
     selectPendingInboxNotes,
     setInboxNoteTier,
+    updateInboxNote,
     type InboxStore,
 } from "./inbox-store";
+import { MAX_INBOX_NOTE_TEXT_LENGTH } from "./inbox-note";
 
 const CREATED = "2026-10-11T14:32:00.000Z";
 
@@ -177,6 +179,58 @@ describe("setInboxNoteTier", () => {
             .toEqual({ ok: false, reason: "note-not-found" });
         expect(setInboxNoteTier(store, "a", "urgent" as never))
             .toEqual({ ok: false, reason: "invalid-tier" });
+    });
+});
+
+describe("updateInboxNote", () => {
+    it("只改文字和分级，保留 id、创建时间与完成时间", () => {
+        const store = storeWith(
+            {
+                id: "a",
+                text: "旧标题",
+                tier: "quick",
+                createdAt: "2026-10-10T09:00:00.000Z",
+                completedAt: "2026-10-11T10:00:00.000Z",
+            },
+            { id: "b", text: "不动的便条" },
+        );
+
+        const result = updateInboxNote(store, "a", {
+            text: "  新标题\n\n新正文  ",
+            tier: "formal",
+        });
+
+        expect(result.ok).toBe(true);
+        if (!result.ok) {
+            return;
+        }
+        expect(findInboxNote(result.store, "a")).toEqual({
+            id: "a",
+            text: "新标题\n\n新正文",
+            tier: "formal",
+            createdAt: "2026-10-10T09:00:00.000Z",
+            completedAt: "2026-10-11T10:00:00.000Z",
+        });
+        expect(findInboxNote(result.store, "b")).toEqual(store.notes[1]);
+        // 原 store 不被就地修改：界面拿到的旧状态仍然可用
+        expect(store.notes[0]?.text).toBe("旧标题");
+    });
+
+    it("目标不存在、文字为空或超长、分级非法时失败且不改动", () => {
+        const store = storeWith({ id: "a" });
+        expect(updateInboxNote(store, "missing", { text: "内容", tier: "quick" }))
+            .toEqual({ ok: false, reason: "note-not-found" });
+        expect(updateInboxNote(store, "missing", { text: "  ", tier: "quick" }))
+            .toEqual({ ok: false, reason: "note-not-found" });
+        expect(updateInboxNote(store, "a", { text: "   ", tier: "quick" }))
+            .toEqual({ ok: false, reason: "text-empty" });
+        expect(updateInboxNote(store, "a", {
+            text: "a".repeat(MAX_INBOX_NOTE_TEXT_LENGTH + 1),
+            tier: "quick",
+        })).toEqual({ ok: false, reason: "text-too-long" });
+        expect(updateInboxNote(store, "a", { text: "内容", tier: "urgent" as never }))
+            .toEqual({ ok: false, reason: "invalid-tier" });
+        expect(store.notes[0]?.text).toBe("便条 0");
     });
 });
 

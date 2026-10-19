@@ -127,6 +127,55 @@ describe("InboxController", () => {
         expect(controller.getState().store.notes).toEqual([]);
     });
 
+    it("编辑便条只改文字与分级，保存成功后才替换内存状态", async () => {
+        const memory = createMemoryStore();
+        const controller = createController(memory);
+        await controller.start();
+        await controller.capture("旧标题", "quick");
+        const noteId = controller.getState().store.notes[0]!.id;
+
+        await expect(controller.update(noteId, "新标题\n\n补充背景", "formal"))
+            .resolves.toEqual({ ok: true });
+
+        const note = controller.getState().store.notes[0];
+        expect(note?.text).toBe("新标题\n\n补充背景");
+        expect(note?.tier).toBe("formal");
+        expect(note?.id).toBe(noteId);
+        expect(note?.createdAt).toBe(NOW.toISOString());
+        expect(memory.getStore()).toEqual(controller.getState().store);
+    });
+
+    it("编辑已被删除的便条时失败且不写盘", async () => {
+        const memory = createMemoryStore({
+            version: INBOX_STORE_VERSION,
+            notes: [{ id: "existing", text: "还在", tier: "quick", createdAt: NOW.toISOString() }],
+        });
+        const controller = createController(memory);
+        await controller.start();
+
+        await expect(controller.update("missing", "新内容", "quick"))
+            .resolves.toEqual({ ok: false, reason: "note-not-found" });
+
+        expect(memory.save).not.toHaveBeenCalled();
+        expect(controller.getState().store.notes[0]?.text).toBe("还在");
+    });
+
+    it("编辑写盘失败时保留旧内容，不显示没落盘的修改", async () => {
+        const memory = createMemoryStore();
+        const controller = createController(memory);
+        await controller.start();
+        await controller.capture("旧标题", "quick");
+        const noteId = controller.getState().store.notes[0]!.id;
+        memory.save.mockRejectedValueOnce(new Error("disk full"));
+
+        await expect(controller.update(noteId, "新标题", "formal"))
+            .resolves.toEqual({ ok: false, reason: "save-failed" });
+
+        expect(controller.getState().store.notes[0]?.text).toBe("旧标题");
+        expect(controller.getState().store.notes[0]?.tier).toBe("quick");
+        expect(controller.getState().saving).toBe(false);
+    });
+
     it("并发提交按顺序落盘，不会互相覆盖", async () => {
         const memory = createMemoryStore();
         const controller = createController(memory);

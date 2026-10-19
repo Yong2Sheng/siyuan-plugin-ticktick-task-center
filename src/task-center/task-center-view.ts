@@ -73,6 +73,7 @@ export type TaskCenterViewOptions = {
     onSetFocusOrder(blockId: string, focusDate: string, order: number): Promise<FocusPlan>;
     onFocusPlanError?(error: unknown): void;
     onPromoteInboxNote(note: InboxNote): void;
+    onEditInboxNote(note: InboxNote): void;
     onInboxActionFailed(failure: InboxActionFailure): void;
     knowledgeController: KnowledgeCenterController;
     onOpenKnowledgeDocument(documentId: string): Promise<void>;
@@ -203,6 +204,7 @@ export class TaskCenterView {
             translate: options.translate,
             locale: options.locale,
             onPromote: options.onPromoteInboxNote,
+            onEdit: options.onEditInboxNote,
             onActionFailed: options.onInboxActionFailed,
         });
         this.knowledgeView = new KnowledgeCenterView(this.knowledgePanel, {

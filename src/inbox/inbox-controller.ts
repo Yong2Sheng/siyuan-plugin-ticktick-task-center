@@ -8,6 +8,7 @@ import {
     createInboxNoteDraft,
     removeInboxNote,
     setInboxNoteTier,
+    updateInboxNote,
     type InboxMutationFailure,
     type InboxMutationResult,
     type InboxStore,
@@ -132,6 +133,11 @@ export class InboxController {
 
     setTier(id: string, tier: InboxNoteTier): Promise<InboxActionResult> {
         return this.mutate((store) => setInboxNoteTier(store, id, tier));
+    }
+
+    /** 修改文字与分级；保存成功后才替换内存状态。 */
+    update(id: string, text: string, tier: InboxNoteTier): Promise<InboxActionResult> {
+        return this.mutate((store) => updateInboxNote(store, id, { text, tier }));
     }
 
     remove(id: string): Promise<InboxActionResult> {
