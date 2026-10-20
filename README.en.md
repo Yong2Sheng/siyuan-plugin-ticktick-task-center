@@ -38,6 +38,7 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Each note renders as a bold title plus a collapsed body. A body longer than two lines can be expanded and is rendered as basic Markdown: paragraphs, bold, italic, inline code, links, unordered lists, and quotes.
 - Every pending note can be edited: change its title, body, and tier while keeping the original recorded time, id, and order. Editing never creates a task or writes to SiYuan notes.
 - The edit dialog renders a live Markdown preview below the body, sharing the same renderer as the Inbox list. The preview is read-only and collapsible, refreshes 250 ms after typing stops, and keeps the original Markdown when saving.
+- The Inbox capture form also has Show preview / Hide preview next to the Body field: expanding it renders Markdown full width below the body and starts collapsed. It is read-only, scrolls internally, and collapses after a successful save without changing note data or the saved Markdown.
 - Move to task list creates a new task document and writes the task block into it: the task title comes from the note title and the note body is written into the same document. The order is fixed as create task block → write body → delete note, and any failure keeps the note.
 - Add a Quick capture button to the SiYuan top bar that opens a small dialog from anywhere; Save and continue is meant for capturing several notes in a row.
 - Inbox data lives in a plugin data file with three rotating backups and a field-by-field read-back after every write. Nothing appears in the document tree.
@@ -228,7 +229,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 
 1. Open the Task Center and switch to the Inbox tab, or select the ⚡ button in the SiYuan top bar to capture from the Quick capture dialog.
 2. Write what needs doing in Title. Press Enter in the title field to save.
-3. Body is optional: use it for background, context, or a pasted email. Enter inserts a newline; ⌘/Ctrl + Enter saves.
+3. Body is optional: use it for background, context, or a pasted email. Enter inserts a newline; ⌘/Ctrl + Enter saves. The Body field also has Show preview; expanding it shows the Markdown result and starts collapsed.
 4. Choose ⚡ Quick errand or 🔬 Formal task. The last choice is reused by default.
 5. Captured notes appear under Open with a bold title and a collapsed body. A body longer than two lines can be expanded and is rendered as basic Markdown.
 
@@ -355,6 +356,7 @@ An inbox note is **not a task**; it is a note captured before a task exists. It 
 - The Inbox never creates, modifies, or hides a document or notebook, so nothing appears in the document tree.
 - A note becomes a real task block only when it is moved to the task list, and it is deleted from the plugin data at the same time. There is no intermediate state where something is both a note and a task.
 - Editing a note changes only the text and tier in the plugin data file. The preview is read-only, never participates in saving, and does not change the note data structure.
+- The capture form can preview the body too: the entry sits immediately to the right of the visible “Body (optional)” text (「正文（可选）」 in Chinese) and starts collapsed. It shares the renderer and typography with the list and edit dialog and collapses after a successful save without changing the note data structure.
 - Completing a note only means the note has been dealt with; it never counts toward task statistics.
 - A write is refused unless the data file has been read successfully first, so an empty in-memory state can never overwrite existing notes.
 

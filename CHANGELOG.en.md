@@ -2,6 +2,21 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
+## Unreleased
+
+### Inbox quick-capture Markdown preview
+
+- Add Show preview / Hide preview next to the Inbox capture body (immediately to the right of the visible text “Body (optional)”). Expanding it renders Markdown full width under the body; it starts collapsed and does not change the default form height.
+- The preview shares the renderer and typography of the Inbox list and edit dialog (`src/inbox/inbox-markdown.ts`). It is read-only, links are clickable, and the title stays plain text.
+- Refresh 200 ms after typing stops. Only the preview DOM is replaced; the textarea is not reflowed and does not lose focus. No refresh while an IME composition is active.
+- An empty body shows a one-line hint. Long bodies scroll inside the preview (140 px by default, 120 px in a narrow panel).
+- A successful save clears the input and collapses the preview, returning the height to the list immediately; a failed save keeps both.
+- Only the Inbox capture form changes; the note list, edit dialog, and top-bar Quick capture dialog keep their behavior. No new fields, disk writes, or network requests; the existing `inbox.preview*` strings are reused.
+
+### Verification
+
+- Add 6 inbox preview tests. The full suite passes with 589 tests, the type check reports 0 errors and 0 warnings, and the production build and `package.zip` validation succeed.
+
 ## 0.7.0 - 2026-10-19
 
 ### Inbox note editing

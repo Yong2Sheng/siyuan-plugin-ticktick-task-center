@@ -39,6 +39,8 @@ export class InboxView {
     private readonly captureForm = document.createElement("form");
     private readonly titleInput = document.createElement("input");
     private readonly bodyInput = document.createElement("textarea");
+    private readonly previewToggle = document.createElement("button");
+    private readonly previewHost = document.createElement("div");
     private readonly tierGroup = document.createElement("div");
     private readonly tierButtons = new Map<InboxNoteTier, HTMLButtonElement>();
     private readonly submitButton = document.createElement("button");
@@ -52,6 +54,9 @@ export class InboxView {
     private tier: InboxNoteTier;
     private doneOpen = false;
     private destroyed = false;
+    private previewVisible = false;
+    private composing = false;
+    private previewTimer: number | undefined;
 
     constructor(target: HTMLElement, private readonly options: InboxViewOptions) {
         const { translate } = options;
@@ -85,6 +90,16 @@ export class InboxView {
                 void this.submitCapture();
             }
         });
+        this.bodyInput.addEventListener("input", () => this.schedulePreview());
+        // 输入法组合期间不刷新预览，避免把中间态当成最终正文渲染
+        this.bodyInput.addEventListener("compositionstart", () => {
+            this.composing = true;
+            window.clearTimeout(this.previewTimer);
+        });
+        this.bodyInput.addEventListener("compositionend", () => {
+            this.composing = false;
+            this.schedulePreview();
+        });
 
         const titleField = document.createElement("label");
         titleField.className = "ticktick-task-center__inbox-field";
@@ -94,13 +109,26 @@ export class InboxView {
         titleLabel.dataset.fieldLabel = "title";
         titleField.append(titleLabel, this.titleInput);
 
-        const bodyField = document.createElement("label");
+        // 正文上方是「正文（可选）」和预览开关；开关必须放在 label 外面，
+        // 否则点开关会触发 label 的聚焦行为，把焦点抢回正文框。
+        this.previewToggle.type = "button";
+        this.previewToggle.className = "ticktick-task-center__inbox-preview-toggle";
+        this.previewToggle.setAttribute("aria-pressed", "false");
+        this.previewToggle.setAttribute("aria-controls", "ticktick-inbox-preview");
+        this.previewToggle.addEventListener("click", () => this.togglePreview());
+        this.previewHost.id = "ticktick-inbox-preview";
+        this.previewHost.className = "ticktick-task-center__inbox-preview-host";
+
+        const bodyField = document.createElement("div");
         bodyField.className = "ticktick-task-center__inbox-field";
-        bodyField.htmlFor = this.bodyInput.id;
-        const bodyLabel = document.createElement("span");
+        const bodyHead = document.createElement("div");
+        bodyHead.className = "ticktick-task-center__inbox-body-head";
+        const bodyLabel = document.createElement("label");
         bodyLabel.className = "ticktick-task-center__inbox-field-label";
+        bodyLabel.htmlFor = this.bodyInput.id;
         bodyLabel.dataset.fieldLabel = "body";
-        bodyField.append(bodyLabel, this.bodyInput);
+        bodyHead.append(bodyLabel, this.previewToggle);
+        bodyField.append(bodyHead, this.bodyInput, this.previewHost);
 
         const captureRow = document.createElement("div");
         captureRow.className = "ticktick-task-center__inbox-capture-row";
@@ -146,6 +174,8 @@ export class InboxView {
 
     destroy(): void {
         this.destroyed = true;
+        window.clearTimeout(this.previewTimer);
+        this.previewTimer = undefined;
         this.unsubscribe();
         this.root.remove();
     }
@@ -158,6 +188,74 @@ export class InboxView {
 
     focusCapture(): void {
         this.titleInput.focus();
+    }
+
+    /** 正文输入后延迟刷新预览；只替换预览 DOM，不碰输入框的焦点和光标。 */
+    private schedulePreview(): void {
+        window.clearTimeout(this.previewTimer);
+        if (!this.previewVisible || this.composing || this.destroyed) {
+            return;
+        }
+        this.previewTimer = window.setTimeout(() => {
+            this.previewTimer = undefined;
+            if (this.destroyed || !this.previewVisible) {
+                return;
+            }
+            this.renderPreview();
+        }, 200);
+    }
+
+    private togglePreview(): void {
+        window.clearTimeout(this.previewTimer);
+        this.previewTimer = undefined;
+        this.previewVisible = !this.previewVisible;
+        this.updatePreviewToggle();
+        this.renderPreview();
+    }
+
+    private updatePreviewToggle(): void {
+        this.previewToggle.textContent = this.options.translate(
+            this.previewVisible ? "inbox.hidePreview" : "inbox.showPreview",
+        );
+        this.previewToggle.setAttribute("aria-pressed", String(this.previewVisible));
+    }
+
+    /**
+     * 预览只渲染正文，和列表卡片共用 renderMarkdownBlocks。
+     * 预览是只读的视觉副本，标 aria-hidden，避免读屏把同一段正文念两遍。
+     */
+    private renderPreview(): void {
+        this.previewHost.replaceChildren();
+        if (!this.previewVisible) {
+            return;
+        }
+        const source = this.bodyInput.value.trim();
+        if (source === "") {
+            const emptyHint = document.createElement("p");
+            emptyHint.className = "ticktick-task-center__inbox-preview-hint";
+            emptyHint.textContent = this.options.translate("inbox.previewEmpty");
+            this.previewHost.append(emptyHint);
+            return;
+        }
+
+        const preview = document.createElement("div");
+        preview.className = "ticktick-task-center__inbox-preview";
+        preview.setAttribute("aria-hidden", "true");
+
+        const head = document.createElement("div");
+        head.className = "ticktick-task-center__inbox-preview-head";
+        const label = document.createElement("span");
+        label.textContent = this.options.translate("inbox.preview");
+        const hint = document.createElement("span");
+        hint.textContent = this.options.translate("inbox.previewHint");
+        head.append(label, hint);
+
+        const body = document.createElement("div");
+        body.className = "ticktick-task-center__inbox-preview-body";
+        body.append(...renderMarkdownBlocks(source, document));
+
+        preview.append(head, body);
+        this.previewHost.append(preview);
     }
 
     private setTier(tier: InboxNoteTier): void {
@@ -198,6 +296,12 @@ export class InboxView {
         }
         this.titleInput.value = "";
         this.bodyInput.value = "";
+        // 记完一笔回到紧凑态，把预览占的高度立刻还给列表
+        window.clearTimeout(this.previewTimer);
+        this.previewTimer = undefined;
+        this.previewVisible = false;
+        this.updatePreviewToggle();
+        this.previewHost.replaceChildren();
         this.titleInput.focus();
     }
 
@@ -219,6 +323,8 @@ export class InboxView {
         this.captureHint.textContent = translate("inbox.captureHint");
         this.submitButton.textContent = translate("inbox.captureSubmit");
         this.submitButton.disabled = state.saving;
+        this.updatePreviewToggle();
+        this.renderPreview();
         this.renderTierButtons();
 
         const today = this.options.controller.getToday();

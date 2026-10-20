@@ -33,6 +33,11 @@ const translate = ((key: string) => ({
     "inbox.deleteTitle": "删除这张便条",
     "inbox.edit": "编辑",
     "inbox.editTitle": "编辑便条",
+    "inbox.preview": "预览",
+    "inbox.previewHint": "实时 · 与列表一致",
+    "inbox.hidePreview": "隐藏预览",
+    "inbox.showPreview": "显示预览",
+    "inbox.previewEmpty": "正文为空，列表里只显示标题。",
     "inbox.retierToFormal": "改为正式任务",
     "inbox.retierToQuick": "改为快速事项",
     "inbox.doneToday": "✓ 今日已完成 ${count}",
@@ -264,6 +269,127 @@ describe("InboxView 捕获", () => {
 
         expect(onActionFailed).toHaveBeenCalledWith("title-required");
         expect(getStore().notes).toEqual([]);
+    });
+});
+
+describe("InboxView 记一笔预览", () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    function previewParts(target: HTMLElement) {
+        return {
+            toggle: target.querySelector<HTMLButtonElement>(".ticktick-task-center__inbox-preview-toggle")!,
+            host: target.querySelector<HTMLElement>(".ticktick-task-center__inbox-preview-host")!,
+            body: target.querySelector<HTMLTextAreaElement>(".ticktick-task-center__inbox-input")!,
+        };
+    }
+
+    it("默认收起，不渲染预览", async () => {
+        const { controller, target } = setup();
+        await controller.start();
+
+        const { toggle, host } = previewParts(target);
+        expect(toggle.textContent).toBe("显示预览");
+        expect(toggle.getAttribute("aria-pressed")).toBe("false");
+        expect(host.childElementCount).toBe(0);
+    });
+
+    it("展开后渲染正文的 Markdown，再点收起", async () => {
+        const { controller, target } = setup();
+        await controller.start();
+
+        const { toggle, body } = previewParts(target);
+        body.value = "**加粗**\n\n> 引用\n\n- 甲\n- 乙";
+        toggle.click();
+
+        expect(toggle.textContent).toBe("隐藏预览");
+        expect(toggle.getAttribute("aria-pressed")).toBe("true");
+        const preview = target.querySelector<HTMLElement>(".ticktick-task-center__inbox-preview")!;
+        expect(preview.getAttribute("aria-hidden")).toBe("true");
+        expect(preview.querySelector("strong")?.textContent).toBe("加粗");
+        expect(preview.querySelector("blockquote")?.textContent).toContain("引用");
+        expect(preview.querySelectorAll("li")).toHaveLength(2);
+
+        toggle.click();
+        expect(toggle.textContent).toBe("显示预览");
+        expect(toggle.getAttribute("aria-pressed")).toBe("false");
+        expect(target.querySelector(".ticktick-task-center__inbox-preview")).toBeNull();
+    });
+
+    it("正文为空时只显示提示，不画空面板", async () => {
+        const { controller, target } = setup();
+        await controller.start();
+
+        previewParts(target).toggle.click();
+
+        expect(target.querySelector(".ticktick-task-center__inbox-preview")).toBeNull();
+        expect(target.querySelector(".ticktick-task-center__inbox-preview-hint")?.textContent)
+            .toBe("正文为空，列表里只显示标题。");
+    });
+
+    it("展开时输入正文，200ms 后预览更新", async () => {
+        const { controller, target } = setup();
+        await controller.start();
+        vi.useFakeTimers();
+
+        const { toggle, body } = previewParts(target);
+        body.value = "第一版";
+        toggle.click();
+        expect(target.querySelector(".ticktick-task-center__inbox-preview-body")?.textContent)
+            .toContain("第一版");
+
+        body.value = "第二版 **加粗**";
+        body.dispatchEvent(new Event("input", { bubbles: true }));
+        expect(target.querySelector(".ticktick-task-center__inbox-preview-body")?.textContent)
+            .not.toContain("第二版");
+
+        vi.advanceTimersByTime(199);
+        expect(target.querySelector(".ticktick-task-center__inbox-preview-body")?.textContent)
+            .not.toContain("第二版");
+
+        vi.advanceTimersByTime(1);
+        const updated = target.querySelector(".ticktick-task-center__inbox-preview-body")!;
+        expect(updated.textContent).toContain("第二版");
+        expect(updated.querySelector("strong")?.textContent).toBe("加粗");
+    });
+
+    it("提交成功后清空并收起预览", async () => {
+        const { controller, target, getStore } = setup();
+        await controller.start();
+
+        const { toggle, body } = previewParts(target);
+        const title = target.querySelector<HTMLInputElement>(".ticktick-task-center__inbox-title-input")!;
+        title.value = "标题";
+        body.value = "**正文**";
+        toggle.click();
+        expect(target.querySelector(".ticktick-task-center__inbox-preview")).not.toBeNull();
+
+        title.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+        await vi.waitFor(() => expect(getStore().notes).toHaveLength(1));
+
+        expect(title.value).toBe("");
+        expect(body.value).toBe("");
+        expect(toggle.textContent).toBe("显示预览");
+        expect(toggle.getAttribute("aria-pressed")).toBe("false");
+        expect(target.querySelector(".ticktick-task-center__inbox-preview")).toBeNull();
+    });
+
+    it("提交失败保留预览", async () => {
+        const { controller, target, onActionFailed, getStore } = setup();
+        await controller.start();
+
+        const { toggle, body } = previewParts(target);
+        body.value = "**正文**";
+        toggle.click();
+        const form = target.querySelector<HTMLFormElement>(".ticktick-task-center__inbox-capture")!;
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        await Promise.resolve();
+
+        expect(onActionFailed).toHaveBeenCalledWith("title-required");
+        expect(getStore().notes).toEqual([]);
+        expect(toggle.textContent).toBe("隐藏预览");
+        expect(target.querySelector(".ticktick-task-center__inbox-preview")).not.toBeNull();
     });
 });
 

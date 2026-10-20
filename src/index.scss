@@ -2357,6 +2357,7 @@
     border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 32%, var(--b3-border-color));
     border-radius: 10px;
     background: color-mix(in srgb, var(--b3-theme-primary) 5%, var(--b3-theme-surface));
+    container-type: inline-size;
 }
 
 .ticktick-task-center__inbox-capture-label {
@@ -2993,45 +2994,50 @@
     font-weight: 700;
 }
 
-.ticktick-task-center__inbox-item-body-text {
-    margin: 5px 0 0;
+/* 收件箱列表正文、编辑预览、记一笔预览共用同一套 Markdown 排版 */
+@mixin inbox-markdown-body {
     color: var(--b3-theme-on-surface);
     font-size: 13px;
-    font-weight: 400;
     line-height: 1.7;
     overflow-wrap: anywhere;
+
+    p {
+        margin: 0 0 6px;
+    }
+
+    > :last-child {
+        margin-bottom: 0;
+    }
+
+    ul {
+        margin: 0 0 6px;
+        padding-left: 20px;
+    }
+
+    blockquote {
+        margin: 0 0 6px;
+        padding: 2px 0 2px 10px;
+        border-left: 3px solid var(--b3-border-color);
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    code {
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+        font-family: var(--b3-font-family-code, monospace);
+        font-size: 12px;
+    }
+
+    a {
+        color: var(--b3-theme-primary);
+    }
 }
 
-.ticktick-task-center__inbox-item-body-text p {
-    margin: 0 0 6px;
-}
-
-.ticktick-task-center__inbox-item-body-text > :last-child {
-    margin-bottom: 0;
-}
-
-.ticktick-task-center__inbox-item-body-text ul {
-    margin: 0 0 6px;
-    padding-left: 20px;
-}
-
-.ticktick-task-center__inbox-item-body-text blockquote {
-    margin: 0 0 6px;
-    padding: 2px 0 2px 10px;
-    border-left: 3px solid var(--b3-border-color);
-    color: var(--b3-theme-on-surface-light);
-}
-
-.ticktick-task-center__inbox-item-body-text code {
-    padding: 1px 5px;
-    border-radius: 4px;
-    background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
-    font-family: var(--b3-font-family-code, monospace);
-    font-size: 12px;
-}
-
-.ticktick-task-center__inbox-item-body-text a {
-    color: var(--b3-theme-primary);
+.ticktick-task-center__inbox-item-body-text {
+    margin: 5px 0 0;
+    font-weight: 400;
+    @include inbox-markdown-body;
 }
 
 /* 默认折成 2 行；放不下时才由脚本放出「展开正文」按钮 */
@@ -3088,6 +3094,92 @@
     border-color: var(--b3-theme-primary);
     outline: 2px solid color-mix(in srgb, var(--b3-theme-primary) 45%, transparent);
     outline-offset: 1px;
+}
+
+.ticktick-task-center__inbox-body-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+
+/* 入口紧挨着「正文（可选）」这几个字；宽表单里也不放到最右端 */
+.ticktick-task-center__inbox-preview-toggle {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    font: inherit;
+    font-size: 11.5px;
+    line-height: 1.4;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--b3-theme-primary);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 2px;
+    }
+}
+
+.ticktick-task-center__inbox-preview-host {
+    min-width: 0;
+}
+
+/* 收起时容器为空；不占 grid 间隙，默认态才能和现状严格同高 */
+.ticktick-task-center__inbox-preview-host:empty {
+    display: none;
+}
+
+.ticktick-task-center__inbox-preview {
+    margin-top: 6px;
+    overflow: hidden;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    background: var(--b3-theme-background);
+}
+
+.ticktick-task-center__inbox-preview-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 8px;
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--b3-border-color);
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.ticktick-task-center__inbox-preview-body {
+    box-sizing: border-box;
+    max-height: 140px;
+    overflow: auto;
+    padding: 8px 12px 10px;
+    @include inbox-markdown-body;
+}
+
+.ticktick-task-center__inbox-preview-hint {
+    margin: 6px 0 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11.5px;
+    line-height: 1.6;
+}
+
+/* 侧栏/窄面板按捕获框自身宽度判断，而不是只看窗口宽度 */
+@container (max-width: 520px) {
+    .ticktick-task-center__inbox-preview-body {
+        max-height: 120px;
+    }
 }
 
 /* 顶栏「快速记录」弹窗：字段与收件箱捕获框一致，只是更窄 */
@@ -3180,42 +3272,7 @@
     max-height: 200px;
     overflow: auto;
     padding: 8px 12px 10px;
-    color: var(--b3-theme-on-surface);
-    font-size: 13px;
-    line-height: 1.7;
-    overflow-wrap: anywhere;
-
-    p {
-        margin: 0 0 6px;
-    }
-
-    > :last-child {
-        margin-bottom: 0;
-    }
-
-    ul {
-        margin: 0 0 6px;
-        padding-left: 20px;
-    }
-
-    blockquote {
-        margin: 0 0 6px;
-        padding: 2px 0 2px 10px;
-        border-left: 3px solid var(--b3-border-color);
-        color: var(--b3-theme-on-surface-light);
-    }
-
-    code {
-        padding: 1px 5px;
-        border-radius: 4px;
-        background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
-        font-family: var(--b3-font-family-code, monospace);
-        font-size: 12px;
-    }
-
-    a {
-        color: var(--b3-theme-primary);
-    }
+    @include inbox-markdown-body;
 }
 
 .ticktick-inbox-edit__preview-hint {
@@ -3236,6 +3293,11 @@
 
     .ticktick-inbox-edit__preview-body {
         max-height: 140px;
+    }
+
+    /* 不支持 container query 时的窄窗兜底 */
+    .ticktick-task-center__inbox-preview-body {
+        max-height: 120px;
     }
 }
 
