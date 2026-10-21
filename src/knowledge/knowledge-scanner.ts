@@ -28,6 +28,8 @@ export type KnowledgeScannerDependencies = {
     listChildDocuments(notebookId: string, path: string): Promise<ChildDocument[]>;
     setBlockAttributes(blockId: string, attrs: Record<string, string>): Promise<void>;
     getBlockAttributes(blockId: string): Promise<Record<string, unknown>>;
+    /** 一次批量读取所有已整理标记（块 ID → 整理时间），避免逐篇请求属性。 */
+    loadOrganizedMarks(): Promise<ReadonlyMap<string, string>>;
     now?(): Date;
 };
 
@@ -45,6 +47,7 @@ export async function scanKnowledgeDocuments(
     dependencies: KnowledgeScannerDependencies,
 ): Promise<KnowledgeScanResult> {
     const scannedAt = (dependencies.now?.() ?? new Date()).toISOString();
+    const organizedMarks = await dependencies.loadOrganizedMarks();
     const taskDocuments = collectTaskDocuments(tasks);
     const taskDocumentIds = new Set(taskDocuments.map((document) => document.id));
     const previousById = new Map(previousIndex.documents.map((item) => [item.id, item]));
@@ -70,6 +73,7 @@ export async function scanKnowledgeDocuments(
                 }
                 const documentPath = joinDocumentPath(parent.documentPath, child.title);
                 const previous = previousById.get(child.id);
+                const organizedAt = organizedMarks.get(child.id);
                 candidates.set(child.id, {
                     id: child.id,
                     notebookId: source.notebookId,
@@ -82,6 +86,7 @@ export async function scanKnowledgeDocuments(
                     createdAt: child.createdAt ?? previous?.createdAt ?? scannedAt,
                     updatedAt: child.updatedAt ?? child.createdAt ?? previous?.updatedAt ?? scannedAt,
                     available: true,
+                    ...(organizedAt ? { organizedAt } : {}),
                 });
                 if (child.subFileCount > 0) {
                     queue.push({ filePath: child.path, documentPath });
@@ -97,10 +102,7 @@ export async function scanKnowledgeDocuments(
         const previous = previousById.get(candidate.id);
         if (previous) {
             existingDocumentCount += 1;
-            nextById.set(candidate.id, {
-                ...candidate,
-                ...(previous.review ? { review: previous.review } : {}),
-            });
+            nextById.set(candidate.id, candidate);
         } else {
             newCandidates.push(candidate);
         }

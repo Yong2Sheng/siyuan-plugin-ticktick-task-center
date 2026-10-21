@@ -1,8 +1,4 @@
 import { isSiYuanId } from "../domain/siyuan-id";
-import {
-    parseKnowledgeReview,
-    type KnowledgeReviewProgress,
-} from "./knowledge-review";
 
 export const KNOWLEDGE_INDEX_VERSION = 1 as const;
 export const KNOWLEDGE_DOCUMENT_ATTRIBUTE = "custom-task-center-knowledge";
@@ -21,7 +17,8 @@ export type KnowledgeDocumentItem = {
     updatedAt: string;
     available: boolean;
     missingSince?: string;
-    review?: KnowledgeReviewProgress;
+    /** 最近一次标记为已整理的时间；缺失表示未整理。 */
+    organizedAt?: string;
 };
 
 export type KnowledgeIndex = {
@@ -70,7 +67,7 @@ function parseKnowledgeDocument(value: unknown): KnowledgeDocumentItem[] {
         return [];
     }
     const missingSince = readIsoTime(value.missingSince);
-    const review = parseKnowledgeReview(value.review);
+    const organizedAt = readIsoTime(value.organizedAt);
     return [{
         id,
         notebookId,
@@ -84,7 +81,7 @@ function parseKnowledgeDocument(value: unknown): KnowledgeDocumentItem[] {
         updatedAt,
         available: value.available !== false,
         ...(missingSince ? { missingSince } : {}),
-        ...(review ? { review } : {}),
+        ...(organizedAt ? { organizedAt } : {}),
     }];
 }
 

@@ -2,12 +2,12 @@ import type { Translate } from "../i18n";
 import type { KnowledgeDocumentItem } from "./knowledge-index";
 import type { KnowledgeScanReport } from "./knowledge-scanner";
 import {
-    KNOWLEDGE_REVIEW_RATINGS,
-    countKnowledgeReviews,
-    isKnowledgeReviewDue,
-    type KnowledgeReviewMode,
-    type KnowledgeReviewRating,
-} from "./knowledge-review";
+    countKnowledgeItems,
+    filterKnowledgeItems,
+    isKnowledgeUpdated,
+    type KnowledgeCounts,
+    type KnowledgeFilter,
+} from "./knowledge-status";
 import {
     KnowledgeCenterController,
     type KnowledgeCenterState,
@@ -19,18 +19,23 @@ export type KnowledgeCenterViewOptions = {
     locale?: string | (() => string);
     onOpenDocument(documentId: string): Promise<void>;
     onOpenSource(documentId: string): Promise<void>;
+    onNotify?(messageKey: string): void;
     onOpenError?(error: unknown): void;
 };
+
+const FILTERS: readonly { key: KnowledgeFilter; labelKey: string }[] = [
+    { key: "all", labelKey: "knowledgeCenter.filterAll" },
+    { key: "unorganized", labelKey: "knowledgeCenter.filterUnorganized" },
+    { key: "organized", labelKey: "knowledgeCenter.filterOrganized" },
+    { key: "updated", labelKey: "knowledgeCenter.filterUpdated" },
+];
 
 export class KnowledgeCenterView {
     private readonly root = document.createElement("section");
     private readonly summary = document.createElement("div");
-    private readonly reviewControls = document.createElement("div");
-    private readonly reviewPanel = document.createElement("section");
-    private readonly dueReviewButton = document.createElement("button");
-    private readonly randomReviewButton = document.createElement("button");
-    private readonly relearningButton = document.createElement("button");
     private readonly scanButton = document.createElement("button");
+    private readonly filterGroup = document.createElement("div");
+    private readonly filterButtons = new Map<KnowledgeFilter, HTMLButtonElement>();
     private readonly searchInput = document.createElement("input");
     private readonly status = document.createElement("div");
     private readonly feedback = document.createElement("div");
@@ -42,45 +47,37 @@ export class KnowledgeCenterView {
         this.root.className = "ticktick-task-center__knowledge";
         this.summary.className = "ticktick-task-center__knowledge-summary";
 
-        this.reviewControls.className = "ticktick-task-center__knowledge-review-controls";
-        configureReviewButton(this.dueReviewButton, "due", options.controller);
-        configureReviewButton(this.randomReviewButton, "random", options.controller);
-        configureReviewButton(this.relearningButton, "relearning", options.controller);
-        this.reviewControls.append(
-            this.dueReviewButton,
-            this.randomReviewButton,
-            this.relearningButton,
-        );
-        this.reviewPanel.className = "ticktick-task-center__knowledge-review fn__none";
-        this.reviewPanel.setAttribute("aria-live", "polite");
-
         const controls = document.createElement("div");
         controls.className = "ticktick-task-center__controls ticktick-task-center__knowledge-controls";
         this.scanButton.type = "button";
         this.scanButton.className = "b3-button b3-button--outline ticktick-task-center__knowledge-scan";
         this.scanButton.addEventListener("click", () => void options.controller.scan());
+
+        this.filterGroup.className = "ticktick-task-center__filters";
+        this.filterGroup.setAttribute("role", "group");
+        for (const filter of FILTERS) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "ticktick-task-center__filter";
+            button.addEventListener("click", () => options.controller.setFilter(filter.key));
+            this.filterButtons.set(filter.key, button);
+            this.filterGroup.append(button);
+        }
+
         this.searchInput.type = "search";
         this.searchInput.className = "b3-text-field ticktick-task-center__search ticktick-task-center__knowledge-search";
         this.searchInput.addEventListener("input", () => {
             options.controller.setSearch(this.searchInput.value);
         });
-        controls.append(this.scanButton, this.searchInput);
+        controls.append(this.scanButton, this.filterGroup, this.searchInput);
 
         this.status.className = "ticktick-task-center__knowledge-status";
-        this.status.setAttribute("role", "status");
+        this.status.setAttribute("aria-live", "polite");
         this.feedback.className = "ticktick-task-center__knowledge-feedback";
         this.list.className = "ticktick-task-center__knowledge-list";
         this.list.setAttribute("role", "list");
 
-        this.root.append(
-            this.summary,
-            this.reviewControls,
-            this.reviewPanel,
-            controls,
-            this.status,
-            this.feedback,
-            this.list,
-        );
+        this.root.append(this.summary, controls, this.status, this.feedback, this.list);
         target.append(this.root);
         this.unsubscribe = options.controller.subscribe((state) => this.render(state));
     }
@@ -99,39 +96,31 @@ export class KnowledgeCenterView {
 
     private render(state: KnowledgeCenterState): void {
         const { translate } = this.options;
-        const availableItems = state.items.filter((item) => item.available);
-        const sourceCount = new Set(availableItems.map((item) => item.sourceDocumentId)).size;
-        const unavailableCount = state.items.length - availableItems.length;
-        const reviewCounts = countKnowledgeReviews(state.items, new Date());
+        const counts = countKnowledgeItems(state.items);
         this.summary.replaceChildren(
-            createSummaryItem(translate("knowledgeCenter.summaryAll"), state.items.length),
-            createSummaryItem(translate("knowledgeCenter.summaryAvailable"), availableItems.length),
-            createSummaryItem(translate("knowledgeCenter.summarySources"), sourceCount),
-            createSummaryItem(translate("knowledgeCenter.summaryDue"), reviewCounts.due, "review"),
-            createSummaryItem(
-                translate("knowledgeCenter.summaryRelearning"),
-                reviewCounts.relearning,
-                reviewCounts.relearning > 0 ? "warning" : undefined,
-            ),
-            ...(unavailableCount > 0
-                ? [createSummaryItem(translate("knowledgeCenter.summaryUnavailable"), unavailableCount, "warning")]
+            createSummaryItem(translate("knowledgeCenter.summaryAll"), counts.all),
+            createSummaryItem(translate("knowledgeCenter.summaryUnorganized"), counts.unorganized, "primary"),
+            createSummaryItem(translate("knowledgeCenter.summaryOrganized"), counts.organized, "success"),
+            ...(counts.updated > 0
+                ? [createSummaryItem(translate("knowledgeCenter.summaryUpdated"), counts.updated, "warning")]
+                : []),
+            ...(counts.unavailable > 0
+                ? [createSummaryItem(translate("knowledgeCenter.summaryUnavailable"), counts.unavailable, "warning")]
                 : []),
         );
 
-        this.dueReviewButton.textContent = translate("knowledgeCenter.startDueReview");
-        this.randomReviewButton.textContent = translate("knowledgeCenter.startRandomReview");
-        this.relearningButton.textContent = translate("knowledgeCenter.startRelearning");
-        const reviewInProgress = state.reviewSession === "active" || state.reviewSaving;
-        this.dueReviewButton.disabled = state.loading
-            || reviewInProgress
-            || reviewCounts.due === 0;
-        this.randomReviewButton.disabled = state.loading
-            || reviewInProgress
-            || availableItems.length === 0;
-        this.relearningButton.disabled = state.loading
-            || reviewInProgress
-            || reviewCounts.relearning === 0;
-        this.renderReviewPanel(state);
+        this.filterGroup.setAttribute("aria-label", translate("knowledgeCenter.filterLabel"));
+        for (const [key, button] of this.filterButtons) {
+            button.textContent = translate(
+                FILTERS.find((filter) => filter.key === key)?.labelKey
+                    ?? "knowledgeCenter.filterAll",
+            );
+            button.classList.toggle("ticktick-task-center__filter--active", key === state.filter);
+            button.setAttribute("aria-pressed", String(key === state.filter));
+            if (key === "updated") {
+                button.title = translate("knowledgeCenter.filterUpdatedTitle");
+            }
+        }
 
         this.scanButton.textContent = translate(
             state.scanning
@@ -142,8 +131,7 @@ export class KnowledgeCenterView {
         );
         this.scanButton.disabled = state.loading
             || state.scanning
-            || state.reviewSaving
-            || state.reviewSession === "active";
+            || state.savingIds.size > 0;
         this.searchInput.value = state.search;
         this.searchInput.placeholder = translate("knowledgeCenter.searchPlaceholder");
 
@@ -176,34 +164,47 @@ export class KnowledgeCenterView {
         if (state.scanError) {
             this.feedback.append(createFeedback(translate("knowledgeCenter.scanFailed"), "error"));
         }
-        if (state.reviewError) {
-            this.feedback.append(createFeedback(translate("knowledgeCenter.reviewSaveFailed"), "error"));
+        if (state.saveError) {
+            this.feedback.append(createFeedback(translate("knowledgeCenter.saveFailed"), "error"));
+        }
+        if (state.cacheError) {
+            this.feedback.append(createFeedback(translate("knowledgeCenter.cacheFailed"), "error"));
         }
 
-        const visibleItems = filterKnowledgeDocuments(state.items, state.search);
-        this.list.replaceChildren(...visibleItems.map((item) => this.createItem(item)));
+        const visibleItems = filterKnowledgeItems(state.items, state.filter, state.search);
+        this.list.replaceChildren(
+            ...visibleItems.map((item) => this.createItem(item, state.savingIds.has(item.id))),
+        );
         if (visibleItems.length > 0) {
             return;
         }
-        const emptyKey = state.search.trim() !== ""
-            ? "knowledgeCenter.emptySearch"
-            : state.lastScannedAt
-                ? "knowledgeCenter.emptyScanned"
-                : "knowledgeCenter.emptyInitial";
-        this.feedback.append(createFeedback(translate(emptyKey), "empty"));
+        if (!state.loadError) {
+            this.feedback.append(createFeedback(
+                emptyMessage(state, counts, translate),
+                "empty",
+            ));
+        }
     }
 
-    private createItem(item: KnowledgeDocumentItem): HTMLElement {
+    private createItem(item: KnowledgeDocumentItem, busy: boolean): HTMLElement {
         const { translate } = this.options;
+        const organized = Boolean(item.organizedAt);
+        const organizedAvailable = organized && item.available;
+        const updated = isKnowledgeUpdated(item);
         const article = document.createElement("article");
         article.className = "ticktick-task-center__knowledge-item";
         article.classList.toggle("ticktick-task-center__knowledge-item--unavailable", !item.available);
+        article.classList.toggle("ticktick-task-center__knowledge-item--organized", organizedAvailable);
         article.setAttribute("role", "listitem");
+        article.setAttribute("aria-busy", String(busy));
 
         const badge = document.createElement("span");
         badge.className = "ticktick-task-center__knowledge-badge";
+        badge.classList.toggle("ticktick-task-center__knowledge-badge--organized", organizedAvailable);
         badge.textContent = item.available
-            ? translate("knowledgeCenter.badge")
+            ? organized
+                ? translate("knowledgeCenter.badgeOrganized")
+                : translate("knowledgeCenter.badgeUnorganized")
             : translate("knowledgeCenter.unavailableBadge");
 
         const content = document.createElement("div");
@@ -220,126 +221,110 @@ export class KnowledgeCenterView {
         const path = document.createElement("div");
         path.className = "ticktick-task-center__knowledge-path";
         path.textContent = item.documentPath;
-        const updated = document.createElement("div");
-        updated.className = "ticktick-task-center__knowledge-updated";
-        updated.append(
+        const updatedAt = document.createElement("div");
+        updatedAt.className = "ticktick-task-center__knowledge-updated";
+        updatedAt.append(
             `${translate("taskCenterView.updated")}: `,
             createTime(item.updatedAt, this.getLocale()),
         );
-        const review = document.createElement("div");
-        review.className = "ticktick-task-center__knowledge-review-state";
-        if (item.review) {
-            review.append(
-                `${translate("knowledgeCenter.lastReviewed")}: `,
-                createTime(item.review.lastReviewedAt, this.getLocale()),
-                ` · ${translate("knowledgeCenter.feedbackLabel")}: ${translate(reviewRatingKey(item.review.rating))}`,
-                ` · ${translate("knowledgeCenter.nextReview")}: `,
-                createTime(item.review.nextReviewAt, this.getLocale()),
+        content.append(title, source, path, updatedAt);
+
+        if (organized && item.organizedAt) {
+            const organizedLine = document.createElement("div");
+            organizedLine.className = "ticktick-task-center__knowledge-organized";
+            organizedLine.append(
+                `${translate("knowledgeCenter.organizedOn")}: `,
+                createTime(item.organizedAt, this.getLocale()),
             );
-            if (item.review.needsRelearning) {
-                const relearning = document.createElement("strong");
-                relearning.textContent = translate("knowledgeCenter.relearningBadge");
-                review.append(" · ", relearning);
-            } else if (isKnowledgeReviewDue(item, new Date())) {
-                review.classList.add("ticktick-task-center__knowledge-review-state--due");
+            if (updated) {
+                const hint = document.createElement("span");
+                hint.className = "ticktick-task-center__knowledge-organized-updated";
+                hint.textContent = ` · ${translate("knowledgeCenter.updatedAfterOrganizing")}`;
+                organizedLine.append(hint);
             }
-        } else {
-            review.textContent = translate("knowledgeCenter.neverReviewed");
-            review.classList.add("ticktick-task-center__knowledge-review-state--due");
+            content.append(organizedLine);
         }
-        content.append(title, source, path, updated, review);
 
         const actions = document.createElement("div");
         actions.className = "ticktick-task-center__knowledge-actions";
-        const open = document.createElement("button");
-        open.type = "button";
-        open.className = "b3-button b3-button--outline ticktick-task-center__knowledge-open";
-        open.textContent = translate("knowledgeCenter.openDocument");
-        open.disabled = !item.available;
-        open.addEventListener("click", () => void this.openDocument(item.id));
-        const openSource = document.createElement("button");
-        openSource.type = "button";
-        openSource.className = "b3-button b3-button--outline ticktick-task-center__knowledge-open-source";
-        openSource.textContent = translate("knowledgeCenter.openSource");
-        openSource.addEventListener("click", () => void this.openSource(item.sourceDocumentId));
-        actions.append(open, openSource);
+        actions.append(
+            this.createActionButton(
+                "b3-button b3-button--outline ticktick-task-center__knowledge-open",
+                translate("knowledgeCenter.openDocument"),
+                !item.available,
+                () => void this.openDocument(item.id),
+            ),
+            this.createActionButton(
+                "b3-button b3-button--outline ticktick-task-center__knowledge-open-source",
+                translate("knowledgeCenter.openSource"),
+                !item.available,
+                () => void this.openSource(item.sourceDocumentId),
+            ),
+        );
+        if (item.available) {
+            if (organized) {
+                actions.append(this.createActionButton(
+                    "b3-button b3-button--outline ticktick-task-center__knowledge-unmark",
+                    translate("knowledgeCenter.unmarkOrganized"),
+                    busy,
+                    () => void this.clearOrganized(item),
+                ));
+                if (updated) {
+                    actions.append(this.createActionButton(
+                        "b3-button ticktick-task-center__knowledge-mark",
+                        translate("knowledgeCenter.refreshOrganized"),
+                        busy,
+                        () => void this.markOrganized(item),
+                    ));
+                }
+            } else {
+                actions.append(this.createActionButton(
+                    "b3-button ticktick-task-center__knowledge-mark",
+                    translate("knowledgeCenter.markOrganized"),
+                    busy,
+                    () => void this.markOrganized(item),
+                ));
+            }
+        }
 
         article.append(badge, content, actions);
         return article;
     }
 
-    private renderReviewPanel(state: KnowledgeCenterState): void {
-        this.reviewPanel.replaceChildren();
-        this.reviewPanel.classList.toggle("fn__none", state.reviewSession === "idle");
-        if (state.reviewSession === "idle") {
+    private createActionButton(
+        className: string,
+        label: string,
+        disabled: boolean,
+        action: () => void,
+    ): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = className;
+        button.textContent = label;
+        button.disabled = disabled;
+        button.addEventListener("click", action);
+        return button;
+    }
+
+    private async markOrganized(item: KnowledgeDocumentItem): Promise<void> {
+        const refreshed = Boolean(item.organizedAt);
+        const ok = await this.options.controller.markOrganized(item.id);
+        if (!ok || this.destroyed) {
             return;
         }
+        this.options.onNotify?.(
+            refreshed
+                ? "knowledgeCenter.toastRefreshed"
+                : "knowledgeCenter.toastMarked",
+        );
+    }
 
-        const { translate } = this.options;
-        const header = document.createElement("div");
-        header.className = "ticktick-task-center__knowledge-review-header";
-        const heading = document.createElement("h2");
-        heading.textContent = translate("knowledgeCenter.reviewHeading");
-        const stop = document.createElement("button");
-        stop.type = "button";
-        stop.className = "b3-button b3-button--outline ticktick-task-center__knowledge-review-stop";
-        stop.textContent = translate("knowledgeCenter.stopReview");
-        stop.disabled = state.reviewSaving;
-        stop.addEventListener("click", () => this.options.controller.stopReview());
-        header.append(heading, stop);
-        this.reviewPanel.append(header);
-
-        const item = state.reviewItem;
-        if (state.reviewSession === "complete" || !item) {
-            const complete = document.createElement("div");
-            complete.className = "ticktick-task-center__knowledge-review-complete";
-            complete.textContent = translate(reviewCompleteKey(state.reviewMode));
-            this.reviewPanel.append(complete);
+    private async clearOrganized(item: KnowledgeDocumentItem): Promise<void> {
+        const ok = await this.options.controller.clearOrganized(item.id);
+        if (!ok || this.destroyed) {
             return;
         }
-
-        const identity = document.createElement("div");
-        identity.className = "ticktick-task-center__knowledge-review-identity";
-        const title = document.createElement("h3");
-        title.textContent = item.title;
-        const source = document.createElement("div");
-        source.textContent = `${translate("knowledgeCenter.sourceTask")}: ${item.sourceDocumentTitle}`;
-        const path = document.createElement("div");
-        path.textContent = item.documentPath;
-        identity.append(title, source, path);
-
-        const actions = document.createElement("div");
-        actions.className = "ticktick-task-center__knowledge-review-actions";
-        const open = document.createElement("button");
-        open.type = "button";
-        open.className = "b3-button b3-button--outline ticktick-task-center__knowledge-review-open";
-        open.textContent = translate("knowledgeCenter.openForReview");
-        open.addEventListener("click", () => void this.openDocument(item.id));
-        const openSource = document.createElement("button");
-        openSource.type = "button";
-        openSource.className = "b3-button b3-button--outline ticktick-task-center__knowledge-review-open-source";
-        openSource.textContent = translate("knowledgeCenter.openSource");
-        openSource.addEventListener("click", () => void this.openSource(item.sourceDocumentId));
-        actions.append(open, openSource);
-
-        const prompt = document.createElement("p");
-        prompt.className = "ticktick-task-center__knowledge-review-prompt";
-        prompt.textContent = translate("knowledgeCenter.reviewPrompt");
-        const ratings = document.createElement("div");
-        ratings.className = "ticktick-task-center__knowledge-review-ratings";
-        for (const rating of KNOWLEDGE_REVIEW_RATINGS) {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = `ticktick-task-center__knowledge-review-rating ticktick-task-center__knowledge-review-rating--${rating}`;
-            button.dataset.rating = rating;
-            button.textContent = translate(reviewRatingKey(rating));
-            button.title = translate(reviewRatingDescriptionKey(rating));
-            button.disabled = state.reviewSaving;
-            button.addEventListener("click", () => void this.options.controller.submitReview(rating));
-            ratings.append(button);
-        }
-
-        this.reviewPanel.append(identity, actions, prompt, ratings);
+        this.options.onNotify?.("knowledgeCenter.toastUnmarked");
     }
 
     private async openDocument(documentId: string): Promise<void> {
@@ -365,20 +350,36 @@ export class KnowledgeCenterView {
     }
 }
 
-function filterKnowledgeDocuments(
-    items: readonly KnowledgeDocumentItem[],
-    search: string,
-): KnowledgeDocumentItem[] {
-    const query = search.trim().toLocaleLowerCase();
-    if (query === "") {
-        return [...items];
+function emptyMessage(
+    state: KnowledgeCenterState,
+    counts: KnowledgeCounts,
+    translate: Translate,
+): string {
+    if (state.search.trim() !== "") {
+        return translate("knowledgeCenter.emptySearch");
     }
-    return items.filter((item) => [
-        item.title,
-        item.documentPath,
-        item.sourceDocumentTitle,
-        item.sourceDocumentPath,
-    ].some((value) => value.toLocaleLowerCase().includes(query)));
+    if (!state.lastScannedAt && counts.all === 0) {
+        return translate("knowledgeCenter.emptyInitial");
+    }
+    if (state.filter === "unorganized") {
+        if (counts.available === 0) {
+            return translate("knowledgeCenter.emptyScanned");
+        }
+        if (counts.updated > 0) {
+            return translate("knowledgeCenter.emptyUnorganizedWithUpdates")
+                .replace("${count}", String(counts.updated));
+        }
+        return translate("knowledgeCenter.emptyUnorganized");
+    }
+    if (state.filter === "organized") {
+        return translate("knowledgeCenter.emptyOrganized");
+    }
+    if (state.filter === "updated") {
+        return translate("knowledgeCenter.emptyUpdated");
+    }
+    return state.lastScannedAt
+        ? translate("knowledgeCenter.emptyScanned")
+        : translate("knowledgeCenter.emptyInitial");
 }
 
 function formatReport(
@@ -397,7 +398,7 @@ function formatReport(
 function createSummaryItem(
     label: string,
     count: number,
-    kind?: "warning" | "review",
+    kind?: "warning" | "primary" | "success",
 ): HTMLElement {
     const item = document.createElement("span");
     item.className = "ticktick-task-center__knowledge-summary-item";
@@ -408,35 +409,6 @@ function createSummaryItem(
     value.textContent = String(count);
     item.append(`${label} `, value);
     return item;
-}
-
-function configureReviewButton(
-    button: HTMLButtonElement,
-    mode: KnowledgeReviewMode,
-    controller: KnowledgeCenterController,
-): void {
-    button.type = "button";
-    button.className = `b3-button b3-button--outline ticktick-task-center__knowledge-review-start ticktick-task-center__knowledge-review-start--${mode}`;
-    button.addEventListener("click", () => controller.startReview(mode));
-}
-
-function reviewRatingKey(rating: KnowledgeReviewRating): string {
-    return `knowledgeCenter.rating.${rating}.label`;
-}
-
-function reviewRatingDescriptionKey(rating: KnowledgeReviewRating): string {
-    return `knowledgeCenter.rating.${rating}.description`;
-}
-
-function reviewCompleteKey(mode: KnowledgeReviewMode | undefined): string {
-    switch (mode) {
-        case "random":
-            return "knowledgeCenter.randomReviewComplete";
-        case "relearning":
-            return "knowledgeCenter.relearningComplete";
-        default:
-            return "knowledgeCenter.dueReviewComplete";
-    }
 }
 
 function createFeedback(message: string, kind: "loading" | "error" | "empty"): HTMLElement {

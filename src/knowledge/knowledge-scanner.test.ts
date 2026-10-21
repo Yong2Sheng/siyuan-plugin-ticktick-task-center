@@ -99,7 +99,13 @@ describe("scanKnowledgeDocuments", () => {
         const result = await scanKnowledgeDocuments(
             [ROOT, { ...ROOT, blockId: "20260901080100-456789a" }, NESTED_TASK],
             createEmptyKnowledgeIndex(),
-            { listChildDocuments, setBlockAttributes, getBlockAttributes, now: () => SCANNED_AT },
+            {
+                listChildDocuments,
+                setBlockAttributes,
+                getBlockAttributes,
+                loadOrganizedMarks: vi.fn().mockResolvedValue(new Map()),
+                now: () => SCANNED_AT,
+            },
         );
 
         expect(result.index.documents.map((item) => item.title))
@@ -123,12 +129,13 @@ describe("scanKnowledgeDocuments", () => {
         expect(getBlockAttributes).toHaveBeenCalledTimes(3);
     });
 
-    it("does not rewrite cached documents and retains unavailable records", async () => {
+    it("keeps marks and unavailable records without rewriting cached documents", async () => {
         const KNOWN = child(
             "20260901130000-56789ab",
             "Known knowledge",
             "/20260901080000-hijklmn/20260901130000-56789ab.sy",
         );
+        const KNOWN_ORGANIZED_AT = "2026-09-01T10:30:00.000Z";
         const MISSING = {
             id: "20260901140000-6789abc",
             notebookId: ROOT.notebookId!,
@@ -141,14 +148,7 @@ describe("scanKnowledgeDocuments", () => {
             createdAt: "2026-08-31T10:00:00.000Z",
             updatedAt: "2026-08-31T11:00:00.000Z",
             available: true,
-        };
-        const KNOWN_REVIEW = {
-            rating: "partially-mastered" as const,
-            reviewCount: 2,
-            intervalDays: 12,
-            lastReviewedAt: "2026-08-31T12:00:00.000Z",
-            nextReviewAt: "2026-09-12T12:00:00.000Z",
-            needsRelearning: false,
+            organizedAt: "2026-08-31T09:00:00.000Z",
         };
         const previous = {
             version: 1 as const,
@@ -158,11 +158,15 @@ describe("scanKnowledgeDocuments", () => {
                 id: KNOWN.id,
                 title: KNOWN.title,
                 filePath: KNOWN.path,
-                review: KNOWN_REVIEW,
+                organizedAt: "2026-08-30T10:00:00.000Z",
+                review: { rating: "mastered" },
             }, MISSING],
         };
         const setBlockAttributes = vi.fn();
         const getBlockAttributes = vi.fn();
+        const loadOrganizedMarks = vi.fn().mockResolvedValue(
+            new Map([[KNOWN.id, KNOWN_ORGANIZED_AT]]),
+        );
         const knownWithoutTimestamps = {
             ...KNOWN,
             createdAt: undefined,
@@ -173,6 +177,7 @@ describe("scanKnowledgeDocuments", () => {
             listChildDocuments: vi.fn().mockResolvedValue([knownWithoutTimestamps]),
             setBlockAttributes,
             getBlockAttributes,
+            loadOrganizedMarks,
             now: () => SCANNED_AT,
         });
 
@@ -183,24 +188,75 @@ describe("scanKnowledgeDocuments", () => {
         expect(result.index.documents.find((item) => item.id === KNOWN.id)).toMatchObject({
             createdAt: MISSING.createdAt,
             updatedAt: MISSING.updatedAt,
-            review: KNOWN_REVIEW,
+            organizedAt: KNOWN_ORGANIZED_AT,
         });
+        expect(result.index.documents.find((item) => item.id === KNOWN.id)).not.toHaveProperty("review");
         expect(result.index.documents.find((item) => item.id === MISSING.id)).toMatchObject({
             available: false,
             missingSince: SCANNED_AT.toISOString(),
+            organizedAt: MISSING.organizedAt,
         });
+    });
+
+    it("drops a cached mark that is gone and restores one for a new document", async () => {
+        const KNOWN = child(
+            "20260901150000-789abcd",
+            "Known knowledge",
+            "/20260901080000-hijklmn/20260901150000-789abcd.sy",
+        );
+        const NEW_MARKED = child(
+            "20260901160000-89abcde",
+            "Restored knowledge",
+            "/20260901080000-hijklmn/20260901160000-89abcde.sy",
+        );
+        const RESTORED_AT = "2026-09-01T09:45:00.000Z";
+        const previous = {
+            version: 1 as const,
+            documents: [{
+                id: KNOWN.id,
+                notebookId: ROOT.notebookId!,
+                title: KNOWN.title,
+                filePath: KNOWN.path,
+                documentPath: "/Research task/Known knowledge",
+                sourceDocumentId: ROOT.rootId,
+                sourceDocumentTitle: ROOT.documentTitle,
+                sourceDocumentPath: ROOT.documentPath,
+                createdAt: KNOWN.createdAt,
+                updatedAt: KNOWN.updatedAt,
+                available: true,
+                organizedAt: "2026-08-30T10:00:00.000Z",
+            }],
+        };
+
+        const result = await scanKnowledgeDocuments([ROOT], previous, {
+            listChildDocuments: vi.fn().mockResolvedValue([KNOWN, NEW_MARKED]),
+            setBlockAttributes: vi.fn().mockResolvedValue(undefined),
+            getBlockAttributes: vi.fn().mockResolvedValue({
+                [KNOWLEDGE_DOCUMENT_ATTRIBUTE]: "true",
+            }),
+            loadOrganizedMarks: vi.fn().mockResolvedValue(
+                new Map([[NEW_MARKED.id, RESTORED_AT]]),
+            ),
+            now: () => SCANNED_AT,
+        });
+
+        expect(result.index.documents.find((item) => item.id === KNOWN.id)?.organizedAt)
+            .toBeUndefined();
+        expect(result.index.documents.find((item) => item.id === NEW_MARKED.id)?.organizedAt)
+            .toBe(RESTORED_AT);
     });
 
     it("keeps failed writes out of the cache so a later scan can retry", async () => {
         const NOTE = child(
-            "20260901150000-789abcd",
+            "20260901170000-9abcdef",
             "Retry knowledge",
-            "/20260901080000-hijklmn/20260901150000-789abcd.sy",
+            "/20260901080000-hijklmn/20260901170000-9abcdef.sy",
         );
         const result = await scanKnowledgeDocuments([ROOT], createEmptyKnowledgeIndex(), {
             listChildDocuments: vi.fn().mockResolvedValue([NOTE]),
             setBlockAttributes: vi.fn().mockResolvedValue(undefined),
             getBlockAttributes: vi.fn().mockResolvedValue({}),
+            loadOrganizedMarks: vi.fn().mockResolvedValue(new Map()),
             now: () => SCANNED_AT,
         });
 

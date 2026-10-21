@@ -28,20 +28,13 @@ describe("knowledge index", () => {
     });
 
     it("normalizes valid data and drops malformed or duplicate records", () => {
-        const review = {
-            rating: "partially-mastered",
-            reviewCount: 2,
-            intervalDays: 12,
-            lastReviewedAt: "2026-09-01T11:00:00Z",
-            nextReviewAt: "2026-09-13T11:00:00Z",
-            needsRelearning: false,
-        };
+        const organizedAt = "2026-09-01T11:00:00Z";
         const result = parseKnowledgeIndex({
             version: KNOWLEDGE_INDEX_VERSION,
             lastScannedAt: "2026-09-01T12:00:00Z",
             documents: [
                 ITEM,
-                { ...ITEM, title: "Newest cached title", review },
+                { ...ITEM, title: "Newest cached title", organizedAt },
                 { ...ITEM, id: "bad" },
             ],
         });
@@ -49,10 +42,25 @@ describe("knowledge index", () => {
         expect(result.lastScannedAt).toBe("2026-09-01T12:00:00.000Z");
         expect(result.documents).toHaveLength(1);
         expect(result.documents[0]?.title).toBe("Newest cached title");
-        expect(result.documents[0]?.review).toEqual({
-            ...review,
-            lastReviewedAt: "2026-09-01T11:00:00.000Z",
-            nextReviewAt: "2026-09-13T11:00:00.000Z",
+        expect(result.documents[0]?.organizedAt).toBe("2026-09-01T11:00:00.000Z");
+    });
+
+    it("ignores malformed organized timestamps and legacy review data", () => {
+        const legacy = {
+            ...ITEM,
+            review: { rating: "mastered", reviewCount: 1 },
+        };
+        const result = parseKnowledgeIndex({
+            version: KNOWLEDGE_INDEX_VERSION,
+            documents: [
+                legacy,
+                { ...ITEM, id: "20260901100000-hijklmn", organizedAt: "not-a-date" },
+            ],
         });
+
+        expect(result.documents).toHaveLength(2);
+        expect(result.documents[0]?.organizedAt).toBeUndefined();
+        expect(result.documents[1]?.organizedAt).toBeUndefined();
+        expect("review" in (result.documents[0] ?? {})).toBe(false);
     });
 });

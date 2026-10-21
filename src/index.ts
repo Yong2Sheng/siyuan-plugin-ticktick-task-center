@@ -72,6 +72,11 @@ import {
     parseKnowledgeIndex,
 } from "./knowledge/knowledge-index";
 import { scanKnowledgeDocuments } from "./knowledge/knowledge-scanner";
+import {
+    clearKnowledgeOrganizedMark,
+    loadKnowledgeOrganizedMarks,
+    writeKnowledgeOrganizedMark,
+} from "./knowledge/knowledge-organized";
 import "./index.scss";
 
 const LANGUAGE_PREFERENCE_FILE = "language.json";
@@ -339,7 +344,20 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 listChildDocuments,
                 setBlockAttributes,
                 getBlockAttributes,
+                loadOrganizedMarks: loadKnowledgeOrganizedMarks,
             }),
+            writeOrganizedMark: async (blockId, organizedAt) => {
+                await writeKnowledgeOrganizedMark(
+                    { loadAttributes: getBlockAttributes, setAttributes: setBlockAttributes },
+                    blockId,
+                    organizedAt,
+                );
+            },
+            clearOrganizedMark: (blockId) => clearKnowledgeOrganizedMark(
+                { loadAttributes: getBlockAttributes, setAttributes: setBlockAttributes },
+                blockId,
+            ),
+            now: () => new Date(),
             onError: (error) => console.error("Failed to update the knowledge document index", error),
         });
         const inboxController = this.requireInboxController();
@@ -404,6 +422,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             knowledgeController,
             onOpenKnowledgeDocument: (documentId) => openSiYuanBlock(this.app, documentId),
             onOpenKnowledgeSource: (documentId) => openSiYuanBlock(this.app, documentId),
+            onKnowledgeNotify: (messageKey) => showMessage(translate(messageKey), 3000, "info"),
             onKnowledgeOpenError: (error) => {
                 console.error("Failed to open a knowledge center document", error);
                 showMessage(translate("knowledgeCenter.openFailed"), 5000, "error");

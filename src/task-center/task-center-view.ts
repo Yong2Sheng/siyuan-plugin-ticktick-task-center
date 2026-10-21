@@ -78,6 +78,7 @@ export type TaskCenterViewOptions = {
     knowledgeController: KnowledgeCenterController;
     onOpenKnowledgeDocument(documentId: string): Promise<void>;
     onOpenKnowledgeSource(documentId: string): Promise<void>;
+    onKnowledgeNotify?(messageKey: string): void;
     onKnowledgeOpenError?(error: unknown): void;
 };
 
@@ -213,6 +214,7 @@ export class TaskCenterView {
             locale: options.locale,
             onOpenDocument: options.onOpenKnowledgeDocument,
             onOpenSource: options.onOpenKnowledgeSource,
+            onNotify: options.onKnowledgeNotify,
             onOpenError: options.onKnowledgeOpenError,
         });
         this.unsubscribe = options.controller.subscribe((state) => this.render(state));

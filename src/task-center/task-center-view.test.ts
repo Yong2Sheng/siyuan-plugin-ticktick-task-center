@@ -225,6 +225,8 @@ function createKnowledgeController(): KnowledgeCenterController {
         saveIndex: vi.fn().mockResolvedValue(undefined),
         loadTasks: vi.fn().mockResolvedValue([]),
         scan: vi.fn(),
+        writeOrganizedMark: vi.fn().mockResolvedValue(undefined),
+        clearOrganizedMark: vi.fn().mockResolvedValue(undefined),
     });
 }
 

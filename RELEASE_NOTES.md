@@ -1,75 +1,87 @@
-# 思源任务中心 v0.7.0
+# 思源任务中心 v0.8.0
 
-本版本补齐收件箱的两个缺口：便条记下之后可以编辑，以及编辑正文时能直接看到 Markdown 的渲染效果。
+本次把知识文档页签从「复习」改为「整理」，并补上收件箱「记一笔」的 Markdown 预览。
 
 ## 主要更新
 
-### 编辑便条
+### 知识文档：未整理 / 已整理
 
-- 每条待处理便条新增「编辑」入口，快速事项与正式任务都有；标题、正文、分级都能改。
-- 保存后列表原地更新，保留原记录时间、id 和排序；便条不会跳到顶部，也不会产生任务块。
-- 标题为空、内容超过 2000 字、写盘失败、便条已被移入任务清单或删除时，弹窗保持打开、输入不丢，并给出对应提示。
-- 只修改插件数据文件中的便条文字和分级；不写思源笔记、不新增任务字段、不改变数据版本。
+- 每篇知识文档新增「未整理 / 已整理」标记；可以随时「标记为已整理」或「撤销整理标记」。
+- 整理时间写入文档块属性 `custom-task-center-knowledge-organized` 和 `custom-task-center-knowledge-organized-at`，写入后读回复核；重建索引不会丢标记。
+- 知识页签默认只看未整理；汇总为全部 / 未整理 / 已整理 / 整理后有更新 / 可能失效。
+- 已整理文档之后又被编辑过，仍算已整理，但显示「整理后有更新」；可用「整理后有更新」筛选集中处理，已整理列表也把这几篇排在前面。
+- 点「完成补整理」刷新整理时间，提醒消失，文档不会退回未整理。
+- 「整理后有更新」按最近一次扫描的文档更新时间计算。编辑知识文档后，点「扫描知识文档」才会刷新；仍只由用户手动触发，不自动扫描或轮询。
 
-### Markdown 实时预览
+### 移除知识复习
 
-- 编辑弹窗在正文下方新增只读预览，与收件箱列表共用同一个渲染器，两边效果一致。
-- 停止输入 250 ms 后刷新；打字过程中不重排、不抢焦点。
-- 预览可折叠，折叠状态不记忆，每次打开默认展开；空正文显示一行提示；长正文在预览内滚动（上限 200 px，窄屏和矮窗口 140 px）。
-- 预览只影响显示，保存的仍是原始 Markdown；不新增字段、不单独写盘、不发网络请求。
+- 移除今日复习、随机复习、重新学习和五级反馈；知识页签不再保存复习进度。
+- 旧知识索引里的 `review` 数据解析时忽略，不迁移；知识文档的正文和块属性不受影响。
+
+### 收件箱「记一笔」Markdown 预览
+
+- 正文框旁边新增「显示预览 / 隐藏预览」；展开后在正文框下方全宽渲染 Markdown，默认收起。
+- 停止输入 200 ms 后刷新；只读、可滚动，不重排输入框、不抢焦点，输入法组合期间不刷新。
+- 不改保存格式，不新增字段，不单独写盘，不发网络请求。
 
 ## 数据与兼容性
 
-- 便条仍然只存一段原始 Markdown；数据版本、`inbox.json` 结构、三轮备份和写入后逐字段复核逻辑都没有变化。
-- 编辑复用现有串行写入队列，保存成功后才替换内存状态。
-- 预览不需要新的配置或存储，旧便条打开即可看到预览。
+- 任务块和 `custom-ticktick-*` 属性不变；知识文档身份标记 `custom-task-center-knowledge = true` 不变。
+- 新增两个整理属性；知识索引仍是可重建缓存，旧 `review` 字段直接忽略。
+- 收件箱数据文件结构不变，旧便条无需迁移。
 
 ## 可靠性与验证
 
-- 新增 5 条编辑弹窗预览测试：渲染、折叠、空正文、250 ms 防抖、关闭后不再刷新。
-- 完整测试 583 个用例通过，类型检查 0 错误 0 警告，生产构建与 `package.zip` 校验正常。
-- 预览与列表共用渲染器，避免出现「预览里有、保存后列表没有」的两套效果。
+- 新增 42 条测试（知识模块 36 条、收件箱预览 6 条）。
+- 完整测试 607 个用例通过；类型检查 0 错误 0 警告；生产构建与 `package.zip` 校验正常。
 
 ## 安装
 
-- 在思源「集市 → 已下载」中更新，或从本 Release 附件下载 `package.zip` 解压到工作空间的 `data/plugins/` 目录。
+- 从本 Release 下载 `package.zip`，解压到工作空间的 `data/plugins/siyuan-plugin-ticktick-task-center/`；或按集市更新流程安装。
+- 不要使用 GitHub 自动生成的 Source code 压缩包。
 - 更新后如界面未刷新，可在「设置 → 集市 → 已下载」里对该插件执行一次「禁用/启用」，或重启思源。
 
 ---
 
-# SiYuan Task Center v0.7.0
+# SiYuan Task Center v0.8.0
 
-This release fills two gaps in the Inbox: notes can be edited after capture, and the body shows its rendered Markdown while being edited.
+This release turns the Knowledge section from review into organizing, and adds a live Markdown preview to the Inbox quick-capture body.
 
 ## Highlights
 
-### Note editing
+### Knowledge documents: Not organized / Organized
 
-- Every pending note now has an Edit entry, for both quick errands and formal tasks. Title, body, and tier are all editable.
-- Saving updates the list in place and keeps the original recorded time, id, and order. The note does not jump to the top, and no task block is created.
-- When the title is empty, the text exceeds 2000 characters, a write fails, or the note was already promoted or deleted, the dialog stays open with the input intact and shows the matching message.
-- Editing changes only the note text and tier in the plugin data file. It does not write to SiYuan notes, add task fields, or change the data version.
+- Every knowledge document now has a Not organized / Organized mark; select **Mark as organized** or **Undo organized mark** at any time.
+- The organizing time is stored in `custom-task-center-knowledge-organized` and `custom-task-center-knowledge-organized-at`, then read back for verification. Rebuilding the index does not lose the mark.
+- The Knowledge section defaults to Not organized. The summary is All / Not organized / Organized / Updated after organizing / Possibly missing.
+- An organized document edited later still counts as organized but shows **Updated after organizing**. Use the **Updated after organizing** filter to handle them together, and the Organized view sorts them first.
+- Select **Mark re-organized** to refresh the organizing time; the hint clears and the document never returns to Not organized.
+- Updated after organizing is derived from document timestamps during the last scan. After editing a knowledge document, select **Scan knowledge documents** to refresh it; scanning remains manual, with no automatic scan or polling.
 
-### Live Markdown preview
+### Knowledge review removed
 
-- The edit dialog renders a read-only preview below the body, using the same renderer as the Inbox list so both surfaces agree.
-- The preview refreshes 250 ms after typing stops, without reflowing during typing or stealing focus.
-- It can be collapsed; the collapsed state is not remembered and every open starts expanded. An empty body shows a one-line hint, and long bodies scroll inside the preview (200 px, 140 px on narrow or short windows).
-- The preview only affects display: saving still stores the original Markdown. It adds no fields, performs no separate writes, and makes no network requests.
+- Remove Today's review, Random review, Relearning, and the five feedback levels; the Knowledge section no longer stores review progress.
+- Legacy `review` data in the knowledge index is ignored, not migrated. Knowledge document content and block attributes are unaffected.
+
+### Inbox quick-capture Markdown preview
+
+- Add Show preview / Hide preview next to the capture body. Expanding it renders Markdown full width below the body and starts collapsed.
+- Refresh 200 ms after typing stops. It is read-only, scrolls internally, does not reflow the textarea, and does not steal focus. No refresh during IME composition.
+- It changes no saved format, adds no fields, performs no separate writes, and makes no network requests.
 
 ## Data and compatibility
 
-- A note still stores a single block of original Markdown. The data version, `inbox.json` structure, three rotating backups, and field-by-field verification are unchanged.
-- Editing reuses the existing serial write queue and only replaces in-memory state after a successful save.
-- The preview needs no new configuration or storage; existing notes show it as soon as they are opened.
+- Task blocks and `custom-ticktick-*` attributes are unchanged; the knowledge identity marker `custom-task-center-knowledge = true` is unchanged.
+- Two organizing attributes are added. The knowledge index remains a rebuildable cache, and the legacy `review` field is ignored.
+- The Inbox data file structure is unchanged; existing notes need no migration.
 
 ## Reliability and verification
 
-- Add 5 edit-dialog preview tests: rendering, collapsing, empty body, the 250 ms debounce, and no refresh after the dialog closes.
-- The full suite passes with 583 tests; the type check reports 0 errors and 0 warnings; the production build and `package.zip` validation succeed.
-- The preview and the Inbox list share one renderer, avoiding a "preview shows it, the saved list does not" mismatch.
+- Add 42 tests (36 knowledge, 6 Inbox preview).
+- The full suite passes with 607 tests; the type check reports 0 errors and 0 warnings; the production build and `package.zip` validation succeed.
 
 ## Installation
 
-- Update from SiYuan Marketplace → Downloaded, or download `package.zip` from this release and extract it into the workspace's `data/plugins/` directory.
+- Download `package.zip` from this release and extract it into the workspace's `data/plugins/siyuan-plugin-ticktick-task-center/`, or update through the Marketplace flow.
+- Do not use GitHub's automatically generated Source code archives.
 - If the interface does not refresh, disable and re-enable the plugin under Settings → Marketplace → Downloaded, or restart SiYuan.

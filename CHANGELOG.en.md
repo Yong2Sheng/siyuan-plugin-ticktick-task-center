@@ -2,7 +2,16 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
-## Unreleased
+## 0.8.0 - 2026-10-21
+
+### Knowledge document organizing marks
+
+- Remove the review entry points, five-level feedback, and review progress fields from the Knowledge section; legacy review data in the index is ignored and needs no migration.
+- Add Not organized / Organized marks to knowledge documents, stored in `custom-task-center-knowledge-organized = true` and `custom-task-center-knowledge-organized-at`, verified by reading back and reversible at any time.
+- An organized document edited later still counts as organized but shows Updated after organizing and is counted separately; add an Updated after organizing filter and sort those documents first in Organized.
+- Select Mark re-organized to refresh the organizing time; the document never returns to Not organized.
+- Updated after organizing is derived from document timestamps during the last scan and is not stored separately. Rename Scan for new knowledge documents to Scan knowledge documents and batch-read organizing marks; scanning remains manual, with no automatic scan or polling.
+- Reduce the summary to All / Not organized / Organized / Updated after organizing / Possibly missing; the Knowledge section defaults to Not organized.
 
 ### Inbox quick-capture Markdown preview
 
@@ -15,7 +24,7 @@ English | [简体中文](CHANGELOG.md)
 
 ### Verification
 
-- Add 6 inbox preview tests. The full suite passes with 589 tests, the type check reports 0 errors and 0 warnings, and the production build and `package.zip` validation succeed.
+- Add 42 tests (36 knowledge, 6 inbox preview). The full suite passes with 607 tests, the type check reports 0 errors and 0 warnings, and the production build and `package.zip` validation succeed.
 
 ## 0.7.0 - 2026-10-19
 

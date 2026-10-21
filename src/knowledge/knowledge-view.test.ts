@@ -9,80 +9,91 @@ import { KnowledgeCenterView } from "./knowledge-view";
 
 const labels: Record<string, string> = {
     "knowledgeCenter.summaryAll": "All knowledge",
-    "knowledgeCenter.summaryAvailable": "Available",
-    "knowledgeCenter.summarySources": "Sources",
-    "knowledgeCenter.summaryDue": "Due",
-    "knowledgeCenter.summaryRelearning": "Relearning",
+    "knowledgeCenter.summaryUnorganized": "Not organized",
+    "knowledgeCenter.summaryOrganized": "Organized",
+    "knowledgeCenter.summaryUpdated": "Updated",
     "knowledgeCenter.summaryUnavailable": "Unavailable",
+    "knowledgeCenter.filterLabel": "Filter",
+    "knowledgeCenter.filterAll": "All",
+    "knowledgeCenter.filterUnorganized": "Not organized",
+    "knowledgeCenter.filterOrganized": "Organized",
+    "knowledgeCenter.filterUpdated": "Updated after organizing",
+    "knowledgeCenter.filterUpdatedTitle": "Based on the last scan",
     "knowledgeCenter.initialize": "Initialize",
-    "knowledgeCenter.scanNew": "Scan new",
+    "knowledgeCenter.scanNew": "Scan",
     "knowledgeCenter.scanning": "Scanning",
-    "knowledgeCenter.startDueReview": "Start due review",
-    "knowledgeCenter.startRandomReview": "Random review",
-    "knowledgeCenter.startRelearning": "Relearn",
-    "knowledgeCenter.reviewHeading": "Knowledge review",
-    "knowledgeCenter.stopReview": "Stop review",
-    "knowledgeCenter.openForReview": "Open for review",
-    "knowledgeCenter.reviewPrompt": "Recall, check, and rate",
-    "knowledgeCenter.dueReviewComplete": "Due review complete",
-    "knowledgeCenter.randomReviewComplete": "Random review complete",
-    "knowledgeCenter.relearningComplete": "Relearning complete",
-    "knowledgeCenter.reviewSaveFailed": "Review save failed",
-    "knowledgeCenter.lastReviewed": "Last reviewed",
-    "knowledgeCenter.nextReview": "Next review",
-    "knowledgeCenter.feedbackLabel": "Feedback",
-    "knowledgeCenter.neverReviewed": "Never reviewed",
-    "knowledgeCenter.relearningBadge": "Needs relearning",
-    "knowledgeCenter.rating.no-impression.label": "No impression",
-    "knowledgeCenter.rating.no-impression.description": "No memory",
-    "knowledgeCenter.rating.familiar.label": "Familiar",
-    "knowledgeCenter.rating.familiar.description": "Looks familiar",
-    "knowledgeCenter.rating.remembered-not-understood.label": "Remembered, not understood",
-    "knowledgeCenter.rating.remembered-not-understood.description": "Needs relearning",
-    "knowledgeCenter.rating.partially-mastered.label": "Partially mastered",
-    "knowledgeCenter.rating.partially-mastered.description": "Some gaps",
-    "knowledgeCenter.rating.mastered.label": "Mastered",
-    "knowledgeCenter.rating.mastered.description": "Can explain it",
     "knowledgeCenter.searchPlaceholder": "Search knowledge",
     "knowledgeCenter.lastScanned": "Last scanned",
     "knowledgeCenter.scanReport": "${tasks} tasks; ${examined} checked; ${added} added; ${existing} existing; ${unavailable} unavailable; ${failed} failed",
     "knowledgeCenter.loading": "Loading knowledge",
     "knowledgeCenter.loadFailed": "Load failed",
     "knowledgeCenter.scanFailed": "Scan failed",
+    "knowledgeCenter.saveFailed": "Save failed",
+    "knowledgeCenter.cacheFailed": "Cache failed",
     "knowledgeCenter.emptyInitial": "Not initialized",
     "knowledgeCenter.emptyScanned": "Nothing found",
     "knowledgeCenter.emptySearch": "No matches",
-    "knowledgeCenter.badge": "Knowledge",
+    "knowledgeCenter.emptyUnorganized": "Everything is organized",
+    "knowledgeCenter.emptyUnorganizedWithUpdates": "Nothing left. ${count} updated.",
+    "knowledgeCenter.emptyOrganized": "Nothing organized",
+    "knowledgeCenter.emptyUpdated": "No updates",
+    "knowledgeCenter.badgeUnorganized": "Not organized",
+    "knowledgeCenter.badgeOrganized": "Organized",
     "knowledgeCenter.unavailableBadge": "Unavailable",
     "knowledgeCenter.sourceTask": "Source task",
+    "knowledgeCenter.organizedOn": "Organized on",
+    "knowledgeCenter.updatedAfterOrganizing": "Updated after organizing",
     "knowledgeCenter.openDocument": "Open knowledge",
     "knowledgeCenter.openSource": "Open source",
+    "knowledgeCenter.markOrganized": "Mark as organized",
+    "knowledgeCenter.unmarkOrganized": "Undo organized mark",
+    "knowledgeCenter.refreshOrganized": "Mark re-organized",
+    "knowledgeCenter.toastMarked": "Marked as organized",
+    "knowledgeCenter.toastUnmarked": "Organized mark removed",
+    "knowledgeCenter.toastRefreshed": "Organizing time refreshed",
     "taskCenterView.updated": "Updated",
 };
 const translate: Translate = (key) => labels[key] ?? key;
 
-const AVAILABLE: KnowledgeDocumentItem = {
-    id: "20260901100000-abcdefg",
-    notebookId: "20260901070000-hijklmn",
-    title: "Spectral fitting notes",
-    filePath: "/task/knowledge.sy",
-    documentPath: "/Research task/Spectral fitting notes",
-    sourceDocumentId: "20260901080000-opqrstu",
-    sourceDocumentTitle: "Research task",
-    sourceDocumentPath: "/Research task",
-    createdAt: "2026-09-01T09:00:00.000Z",
+const NOW = new Date("2026-09-02T12:00:00.000Z");
+const NOW_ISO = NOW.toISOString();
+
+function makeDocument(
+    id: string,
+    overrides: Partial<KnowledgeDocumentItem> = {},
+): KnowledgeDocumentItem {
+    return {
+        id,
+        notebookId: "20260901070000-hijklmn",
+        title: `Note ${id}`,
+        filePath: `/task/${id}.sy`,
+        documentPath: `/Research task/${id}`,
+        sourceDocumentId: "20260901080000-opqrstu",
+        sourceDocumentTitle: "Research task",
+        sourceDocumentPath: "/Research task",
+        createdAt: "2026-09-01T09:00:00.000Z",
+        updatedAt: "2026-09-01T10:00:00.000Z",
+        available: true,
+        ...overrides,
+    };
+}
+
+const UNORGANIZED = makeDocument("unorganized", { title: "Spectral fitting notes" });
+const UPDATED = makeDocument("updated", {
+    title: "Updated notes",
+    organizedAt: "2026-09-01T09:30:00.000Z",
+    updatedAt: "2026-09-01T10:30:00.000Z",
+});
+const ORGANIZED = makeDocument("organized", {
+    title: "Organized notes",
+    organizedAt: "2026-09-01T11:00:00.000Z",
     updatedAt: "2026-09-01T10:00:00.000Z",
-    available: true,
-};
-const UNAVAILABLE: KnowledgeDocumentItem = {
-    ...AVAILABLE,
-    id: "20260901110000-vwxyz12",
+});
+const UNAVAILABLE = makeDocument("unavailable", {
     title: "Moved notes",
-    filePath: "/task/moved.sy",
-    documentPath: "/Research task/Moved notes",
     available: false,
     missingSince: "2026-09-02T10:00:00.000Z",
-};
+});
 
 function index(documents: KnowledgeDocumentItem[] = []): KnowledgeIndex {
     return {
@@ -92,10 +103,17 @@ function index(documents: KnowledgeDocumentItem[] = []): KnowledgeIndex {
     };
 }
 
+function summaryTexts(target: HTMLElement): string[] {
+    return Array.from(
+        target.querySelectorAll(".ticktick-task-center__knowledge-summary-item"),
+        (element) => element.textContent ?? "",
+    );
+}
+
 async function createView(initialIndex: KnowledgeIndex) {
     const target = document.createElement("div");
     document.body.append(target);
-    const nextIndex = index([AVAILABLE, UNAVAILABLE]);
+    const nextIndex = index([UNORGANIZED, UNAVAILABLE]);
     const loadTasks = vi.fn().mockResolvedValue([]);
     const scan = vi.fn().mockResolvedValue({
         index: nextIndex,
@@ -110,20 +128,27 @@ async function createView(initialIndex: KnowledgeIndex) {
         },
     });
     const saveIndex = vi.fn().mockResolvedValue(undefined);
+    const writeOrganizedMark = vi.fn().mockResolvedValue(undefined);
+    const clearOrganizedMark = vi.fn().mockResolvedValue(undefined);
     const controller = new KnowledgeCenterController({
         loadIndex: vi.fn().mockResolvedValue(initialIndex),
         saveIndex,
         loadTasks,
         scan,
+        writeOrganizedMark,
+        clearOrganizedMark,
+        now: () => NOW,
     });
     const onOpenDocument = vi.fn().mockResolvedValue(undefined);
     const onOpenSource = vi.fn().mockResolvedValue(undefined);
+    const onNotify = vi.fn();
     const view = new KnowledgeCenterView(target, {
         controller,
         translate,
         locale: "en-US",
         onOpenDocument,
         onOpenSource,
+        onNotify,
     });
     await controller.start();
     return {
@@ -133,9 +158,22 @@ async function createView(initialIndex: KnowledgeIndex) {
         loadTasks,
         scan,
         saveIndex,
+        writeOrganizedMark,
+        clearOrganizedMark,
+        onNotify,
         onOpenDocument,
         onOpenSource,
     };
+}
+
+function clickFilter(target: HTMLElement, label: string): void {
+    const button = Array.from(
+        target.querySelectorAll<HTMLButtonElement>(".ticktick-task-center__filter"),
+    ).find((candidate) => candidate.textContent === label);
+    if (!button) {
+        throw new Error(`Missing filter ${label}`);
+    }
+    button.click();
 }
 
 describe("KnowledgeCenterView", () => {
@@ -152,7 +190,7 @@ describe("KnowledgeCenterView", () => {
         expect(harness.scan).not.toHaveBeenCalled();
     });
 
-    it("scans only after clicking, saves, reports, and renders available and missing cards", async () => {
+    it("scans only after clicking, saves, reports, and renders the result", async () => {
         const harness = await createView({ version: 1, documents: [] });
         harness.target.querySelector<HTMLButtonElement>(".ticktick-task-center__knowledge-scan")?.click();
 
@@ -160,17 +198,25 @@ describe("KnowledgeCenterView", () => {
 
         expect(harness.loadTasks).toHaveBeenCalledOnce();
         expect(harness.scan).toHaveBeenCalledOnce();
-        expect(harness.target.querySelectorAll(".ticktick-task-center__knowledge-item"))
-            .toHaveLength(2);
         expect(harness.target.querySelector(".ticktick-task-center__knowledge-report")?.textContent)
             .toBe("1 tasks; 2 checked; 1 added; 1 existing; 1 unavailable; 0 failed");
+        expect(summaryTexts(harness.target)).toEqual([
+            "All knowledge 2",
+            "Not organized 1",
+            "Organized 0",
+            "Unavailable 1",
+        ]);
+
+        clickFilter(harness.target, "All");
+        expect(harness.target.querySelectorAll(".ticktick-task-center__knowledge-item"))
+            .toHaveLength(2);
         expect(harness.target.querySelector<HTMLButtonElement>(
             ".ticktick-task-center__knowledge-item--unavailable .ticktick-task-center__knowledge-open",
         )?.disabled).toBe(true);
     });
 
     it("searches locally and opens the knowledge or source document", async () => {
-        const harness = await createView(index([AVAILABLE]));
+        const harness = await createView(index([UNORGANIZED]));
         const search = harness.target.querySelector<HTMLInputElement>(
             ".ticktick-task-center__knowledge-search",
         )!;
@@ -187,36 +233,102 @@ describe("KnowledgeCenterView", () => {
         )?.click();
         await Promise.resolve();
 
-        expect(harness.onOpenDocument).toHaveBeenCalledWith(AVAILABLE.id);
-        expect(harness.onOpenSource).toHaveBeenCalledWith(AVAILABLE.sourceDocumentId);
+        expect(harness.onOpenDocument).toHaveBeenCalledWith(UNORGANIZED.id);
+        expect(harness.onOpenSource).toHaveBeenCalledWith(UNORGANIZED.sourceDocumentId);
     });
 
-    it("runs a review session and saves one of the five feedback levels", async () => {
-        const harness = await createView(index([AVAILABLE]));
+    it("defaults to unorganized and exposes the updated sub-view", async () => {
+        const harness = await createView(index([UNORGANIZED, UPDATED, ORGANIZED]));
+
+        expect(summaryTexts(harness.target)).toEqual([
+            "All knowledge 3",
+            "Not organized 1",
+            "Organized 2",
+            "Updated 1",
+        ]);
+        expect(harness.target.querySelectorAll(".ticktick-task-center__knowledge-item"))
+            .toHaveLength(1);
+
+        clickFilter(harness.target, "Organized");
+        expect(Array.from(
+            harness.target.querySelectorAll(".ticktick-task-center__knowledge-title"),
+            (element) => element.textContent,
+        )).toEqual(["Updated notes", "Organized notes"]);
+
+        clickFilter(harness.target, "Updated after organizing");
+        expect(harness.target.querySelectorAll(".ticktick-task-center__knowledge-item"))
+            .toHaveLength(1);
+        expect(harness.target.querySelector(".ticktick-task-center__knowledge-badge")?.textContent)
+            .toBe("Organized");
+        expect(harness.target.querySelector(".ticktick-task-center__knowledge-organized-updated")
+            ?.textContent).toBe(" · Updated after organizing");
+    });
+
+    it("marks an unorganized document and moves it out of the unorganized view", async () => {
+        const harness = await createView(index([UNORGANIZED]));
+
+        harness.target.querySelector<HTMLButtonElement>(".ticktick-task-center__knowledge-mark")?.click();
+
+        await vi.waitFor(() => expect(harness.onNotify).toHaveBeenCalledWith(
+            "knowledgeCenter.toastMarked",
+        ));
+        expect(harness.writeOrganizedMark).toHaveBeenCalledWith(UNORGANIZED.id, NOW_ISO);
+        expect(harness.controller.getState().items[0]?.organizedAt).toBe(NOW_ISO);
+        expect(harness.target.querySelectorAll(".ticktick-task-center__knowledge-item"))
+            .toHaveLength(0);
+        expect(harness.target.querySelector(".ticktick-task-center__knowledge-empty")?.textContent)
+            .toBe("Everything is organized");
+    });
+
+    it("refreshes an updated document through 完成补整理", async () => {
+        const harness = await createView(index([UPDATED]));
+        clickFilter(harness.target, "Updated after organizing");
+
+        harness.target.querySelector<HTMLButtonElement>(".ticktick-task-center__knowledge-mark")?.click();
+
+        await vi.waitFor(() => expect(harness.onNotify).toHaveBeenCalledWith(
+            "knowledgeCenter.toastRefreshed",
+        ));
+        expect(harness.writeOrganizedMark).toHaveBeenCalledWith(UPDATED.id, NOW_ISO);
+        expect(harness.target.querySelector(".ticktick-task-center__knowledge-empty")?.textContent)
+            .toBe("No updates");
+    });
+
+    it("clears a mark and returns the document to the unorganized view", async () => {
+        const harness = await createView(index([ORGANIZED]));
+        clickFilter(harness.target, "Organized");
 
         harness.target.querySelector<HTMLButtonElement>(
-            ".ticktick-task-center__knowledge-review-start--due",
+            ".ticktick-task-center__knowledge-unmark",
         )?.click();
 
-        expect(harness.target.querySelector(".ticktick-task-center__knowledge-review")
-            ?.classList.contains("fn__none")).toBe(false);
-        expect(harness.target.querySelector(".ticktick-task-center__knowledge-review-identity h3")
-            ?.textContent).toBe(AVAILABLE.title);
-        expect(harness.target.querySelectorAll(".ticktick-task-center__knowledge-review-rating"))
-            .toHaveLength(5);
+        await vi.waitFor(() => expect(harness.onNotify).toHaveBeenCalledWith(
+            "knowledgeCenter.toastUnmarked",
+        ));
+        expect(harness.clearOrganizedMark).toHaveBeenCalledWith(ORGANIZED.id);
+        expect(harness.controller.getState().items[0]?.organizedAt).toBeUndefined();
+        expect(harness.target.querySelector(".ticktick-task-center__knowledge-empty")?.textContent)
+            .toBe("Nothing organized");
+    });
 
-        harness.target.querySelector<HTMLButtonElement>(
-            '[data-rating="remembered-not-understood"]',
-        )?.click();
-        await vi.waitFor(() => expect(harness.saveIndex).toHaveBeenCalledOnce());
+    it("keeps the item and shows a retryable error when the write fails", async () => {
+        const harness = await createView(index([UNORGANIZED]));
+        harness.writeOrganizedMark.mockRejectedValueOnce(new Error("write failed"));
 
-        expect(harness.controller.getState().items[0]?.review).toMatchObject({
-            rating: "remembered-not-understood",
-            needsRelearning: true,
-        });
-        expect(harness.target.querySelector(".ticktick-task-center__knowledge-review-complete")
-            ?.textContent).toBe("Due review complete");
-        expect(harness.target.querySelector(".ticktick-task-center__knowledge-review-state")
-            ?.textContent).toContain("Needs relearning");
+        harness.target.querySelector<HTMLButtonElement>(".ticktick-task-center__knowledge-mark")?.click();
+
+        await vi.waitFor(() => expect(
+            harness.target.querySelector(".ticktick-task-center__knowledge-error")?.textContent,
+        ).toBe("Save failed"));
+        expect(harness.onNotify).not.toHaveBeenCalled();
+        expect(harness.target.querySelectorAll(".ticktick-task-center__knowledge-item"))
+            .toHaveLength(1);
+    });
+
+    it("points at updated documents when the unorganized queue is empty", async () => {
+        const harness = await createView(index([UPDATED]));
+
+        expect(harness.target.querySelector(".ticktick-task-center__knowledge-empty")?.textContent)
+            .toBe("Nothing left. 1 updated.");
     });
 });

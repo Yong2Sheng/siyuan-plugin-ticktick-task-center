@@ -44,8 +44,9 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Inbox data lives in a plugin data file with three rotating backups and a field-by-field read-back after every write. Nothing appears in the document tree.
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
 - Add a Knowledge documents section to the Task Center. A manual scan discovers child documents under task documents and writes and verifies `custom-task-center-knowledge = true` only for newly discovered documents.
-- Load the Knowledge section from a rebuildable cache without scanning, polling, or live listening. The document tree is read only when the user selects Initialize knowledge index or Scan for new knowledge documents.
-- Review knowledge through Today, Random, or Relearning entry points and use five feedback levels to schedule the next review dynamically.
+- Load the Knowledge section from a rebuildable cache without scanning, polling, or live listening. The document tree is read only when the user selects Initialize knowledge index or Scan knowledge documents.
+- Mark knowledge documents as Not organized or Organized with one click and undo; the organizing time lives in the document's block attributes, and legacy review data is not migrated.
+- An organized document edited later still counts as organized but shows Updated after organizing and is counted in the summary; filter to them in one click and select Mark re-organized to refresh the organizing time after catching up.
 - Use Chinese by default on first launch, with a persistent Chinese/English switch to the left of Refresh in the Task Center.
 - Filter Active, Closed, or All tasks and search task titles, source documents, source paths, and localized status names.
 - Display All, Active, Closed, and today's progress statistics. Ordinary lists use a stable descending sort based on the task attribute `updated-at`.
@@ -104,7 +105,14 @@ The work category describes how a task is approached and remains independent of 
 ## Development status and changelog
 
 > [!NOTE]
-> `v0.7.0` was published on 2026-10-19. The project is not yet listed in the SiYuan Marketplace.
+> `v0.8.0` was published on 2026-10-21. The project is not yet listed in the SiYuan Marketplace.
+
+### 0.8.0 (2026-10-21)
+
+- Add Not organized / Organized marks to knowledge documents, showing only Not organized by default; the organizing time lives in block attributes and can be undone at any time.
+- An organized document edited later shows Updated after organizing, can be filtered and sorted first, and Mark re-organized refreshes its organizing time.
+- Remove the knowledge review entry points, five-level feedback, and review progress; legacy review data is ignored, not migrated.
+- Add a live Markdown preview to the Inbox quick-capture body without changing the saved format or data.
 
 ### 0.7.0 (2026-10-19)
 
@@ -152,7 +160,7 @@ The work category describes how a task is approached and remains independent of 
 - Support light and dark themes, Chinese and English interfaces, and a dedicated plugin icon.
 - Declare experimental HarmonyOS native-mobile support after basic verification of the core workflow on a Huawei tablet running HarmonyOS 6.
 
-See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record and the [v0.7.0 GitHub Release](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.7.0) for the installable package.
+See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development record and the [v0.8.0 GitHub Release](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.8.0) for the installable package.
 
 ## Installation
 
@@ -160,7 +168,7 @@ See [CHANGELOG.en.md](CHANGELOG.en.md) for the complete itemized development rec
 
 The plugin is not currently listed in the SiYuan Marketplace, but it can be installed manually from GitHub Releases.
 
-Download `package.zip` from the [v0.7.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.7.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
+Download `package.zip` from the [v0.8.0 release page](https://github.com/Yong2Sheng/siyuan-plugin-ticktick-task-center/releases/tag/v0.8.0). Do not treat GitHub's automatically generated Source code archives as SiYuan plugin packages; developers can still use the development installation below.
 
 ### Development installation
 
@@ -299,17 +307,18 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 2. On first use, select **Initialize knowledge index**. The plugin manually refreshes tasks, then traverses child documents under each task document.
 3. A nested task document becomes a new task root. It is not marked as knowledge under its ancestor task, and its own descendants belong to it.
 4. The scan writes `custom-task-center-knowledge = true` only to documents absent from the cache, then immediately reads the block attribute back for verification.
-5. Later, select **Scan for new knowledge documents** whenever you want to discover recent work. The plugin never polls or scans in the background.
-6. Search by knowledge title, path, or source task, and open either the original knowledge document or its task document.
+5. Later, select **Scan knowledge documents** whenever you want to discover new documents or refresh **Updated after organizing**. The plugin never polls or scans in the background.
+6. The scan also batches organizing marks (`custom-task-center-knowledge-organized-at`) to refresh the organizing state and the updated check. It never reads or rewrites document content.
+7. Search by knowledge title, path, or source task, and open either the original knowledge document or its task document.
 
-### 12. Review knowledge documents
+### 12. Organize knowledge documents
 
-1. Due today includes available documents that have never been reviewed or whose next-review date has arrived. Select **Start today's review** to process them one at a time.
-2. **Random review** draws from available documents not yet shown in the current round, so a document does not repeat within that round.
-3. Recall the core content first, open the knowledge document when needed, then choose No impression, Looks familiar, Remembered but not understood, Partially mastered, or Mastered.
-4. Remembered but not understood means the content is remembered but was never understood. It enters a separate relearning queue used by the **Relearn** entry point.
-5. Initial intervals are 1, 3, 1, 7, and 30 days. Weak feedback resets the interval; repeated partial or full mastery grows it; dropping from Mastered to Partially mastered shortens it.
-6. Each response is saved to the knowledge index before the next document appears. A failed save leaves the current document and previous progress unchanged for a safe retry.
+1. The Knowledge section defaults to **Not organized**, which lists available knowledge documents without a mark. After organizing one, select **Mark as organized**.
+2. Marking writes the organizing time to `custom-task-center-knowledge-organized` and `custom-task-center-knowledge-organized-at` on the knowledge document, then reads it back for verification. Select **Undo organized mark** to clear it.
+3. An organized document that is edited later still counts as organized, but shows **Updated after organizing**. The summary counts these documents separately, the **Updated after organizing** filter lists only them, and the Organized view puts them first.
+4. After folding the new content into the organized documents, select **Mark re-organized** to refresh the organizing time; the hint clears and the document does not return to Not organized.
+5. The updated state is based on document timestamps from the last scan. After editing a knowledge document, select **Scan knowledge documents** to refresh it; the plugin does not scan automatically or poll.
+6. Marking writes only attributes on that document and the rebuildable index cache; it never moves, rewrites, or copies knowledge content.
 
 ## Refresh and synchronization behavior
 
@@ -333,7 +342,7 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 | Open the Quick capture dialog | Reads the plugin data file once first |
 | Switch to the Inbox | Reads the plugin data file once |
 | Switch to Knowledge documents | Show the last cache only; do not scan the document tree |
-| Select Scan for new knowledge documents | Refresh tasks, then manually scan task subdocuments |
+| Select Scan knowledge documents | Refresh tasks, scan task subdocuments, and refresh organizing marks |
 
 The **Refresh** button is not merely an error-recovery button. It is the explicit entry point for synchronizing changes made outside the Task Center.
 
@@ -408,9 +417,11 @@ Knowledge documents use a neutral attribute unrelated to the legacy TickTick nam
 
 ```text
 custom-task-center-knowledge = true
+custom-task-center-knowledge-organized = true
+custom-task-center-knowledge-organized-at = YYYY-MM-DDTHH:mm:ss.sssZ
 ```
 
-The plugin also stores a rebuildable knowledge-index cache for fast list loading and review count, feedback, interval, and next-review time. It contains no document content and never replaces SiYuan documents or block attributes.
+**Updated after organizing** is not stored separately: a scan compares the document's update time with `custom-task-center-knowledge-organized-at`, and a document edited after it was organized counts as updated. The plugin also stores a rebuildable knowledge-index cache for fast list loading; it contains no document content and never replaces SiYuan documents or block attributes.
 
 Older tasks require no migration when these optional attributes are absent. A missing daily-progress date is treated as pending today; a missing focus plan does not enter Today's focus; a missing deadline is displayed as “No deadline” and sorted after dated tasks; a missing work category is displayed as “未分类-Unclassified”. The first new progress action on an older task carries its currently stored latest date into history, but dates already overwritten before v0.4.0 cannot be reconstructed. The plugin compares stored dates with the system-local date instead of rewriting every task block at midnight.
 
@@ -423,7 +434,7 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 ## Known limitations
 
 - Changes from ordinary documents, other tabs, or other clients are not pushed automatically to the Task Center; use manual Refresh.
-- Knowledge documents are not watched, polled, or scanned automatically. After a task subtree changes, manually select **Scan for new knowledge documents**.
+- Knowledge documents are not watched, polled, or scanned automatically. After a task subtree or knowledge document changes, manually select **Scan knowledge documents**; Updated after organizing also refreshes only during a scan.
 - No target-service API, OAuth, or two-way synchronization.
 - No batch operations or batch status changes.
 - No pagination or virtual scrolling; the Task Center is subject to SiYuan's SQL result-count limit.
