@@ -7,6 +7,7 @@ const BLOCK_ID = "20260713120000-abcdefg";
 const translate: Translate = (key) => ({
     "taskActions.deleteConfirmTitle": "Delete task card?",
     "taskActions.deleteConfirmMessage": "Delete “${title}”?<br>TickTick is unchanged.",
+    "taskActions.deleteConfirmWithChildren": "Delete “${title}” and keep ${count} subtasks?",
 })[key] ?? key;
 
 function createController(confirmResult = true) {
@@ -38,6 +39,18 @@ describe("TaskDeleteController", () => {
         expect(harness.deleteBlock).toHaveBeenCalledWith(BLOCK_ID);
         expect(harness.onDeleted).toHaveBeenCalledOnce();
         expect(harness.onError).not.toHaveBeenCalled();
+    });
+
+    it("uses the child-aware confirmation when deleting a parent", async () => {
+        const harness = createController();
+
+        await expect(harness.controller.request(BLOCK_ID, "Parent", 2))
+            .resolves.toBe(true);
+
+        expect(harness.confirm).toHaveBeenCalledWith(
+            "Delete task card?",
+            "Delete “Parent” and keep 2 subtasks?",
+        );
     });
 
     it("leaves the source block untouched after cancellation", async () => {

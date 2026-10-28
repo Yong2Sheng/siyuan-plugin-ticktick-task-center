@@ -1,4 +1,5 @@
 import { TASK_STATUS_CONFIG, type TaskStatusTone } from "../domain/status";
+import type { SubprojectSummary } from "./subprojects";
 import type { PersistedTickTickTaskData } from "../domain/task";
 import type { Translate } from "../i18n";
 import { TASK_WORK_MODE_CONFIG } from "../domain/work-mode";
@@ -37,12 +38,21 @@ export type TaskCardViewModel = {
     statusAriaLabel: string;
     statusTone: TaskStatusTone;
     statusTerminal: boolean;
+    /** 子任务在文档卡片上显示的「上级任务」跳转目标；顶层任务没有。 */
+    parentBlockId?: string;
+    /** 当前任务下面的子项目（子任务）；为空或缺失时卡片不渲染子项目胶囊。 */
+    subprojects?: readonly SubprojectSummary[];
 };
 
 export function createTaskCardViewModel(
     task: PersistedTickTickTaskData,
     translate: Translate,
-    options: { lastProgressedDate?: string; today?: string } = {},
+    options: {
+        lastProgressedDate?: string;
+        today?: string;
+        parentBlockId?: string;
+        subprojects?: readonly SubprojectSummary[];
+    } = {},
 ): TaskCardViewModel {
     const parsedTarget = task.url.trim() === "" ? undefined : parseTaskTarget(task.url);
     if (parsedTarget && !parsedTarget.valid) {
@@ -87,5 +97,9 @@ export function createTaskCardViewModel(
         statusAriaLabel: translate("taskEdit.statusButtonAriaLabel").replace("${status}", statusLabel),
         statusTone: status.tone,
         statusTerminal: status.terminal,
+        ...(options.parentBlockId ? { parentBlockId: options.parentBlockId } : {}),
+        ...(options.subprojects && options.subprojects.length > 0
+            ? { subprojects: options.subprojects }
+            : {}),
     };
 }

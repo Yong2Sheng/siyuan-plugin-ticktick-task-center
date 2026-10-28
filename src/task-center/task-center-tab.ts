@@ -14,6 +14,8 @@ export type TaskCenterTabInstance = {
     start(): void | Promise<void>;
     destroy(): void;
     refreshLanguage(): void;
+    /** 切到项目图并选中某个项目；用于从文档卡片直接进入子项目。 */
+    focusProject?(blockId: string): void;
 };
 
 export type OpenCustomTab = (options: {
@@ -35,6 +37,8 @@ export type TaskCenterTabOptions = {
 export class TaskCenterTabService {
     private readonly instances = new Map<Custom, TaskCenterTabInstance>();
     private currentTab?: Tab;
+    private currentInstance?: TaskCenterTabInstance;
+    private pendingProjectId?: string;
     private opening?: Promise<Tab | undefined>;
     private topBarElement?: HTMLElement;
     private registered = false;
@@ -68,12 +72,18 @@ export class TaskCenterTabService {
                 this.element.dataset.ticktickTaskCenterInstance = instanceId;
                 const instance = service.options.createInstance(this.element, instanceId);
                 service.instances.set(this, instance);
+                service.currentInstance = instance;
                 service.currentTab = this.tab;
+                service.flushPendingProject();
                 void instance.start();
             },
             destroy(this: Custom) {
-                service.instances.get(this)?.destroy();
+                const instance = service.instances.get(this);
+                instance?.destroy();
                 service.instances.delete(this);
+                if (service.currentInstance === instance) {
+                    service.currentInstance = undefined;
+                }
                 if (service.currentTab === this.tab) {
                     service.currentTab = undefined;
                 }
@@ -105,12 +115,15 @@ export class TaskCenterTabService {
         }
     }
 
-    async open(): Promise<void> {
+    async open(options: { projectId?: string } = {}): Promise<void> {
         if (this.stopped) {
             return;
         }
         if (this.currentTab) {
             this.focus(this.currentTab);
+            if (options.projectId) {
+                this.currentInstance?.focusProject?.(options.projectId);
+            }
             return;
         }
         if (this.opening) {
@@ -124,9 +137,14 @@ export class TaskCenterTabService {
             }
             if (this.currentTab === tab) {
                 this.focus(tab);
+                if (options.projectId) {
+                    this.currentInstance?.focusProject?.(options.projectId);
+                }
             }
             return;
         }
+
+        this.pendingProjectId = options.projectId;
 
         let opening: Promise<Tab | undefined>;
         try {
@@ -157,6 +175,7 @@ export class TaskCenterTabService {
                 return;
             }
             this.currentTab = tab;
+            this.flushPendingProject();
         } finally {
             if (this.opening === opening) {
                 this.opening = undefined;
@@ -178,6 +197,15 @@ export class TaskCenterTabService {
         for (const instance of instances) {
             instance.destroy();
         }
+    }
+
+    private flushPendingProject(): void {
+        const projectId = this.pendingProjectId;
+        if (!projectId || !this.currentInstance) {
+            return;
+        }
+        this.pendingProjectId = undefined;
+        this.currentInstance.focusProject?.(projectId);
     }
 
     private focus(tab: Tab): void {

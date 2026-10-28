@@ -145,6 +145,97 @@
         min-width: 0;
     }
 
+    /** 子任务卡片上的「上级任务」小按钮；顶层任务不渲染。 */
+    &__parent {
+        display: inline-flex;
+        align-items: center;
+        flex: 0 0 auto;
+        margin-left: 6px;
+        padding: 2px 8px;
+        border: 1px dashed var(--b3-border-color);
+        border-radius: 999px;
+        background: transparent;
+        color: var(--b3-theme-on-surface);
+        font: inherit;
+        font-size: 11px;
+        line-height: 1.4;
+        white-space: nowrap;
+        vertical-align: middle;
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 2px;
+        }
+    }
+
+    /**
+     * 子项目（子任务）胶囊：和「上级任务」同一套虚线关系样式，
+     * 只在任务真的有子任务时渲染。数字用主色，和正文区分开。
+     */
+    &__subprojects {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex: 0 0 auto;
+        margin-left: 6px;
+        padding: 2px 7px 2px 6px;
+        border: 1px dashed color-mix(
+            in srgb,
+            var(--b3-theme-primary) 34%,
+            var(--b3-border-color)
+        );
+        border-radius: 999px;
+        background: transparent;
+        color: var(--b3-theme-on-surface);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.4;
+        white-space: nowrap;
+        vertical-align: middle;
+        cursor: pointer;
+
+        &:hover {
+            border-color: color-mix(
+                in srgb,
+                var(--b3-theme-primary) 62%,
+                var(--b3-border-color)
+            );
+            color: var(--b3-theme-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 2px;
+        }
+    }
+
+    &__subprojects-count {
+        min-width: 15px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--b3-theme-primary) 15%, transparent);
+        color: var(--b3-theme-primary);
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 14px;
+        text-align: center;
+    }
+
+    &__subprojects-chevron {
+        margin-left: 1px;
+        color: var(--b3-theme-primary);
+        font-size: 12px;
+        line-height: 1;
+        opacity: 0.7;
+    }
+
     /**
      * 截止日期 + 「今日推进」竖向同列。
      * 必须用 grid：截止日期控件带 flex: 0 0 104px，放进纵向 flex 会被解释成高度，
@@ -294,7 +385,9 @@
 }
 
 .ticktick-task-card,
-.ticktick-task-center__item {
+.ticktick-task-center__item,
+.ticktick-task-center__hierarchy-child,
+.ticktick-project-map__node {
     &[data-status-tone="neutral"] {
         --ticktick-status-color: var(--b3-theme-on-surface, #667085);
         --ticktick-status-background: rgba(102, 112, 133, 0.12);
@@ -3127,5 +3220,946 @@
 @media (max-height: 760px) {
     .ticktick-inbox-edit__preview-body {
         max-height: 140px;
+    }
+}
+
+/* ============================================================
+   子任务层级与项目图（视图状态，不改变任务块属性）
+   ============================================================ */
+
+.ticktick-task-center {
+    &__controls-start {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+    }
+
+    &__list-mode {
+        display: inline-flex;
+        gap: 2px;
+        padding: 2px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 7px;
+        background: var(--b3-theme-surface);
+    }
+
+    &__list-mode-button {
+        padding: 3px 10px;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--b3-theme-on-surface);
+        font: inherit;
+        font-size: 12.5px;
+        cursor: pointer;
+
+        &:hover {
+            color: var(--b3-theme-primary);
+        }
+
+        &--active {
+            background: color-mix(in srgb, var(--b3-theme-primary) 13%, var(--b3-theme-background));
+            color: var(--b3-theme-primary);
+            font-weight: 700;
+        }
+    }
+
+    &__hierarchy {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    &__hierarchy-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    &__hierarchy-toggle {
+        box-sizing: border-box;
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        margin-top: 14px;
+        padding: 0;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 6px;
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-surface-light);
+        font: inherit;
+        font-size: 11px;
+        line-height: 1;
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--b3-theme-primary);
+            outline-offset: 1px;
+        }
+    }
+
+    &__hierarchy-children {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+        margin-left: 32px;
+        padding-left: 12px;
+        border-left: 1px solid color-mix(in srgb, var(--b3-theme-primary) 24%, var(--b3-border-color));
+
+        &--nested {
+            margin-left: 14px;
+        }
+    }
+
+    &__hierarchy-child-group {
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    &__hierarchy-child {
+        display: flex;
+        box-sizing: border-box;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        padding: 5px 9px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 7px;
+        background: var(--b3-theme-surface);
+
+        &:hover {
+            border-color: color-mix(in srgb, var(--b3-theme-primary) 40%, var(--b3-border-color));
+        }
+
+        &[data-terminal="true"] .ticktick-task-center__hierarchy-child-title {
+            color: var(--b3-theme-on-surface-light);
+        }
+
+        > .ticktick-task-center__hierarchy-toggle {
+            width: 18px;
+            height: 18px;
+            margin-top: 0;
+            font-size: 10px;
+        }
+    }
+
+    &__hierarchy-child-spacer {
+        flex: 0 0 auto;
+        width: 18px;
+        height: 18px;
+    }
+
+    &__hierarchy-child-flags {
+        display: inline-flex;
+        flex: 0 0 auto;
+        gap: 2px;
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    &__hierarchy-child-status {
+        flex: 0 0 auto;
+        padding: 1px 6px;
+        border: 1px solid var(--ticktick-status-color);
+        border-radius: 999px;
+        background: var(--ticktick-status-background);
+        color: var(--ticktick-status-color);
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.5;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover {
+            filter: brightness(1.04);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--ticktick-status-color);
+            outline-offset: 2px;
+        }
+    }
+
+    &__hierarchy-child-title {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--b3-theme-on-background);
+        font: inherit;
+        font-size: 13px;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+
+        &:hover {
+            color: var(--b3-theme-primary);
+            text-decoration: underline;
+        }
+    }
+
+    &__hierarchy-child-meta {
+        flex: 0 0 auto;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11.5px;
+        white-space: nowrap;
+    }
+
+    &__hierarchy-child-rollup {
+        flex: 0 0 auto;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--b3-theme-primary) 10%, var(--b3-theme-background));
+        color: var(--b3-theme-primary);
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    &__hierarchy-child-locate,
+    &__hierarchy-child-more {
+        box-sizing: border-box;
+        flex: 0 0 auto;
+        min-height: 22px;
+        padding: 2px 7px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 5px;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        font: inherit;
+        font-size: 11.5px;
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--b3-theme-primary);
+            color: var(--b3-theme-primary);
+        }
+    }
+
+    &__hierarchy-child-more {
+        width: 22px;
+        padding: 0;
+        font-size: 13px;
+        line-height: 1;
+    }
+
+    &__parent-link {
+        display: block;
+        max-width: 100%;
+        margin: 0 0 4px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--b3-theme-on-surface-light);
+        font: inherit;
+        font-size: 12px;
+        line-height: 1.5;
+        text-align: left;
+        overflow-wrap: anywhere;
+        cursor: pointer;
+
+        &:hover {
+            color: var(--b3-theme-primary);
+            text-decoration: underline;
+        }
+    }
+
+    &__orphan-warning {
+        margin: 0 0 4px;
+        color: var(--b3-theme-warning, #c2410c);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    &__rollup {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+        margin: 0 0 6px;
+    }
+
+    &__rollup-count,
+    &__rollup-percent {
+        color: var(--b3-theme-on-surface-light);
+        font-size: 12.5px;
+        white-space: nowrap;
+    }
+
+    &__rollup-count {
+        b {
+            color: var(--b3-theme-success, #1a7f37);
+        }
+    }
+
+    &__rollup-bar {
+        position: relative;
+        flex: 0 1 110px;
+        min-width: 56px;
+        height: 6px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--b3-theme-on-surface) 13%, transparent);
+        overflow: hidden;
+
+        > i {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            background: var(--b3-theme-success, #1a7f37);
+        }
+    }
+
+    &__rollup-map {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--b3-theme-primary);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
+    &__add-subtask {
+        border-color: color-mix(in srgb, var(--b3-theme-primary) 42%, var(--b3-border-color));
+        color: var(--b3-theme-primary);
+        white-space: nowrap;
+    }
+}
+
+.ticktick-task-form__context {
+    margin: 0 0 14px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 8%, var(--b3-theme-background));
+    color: var(--b3-theme-on-surface);
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- 项目图 */
+
+.ticktick-project-map__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin-bottom: 10px;
+}
+
+.ticktick-project-map__project {
+    display: flex;
+    flex: 1 1 340px;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.ticktick-project-map__project-label {
+    flex: 0 0 auto;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12.5px;
+}
+
+.ticktick-project-map__select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 460px;
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 6px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+    font: inherit;
+}
+
+.ticktick-project-map__counts {
+    flex: 0 0 auto;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.ticktick-project-map__button {
+    padding: 3px 9px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.ticktick-project-map__zoom-value {
+    min-width: 44px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    text-align: center;
+}
+
+.ticktick-project-map__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12.5px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.ticktick-project-map__canvas {
+    position: relative;
+    box-sizing: border-box;
+    height: 600px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 12px;
+    background-color: color-mix(in srgb, var(--b3-theme-surface) 55%, var(--b3-theme-background));
+    background-image: radial-gradient(
+        circle at 1px 1px,
+        color-mix(in srgb, var(--b3-theme-on-surface) 16%, transparent) 1px,
+        transparent 0
+    );
+    background-size: 22px 22px;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+}
+
+.ticktick-project-map__canvas--panning {
+    cursor: grabbing;
+}
+
+.ticktick-project-map__viewport {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+.ticktick-project-map__edges {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4200px;
+    height: 3200px;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.ticktick-project-map__edge {
+    fill: none;
+    stroke: color-mix(in srgb, var(--b3-theme-on-surface) 26%, transparent);
+    stroke-width: 1.6;
+}
+
+.ticktick-project-map__edge--done {
+    stroke: color-mix(in srgb, var(--b3-theme-success, #1a7f37) 38%, transparent);
+}
+
+.ticktick-project-map__node {
+    position: absolute;
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 10px;
+    background: var(--b3-theme-background);
+    color: var(--b3-theme-on-surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 6px 18px rgb(0 0 0 / 5%);
+    cursor: grab;
+    user-select: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+
+    &:hover {
+        border-color: color-mix(in srgb, var(--b3-theme-primary) 46%, var(--b3-border-color));
+        box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+    }
+
+    &--root {
+        border-color: color-mix(in srgb, var(--b3-theme-primary) 54%, var(--b3-border-color));
+        background: color-mix(in srgb, var(--b3-theme-primary) 6%, var(--b3-theme-background));
+    }
+
+    &--dragging {
+        cursor: grabbing;
+        border-color: var(--b3-theme-primary);
+        box-shadow: 0 12px 30px rgb(0 0 0 / 18%);
+        z-index: 5;
+    }
+}
+
+.ticktick-project-map__node-rootbadge {
+    position: absolute;
+    top: -9px;
+    left: 10px;
+    padding: 0 6px;
+    border: 1px solid color-mix(in srgb, var(--b3-theme-primary) 40%, var(--b3-border-color));
+    border-radius: 999px;
+    background: var(--b3-theme-background);
+    color: var(--b3-theme-primary);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    pointer-events: none;
+}
+
+.ticktick-project-map__node-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ticktick-project-map__node-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    min-width: 0;
+}
+
+.ticktick-project-map__node-toggle {
+    box-sizing: border-box;
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    padding: 0;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    background: var(--b3-theme-background);
+    color: var(--b3-theme-on-surface-light);
+    font: inherit;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+        border-color: var(--b3-theme-primary);
+        color: var(--b3-theme-primary);
+    }
+}
+
+.ticktick-project-map__node-title {
+    display: -webkit-box;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--b3-theme-on-background);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: left;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    appearance: none;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--b3-theme-primary);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 2px;
+        border-radius: 3px;
+    }
+}
+
+.ticktick-project-map__node--root .ticktick-project-map__node-title {
+    font-size: 14px;
+}
+
+.ticktick-project-map__node-folded {
+    flex: 0 0 auto;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--b3-theme-primary) 11%, var(--b3-theme-background));
+    color: var(--b3-theme-primary);
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.ticktick-project-map__node-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.ticktick-project-map__node-status {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 3px;
+    padding: 0 6px;
+    border: 1px solid var(--ticktick-status-color);
+    border-radius: 999px;
+    background: var(--ticktick-status-background);
+    color: var(--ticktick-status-color);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 16px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+        filter: brightness(1.05);
+    }
+}
+
+.ticktick-project-map__node-deadline {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    font: inherit;
+    font-size: 11px;
+    line-height: 16px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--b3-theme-primary);
+        text-decoration: underline;
+    }
+
+    &--overdue {
+        color: var(--b3-theme-error, #cf222e);
+        font-weight: 700;
+    }
+}
+
+.ticktick-project-map__node-flag {
+    flex: 0 0 auto;
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.ticktick-project-map__node-orphan {
+    flex: 0 0 auto;
+    color: var(--b3-theme-warning, #c2410c);
+    font-size: 11px;
+    line-height: 16px;
+}
+
+.ticktick-project-map__node-rollup {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 7px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+}
+
+.ticktick-project-map__bar {
+    flex: 1 1 auto;
+    min-width: 40px;
+    height: 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--b3-theme-on-surface) 13%, transparent);
+    overflow: hidden;
+
+    > i {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--b3-theme-success, #1a7f37);
+    }
+}
+
+.ticktick-project-map__node-add {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 1px dashed color-mix(in srgb, var(--b3-theme-primary) 42%, var(--b3-border-color));
+    border-radius: 5px;
+    background: transparent;
+    color: var(--b3-theme-primary);
+    font: inherit;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+        border-style: solid;
+        background: color-mix(in srgb, var(--b3-theme-primary) 10%, var(--b3-theme-background));
+    }
+}
+
+.ticktick-project-map__hint {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin-top: 8px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.ticktick-project-map__state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    min-height: 280px;
+    padding: 24px;
+    border: 1px dashed var(--b3-border-color);
+    border-radius: 10px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 13px;
+    text-align: center;
+}
+
+.ticktick-project-map__state-title {
+    color: var(--b3-theme-on-surface);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+@media (max-width: 750px) {
+    .ticktick-project-map__canvas {
+        height: 480px;
+    }
+
+    .ticktick-project-map__counts {
+        display: none;
+    }
+}
+
+@media (max-width: 750px) {
+    .ticktick-task-center__hierarchy-child {
+        flex-wrap: wrap;
+    }
+
+    .ticktick-task-center__hierarchy-child-meta,
+    .ticktick-task-center__hierarchy-child-rollup {
+        display: none;
+    }
+}
+
+/* ------------------------------------------------- 子项目浮层（文档卡片） */
+
+.ticktick-subproject-popover {
+    position: fixed;
+    z-index: 305;
+    box-sizing: border-box;
+    width: 320px;
+    max-width: calc(100vw - 16px);
+    overflow: hidden;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 10px;
+    background: var(--b3-theme-background);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+    color: var(--b3-theme-on-background);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.ticktick-subproject-popover__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px 8px 12px;
+    border-bottom: 1px solid var(--b3-border-color);
+}
+
+.ticktick-subproject-popover__title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--b3-theme-on-surface);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ticktick-subproject-popover__map {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 2px 6px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--b3-theme-primary);
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+        background: color-mix(in srgb, var(--b3-theme-primary) 12%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 1px;
+    }
+}
+
+.ticktick-subproject-popover__list {
+    margin: 0;
+    padding: 4px;
+    max-height: 264px;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.ticktick-subproject-popover__row {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) 10px;
+    gap: 9px;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+        background: var(--b3-theme-surface-lighter, var(--b3-theme-surface));
+        outline: none;
+    }
+
+    &:focus-visible {
+        box-shadow: inset 0 0 0 1px var(--b3-theme-primary);
+    }
+}
+
+.ticktick-subproject-popover__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--b3-theme-on-surface-light);
+}
+
+.ticktick-subproject-popover__row[data-tone="primary"] .ticktick-subproject-popover__dot {
+    background: var(--b3-theme-primary);
+}
+
+.ticktick-subproject-popover__row[data-tone="success"] .ticktick-subproject-popover__dot {
+    background: var(--b3-theme-success, #2e9e5b);
+}
+
+.ticktick-subproject-popover__row[data-tone="waiting"] .ticktick-subproject-popover__dot {
+    background: var(--b3-theme-warning, #c47b12);
+}
+
+.ticktick-subproject-popover__row[data-tone="blocked"] .ticktick-subproject-popover__dot,
+.ticktick-subproject-popover__row[data-tone="danger"] .ticktick-subproject-popover__dot {
+    background: var(--b3-theme-error, #cf222e);
+}
+
+.ticktick-subproject-popover__body {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+}
+
+.ticktick-subproject-popover__name {
+    overflow: hidden;
+    color: var(--b3-theme-on-background);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ticktick-subproject-popover__meta {
+    overflow: hidden;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ticktick-subproject-popover__chevron {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 13px;
+    line-height: 1;
+    opacity: 0;
+}
+
+.ticktick-subproject-popover__row:hover .ticktick-subproject-popover__chevron,
+.ticktick-subproject-popover__row:focus-visible .ticktick-subproject-popover__chevron {
+    opacity: 1;
+}
+
+.ticktick-subproject-popover__foot {
+    padding: 7px 10px;
+    border-top: 1px solid var(--b3-border-color);
+}
+
+.ticktick-subproject-popover__more {
+    width: 100%;
+    margin: 0;
+    padding: 4px 6px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--b3-theme-primary);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+        background: color-mix(in srgb, var(--b3-theme-primary) 10%, transparent);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--b3-theme-primary);
+        outline-offset: 1px;
     }
 }

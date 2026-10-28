@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TASK_BLOCK_ATTRIBUTES, TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "../domain/task";
 import { createTaskCardViewModel } from "./card-view-model";
 import { TaskCardEnhancer } from "./enhancer";
+import { closeSubprojectPopover } from "./subproject-popover";
+import type { SubprojectSummary } from "./subprojects";
 import {
     enhanceTaskBlock,
     getTaskCardDecoration,
@@ -36,6 +38,16 @@ const VIEW_MODEL = {
         "taskCenterView.dailyProgressDone": "✨ Pushed today",
         "taskCenterView.dailyProgressTitle": "Mark today as pushed",
         "taskCenterView.dailyProgressUndoTitle": "Undo today's push",
+        "taskCardView.parentTask": "↑ 上级任务",
+        "taskCardView.parentTaskTooltip": "打开上级任务",
+        "taskCardView.subprojects": "子项目",
+        "taskCardView.subprojectsTooltip": "子项目 · ${count} 个，点击查看",
+        "taskCardView.subprojectsPopoverTitle": "子项目 · ${count}",
+        "taskCardView.subprojectsOpenMap": "项目图 ↗",
+        "taskCardView.subprojectsViewAll": "查看全部 ${count} 个 ›",
+        "taskCardView.subprojectsOpenOne": "打开子项目：${title}",
+        "status.inProgress": "进行中",
+        "status.todo": "待开始",
         "priority.high": "Must advance",
         "priority.normal": "Normal",
         "priority.low": "When free",
@@ -87,8 +99,27 @@ function createBlock(id = "20260712120000-abcdefg", task = true): HTMLElement {
     return block;
 }
 
+const SUBPROJECTS: SubprojectSummary[] = [
+    {
+        blockId: "20260712130000-bcdefgh",
+        title: "Get Expectation Density",
+        status: "in-progress",
+        deadline: "2026-11-06",
+        documentTitle: "Get Expectation Density",
+        documentPath: "/Projects/Get Expectation Density",
+    },
+    {
+        blockId: "20260712130001-cdefghi",
+        title: "Get background density estimator",
+        status: "todo",
+        documentTitle: "Get background density estimator",
+        documentPath: "/Projects/Get background density estimator",
+    },
+];
+
 describe("task card renderer", () => {
     beforeEach(() => {
+        closeSubprojectPopover();
         document.body.replaceChildren();
     });
 
@@ -128,6 +159,43 @@ describe("task card renderer", () => {
             "ticktick-task-card__classification",
             "ticktick-task-card__deadline-column",
         ]);
+    });
+
+    it("renders a parent task link for a subtask and calls the handler", () => {
+        const block = createBlock();
+        document.body.append(block);
+        const parentBlockId = "20260712130000-bcdefgh";
+        const onOpenParentTask = vi.fn();
+
+        expect(enhanceTaskBlock(block, block.dataset.nodeId!, {
+            ...VIEW_MODEL,
+            parentBlockId,
+        }, {
+            onEditTask: vi.fn(),
+            onOpenParentTask,
+        })).toBe(true);
+
+        const card = getTaskCardDecoration(block)!;
+        const button = card.querySelector<HTMLButtonElement>(".ticktick-task-card__parent");
+        expect(button).not.toBeNull();
+        expect(button?.type).toBe("button");
+        expect(button?.textContent).toBe("↑ 上级任务");
+        expect(button?.title).toBe("打开上级任务");
+        button!.click();
+        expect(onOpenParentTask).toHaveBeenCalledWith(parentBlockId);
+    });
+
+    it("does not render a parent link for a top-level task", () => {
+        const block = createBlock();
+        document.body.append(block);
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL, {
+            onEditTask: vi.fn(),
+            onOpenParentTask: vi.fn(),
+        });
+
+        expect(getTaskCardDecoration(block)?.querySelector(".ticktick-task-card__parent"))
+            .toBeNull();
     });
 
     it("uses an internal button for SiYuan targets", () => {
@@ -359,6 +427,30 @@ describe("task card renderer", () => {
         expect(card.querySelector(".ticktick-task-card__status")?.textContent).toContain("Completed");
         expect(card.getAttribute("data-status-tone"))
             .toBe("success");
+    });
+
+    it("reads the parent attribute and wires the document parent link", async () => {
+        const block = createBlock();
+        document.body.append(block);
+        const parentBlockId = "20260712130000-bcdefgh";
+        const loadAttributes = vi.fn().mockResolvedValue({
+            ...VALID_ATTRIBUTES,
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.parent]: parentBlockId,
+        });
+        const onOpenParentTask = vi.fn();
+        const enhancer = new TaskCardEnhancer({
+            translate: VIEW_MODEL.translate,
+            loadAttributes,
+            actions: { onEditTask: vi.fn(), onOpenParentTask },
+        });
+
+        await enhancer.enhanceKnownBlock(block);
+
+        const button = getTaskCardDecoration(block)
+            ?.querySelector<HTMLButtonElement>(".ticktick-task-card__parent");
+        expect(button).not.toBeNull();
+        button!.click();
+        expect(onOpenParentTask).toHaveBeenCalledWith(parentBlockId);
     });
 
     it("restores Markdown when forced refresh reads invalid attributes", async () => {
@@ -718,5 +810,215 @@ describe("document card deadline column", () => {
         const card = render({}, { onEditTask: vi.fn() });
         const column = card.querySelector<HTMLElement>(".ticktick-task-card__deadline-column")!;
         expect(column.children).toHaveLength(1);
+    });
+});
+
+
+describe("task card subprojects", () => {
+    beforeEach(() => {
+        closeSubprojectPopover();
+        document.body.replaceChildren();
+    });
+
+    it("renders a subproject chip with the child count", () => {
+        const block = createBlock();
+        document.body.append(block);
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, {
+            ...VIEW_MODEL,
+            subprojects: SUBPROJECTS,
+        }, {
+            onEditTask: vi.fn(),
+            onOpenSubproject: vi.fn(),
+        });
+
+        const chip = getTaskCardDecoration(block)
+            ?.querySelector<HTMLButtonElement>(".ticktick-task-card__subprojects");
+        expect(chip).not.toBeNull();
+        expect(chip?.type).toBe("button");
+        expect(chip?.textContent).toContain("子项目");
+        expect(chip?.textContent).toContain("2");
+        expect(chip?.title).toBe("子项目 · 2 个，点击查看");
+        expect(chip?.getAttribute("aria-haspopup")).toBe("dialog");
+    });
+
+    it("does not render the chip without subprojects", () => {
+        const block = createBlock();
+        document.body.append(block);
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, VIEW_MODEL, {
+            onEditTask: vi.fn(),
+            onOpenSubproject: vi.fn(),
+        });
+
+        expect(getTaskCardDecoration(block)?.querySelector(".ticktick-task-card__subprojects"))
+            .toBeNull();
+    });
+
+    it("opens the only subproject directly without a popover", () => {
+        const block = createBlock();
+        document.body.append(block);
+        const onOpenSubproject = vi.fn();
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, {
+            ...VIEW_MODEL,
+            subprojects: [SUBPROJECTS[0]],
+        }, {
+            onEditTask: vi.fn(),
+            onOpenSubproject,
+        });
+
+        const chip = getTaskCardDecoration(block)!
+            .querySelector<HTMLButtonElement>(".ticktick-task-card__subprojects")!;
+        expect(chip.getAttribute("aria-haspopup")).toBeNull();
+        expect(chip.title).toBe("打开子项目：Get Expectation Density");
+        chip.click();
+
+        expect(onOpenSubproject).toHaveBeenCalledWith(SUBPROJECTS[0]);
+        expect(document.querySelector(".ticktick-subproject-popover")).toBeNull();
+    });
+
+    it("lists subprojects in a popover and opens the chosen row", () => {
+        const block = createBlock();
+        document.body.append(block);
+        const onOpenSubproject = vi.fn();
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, {
+            ...VIEW_MODEL,
+            subprojects: SUBPROJECTS,
+        }, {
+            onEditTask: vi.fn(),
+            onOpenSubproject,
+            onOpenProjectMap: vi.fn(),
+        });
+
+        getTaskCardDecoration(block)!
+            .querySelector<HTMLButtonElement>(".ticktick-task-card__subprojects")!
+            .click();
+
+        const popover = document.querySelector<HTMLElement>(".ticktick-subproject-popover");
+        expect(popover).not.toBeNull();
+        expect(popover?.getAttribute("role")).toBe("dialog");
+        const rows = popover!.querySelectorAll<HTMLButtonElement>(
+            ".ticktick-subproject-popover__row",
+        );
+        expect(rows).toHaveLength(2);
+        expect(rows[0].textContent).toContain("Get Expectation Density");
+
+        rows[1].click();
+
+        expect(onOpenSubproject).toHaveBeenCalledWith(SUBPROJECTS[1]);
+        expect(document.querySelector(".ticktick-subproject-popover")).toBeNull();
+    });
+
+    it("closes the popover when the same chip is clicked again", () => {
+        const block = createBlock();
+        document.body.append(block);
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, {
+            ...VIEW_MODEL,
+            subprojects: SUBPROJECTS,
+        }, {
+            onEditTask: vi.fn(),
+            onOpenSubproject: vi.fn(),
+            onOpenProjectMap: vi.fn(),
+        });
+
+        const chip = getTaskCardDecoration(block)!
+            .querySelector<HTMLButtonElement>(".ticktick-task-card__subprojects")!;
+        chip.click();
+        expect(document.querySelector(".ticktick-subproject-popover")).not.toBeNull();
+
+        chip.click();
+        expect(document.querySelector(".ticktick-subproject-popover")).toBeNull();
+    });
+
+    it("opens the project map from the popover header", () => {
+        const block = createBlock();
+        document.body.append(block);
+        const onOpenProjectMap = vi.fn();
+        const blockId = block.dataset.nodeId!;
+
+        enhanceTaskBlock(block, blockId, {
+            ...VIEW_MODEL,
+            subprojects: SUBPROJECTS,
+        }, {
+            onEditTask: vi.fn(),
+            onOpenSubproject: vi.fn(),
+            onOpenProjectMap,
+        });
+
+        getTaskCardDecoration(block)!
+            .querySelector<HTMLButtonElement>(".ticktick-task-card__subprojects")!
+            .click();
+        document.querySelector<HTMLButtonElement>(".ticktick-subproject-popover__map")!.click();
+
+        expect(onOpenProjectMap).toHaveBeenCalledWith(blockId);
+    });
+
+    it("adds a view-all footer only when there are more rows than the limit", () => {
+        const block = createBlock();
+        document.body.append(block);
+        const many = Array.from({ length: 7 }, (_, index) => ({
+            ...SUBPROJECTS[0],
+            blockId: `2026071213000${index}-bcdefgh`,
+            title: `Subproject ${index + 1}`,
+        }));
+
+        enhanceTaskBlock(block, block.dataset.nodeId!, {
+            ...VIEW_MODEL,
+            subprojects: many,
+        }, {
+            onEditTask: vi.fn(),
+            onOpenSubproject: vi.fn(),
+            onOpenProjectMap: vi.fn(),
+        });
+
+        getTaskCardDecoration(block)!
+            .querySelector<HTMLButtonElement>(".ticktick-task-card__subprojects")!
+            .click();
+
+        const popover = document.querySelector(".ticktick-subproject-popover")!;
+        expect(popover.querySelectorAll(".ticktick-subproject-popover__row")).toHaveLength(5);
+        expect(popover.querySelector(".ticktick-subproject-popover__more")?.textContent)
+            .toBe("查看全部 7 个 ›");
+    });
+
+    it("loads subprojects with the card and ignores a failing query", async () => {
+        const block = createBlock();
+        document.body.append(block);
+        const loadSubprojects = vi.fn().mockResolvedValue(SUBPROJECTS);
+        const enhancer = new TaskCardEnhancer({
+            translate: VIEW_MODEL.translate,
+            loadAttributes: vi.fn().mockResolvedValue(VALID_ATTRIBUTES),
+            loadSubprojects,
+            actions: { onEditTask: vi.fn(), onOpenSubproject: vi.fn() },
+        });
+
+        await enhancer.enhanceKnownBlock(block);
+
+        expect(loadSubprojects).toHaveBeenCalledWith(block.dataset.nodeId);
+        expect(getTaskCardDecoration(block)
+            ?.querySelector(".ticktick-task-card__subprojects-count")?.textContent).toBe("2");
+
+        closeSubprojectPopover();
+        document.body.replaceChildren();
+        const failingBlock = createBlock("20260712120001-abcdefg");
+        document.body.append(failingBlock);
+        const warn = vi.fn();
+        const failingEnhancer = new TaskCardEnhancer({
+            translate: VIEW_MODEL.translate,
+            loadAttributes: vi.fn().mockResolvedValue(VALID_ATTRIBUTES),
+            loadSubprojects: vi.fn().mockRejectedValue(new Error("query failed")),
+            warn,
+            actions: { onEditTask: vi.fn(), onOpenSubproject: vi.fn() },
+        });
+
+        await failingEnhancer.enhanceKnownBlock(failingBlock);
+
+        expect(warn).toHaveBeenCalled();
+        expect(getTaskCardDecoration(failingBlock)).not.toBeNull();
+        expect(getTaskCardDecoration(failingBlock)
+            ?.querySelector(".ticktick-task-card__subprojects")).toBeNull();
     });
 });

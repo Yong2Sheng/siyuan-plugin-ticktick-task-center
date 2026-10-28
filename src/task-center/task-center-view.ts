@@ -1,3 +1,5 @@
+import { Menu } from "siyuan";
+
 import { TASK_STATUS_CONFIG } from "../domain/status";
 import type { Translate } from "../i18n";
 import type { TaskCenterItem } from "./task-center-data";
@@ -46,9 +48,24 @@ import { countTaskCenterActivityByDate, getActivityHeatLevel } from "./activity-
 import type { InboxNote } from "../inbox/inbox-note";
 import type { InboxActionFailure, InboxController } from "../inbox/inbox-controller";
 import { InboxView } from "../inbox/inbox-view";
+import {
+    buildTaskTree,
+    descendantsOf,
+    getTaskProgress,
+    rootTaskOf,
+    type TaskTree,
+    type TaskTreeNode,
+} from "./task-tree";
+import {
+    TASK_CENTER_VIEW_STATE_VERSION,
+    type TaskCenterViewState,
+    type TaskListViewMode,
+    type TaskMapPosition,
+} from "./task-center-view-state";
+import { renderTaskMap, type TaskMapUiState } from "./task-map-view";
 
 type TaskCenterSection = "tasks" | "inbox" | "knowledge";
-type TaskViewMode = "list" | "calendar";
+type TaskViewMode = "list" | "calendar" | "map";
 
 export type TaskCenterViewOptions = {
     controller: TaskCenterController;
@@ -59,7 +76,7 @@ export type TaskCenterViewOptions = {
     onEditTask(blockId: string, focus: "status" | "work-mode" | "deadline" | "priority"): void;
     onLocateTask(blockId: string, rootId: string, notebookId?: string): void;
     onOpenSiYuanTarget?(blockId: string): void;
-    onDeleteTask(blockId: string, title: string): Promise<boolean>;
+    onDeleteTask(blockId: string, title: string, childCount?: number): Promise<boolean>;
     onSaveDailyProgress(blockId: string, date: string | undefined): Promise<DailyProgressSaveResult>;
     onDailyProgressError?(error: unknown): void;
     onSavePriority(blockId: string, priority: TickTickTaskPriority): Promise<void>;
@@ -80,6 +97,16 @@ export type TaskCenterViewOptions = {
     onOpenKnowledgeSource(documentId: string): Promise<void>;
     onKnowledgeNotify?(messageKey: string): void;
     onKnowledgeOpenError?(error: unknown): void;
+    /** 新建子任务：由插件打开现有任务表单，创建失败在表单里提示。 */
+    onAddSubtask?(item: TaskCenterItem): void;
+    /** 把子任务从父任务移出；返回 true 表示已写入成功。 */
+    onDetachTask?(item: TaskCenterItem): Promise<boolean>;
+    /** 列表模式、折叠状态、项目图坐标的持久化；缺省时用默认值，不影响测试。 */
+    viewState?: {
+        load(): Promise<TaskCenterViewState>;
+        save(state: TaskCenterViewState): Promise<void>;
+    };
+    onViewStateError?(error: unknown): void;
 };
 
 type DailyTaskAction = false | "toggle" | "completed";
@@ -107,6 +134,23 @@ export class TaskCenterView {
     private readonly pendingPriorities = new Set<string>();
     private readonly pendingFocusPlans = new Set<string>();
     private readonly calendarMonths = new Map<string, string>();
+    private readonly listModeControl = document.createElement("div");
+    private readonly listModeButtons = new Map<TaskListViewMode, HTMLButtonElement>();
+    private readonly mapState: TaskMapUiState = {
+        selectedProjectId: undefined,
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        needFit: true,
+        hideCompleted: false,
+    };
+    private tree?: TaskTree;
+    /** 从文档卡片进入项目图时，等任务数据到达后再选中这个项目。 */
+    private pendingProjectFocus?: string;
+    private listMode: TaskListViewMode = "today";
+    private collapsed = new Set<string>();
+    private mapPositions = new Map<string, TaskMapPosition>();
+    private viewStateTouched = false;
     private readonly unsubscribe: () => void;
     private readonly unsubscribeInbox: () => void;
     private dayBoundaryTimer?: number;
@@ -156,7 +200,7 @@ export class TaskCenterView {
 
         const viewNavigation = document.createElement("nav");
         viewNavigation.className = "ticktick-task-center__view-navigation";
-        for (const mode of ["list", "calendar"] as const) {
+        for (const mode of ["list", "calendar", "map"] as const) {
             const button = document.createElement("button");
             button.type = "button";
             button.className = "ticktick-task-center__view-button";
@@ -166,6 +210,18 @@ export class TaskCenterView {
         }
 
         this.controls.className = "ticktick-task-center__controls";
+        const controlsStart = document.createElement("div");
+        controlsStart.className = "ticktick-task-center__controls-start";
+        this.listModeControl.className = "ticktick-task-center__list-mode";
+        this.listModeControl.setAttribute("role", "group");
+        for (const mode of ["today", "project"] as const) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "ticktick-task-center__list-mode-button";
+            button.addEventListener("click", () => this.setListMode(mode));
+            this.listModeButtons.set(mode, button);
+            this.listModeControl.append(button);
+        }
         const filters = document.createElement("div");
         filters.className = "ticktick-task-center__filters";
         for (const filter of TASK_CENTER_FILTERS) {
@@ -179,7 +235,8 @@ export class TaskCenterView {
         this.searchInput.type = "search";
         this.searchInput.className = "b3-text-field ticktick-task-center__search";
         this.searchInput.addEventListener("input", () => options.controller.setSearch(this.searchInput.value));
-        this.controls.append(filters, this.searchInput);
+        controlsStart.append(this.listModeControl, filters);
+        this.controls.append(controlsStart, this.searchInput);
 
         this.notice.className = "ticktick-task-center__notice fn__none";
         this.notice.setAttribute("role", "status");
@@ -221,6 +278,7 @@ export class TaskCenterView {
         this.unsubscribeInbox = options.inboxController.subscribe(() => this.renderRefreshButton());
         window.addEventListener("focus", this.handleWindowFocus);
         this.scheduleDayBoundary();
+        void this.loadViewState();
     }
 
     destroy(): void {
@@ -244,10 +302,51 @@ export class TaskCenterView {
         }
     }
 
+    /**
+     * 打开项目图并选中某个项目（文档卡片上的「项目图」入口）。
+     *
+     * 任务数据可能还没加载完，这里只记下目标；render 会在数据到齐后应用，
+     * 项目不存在时静默放弃，不把用户丢在一张空画布上。
+     */
+    focusProject(blockId: string): void {
+        if (this.destroyed) {
+            return;
+        }
+        this.section = "tasks";
+        this.taskViewMode = "map";
+        this.pendingProjectFocus = blockId;
+        this.applyPendingProjectFocus();
+        this.render(this.options.controller.getState());
+    }
+
+    private applyPendingProjectFocus(hasLoadedItems = false): void {
+        const blockId = this.pendingProjectFocus;
+        if (!blockId || !this.tree) {
+            return;
+        }
+        const projects = this.getMapProjects();
+        // 项目图只列顶层项目；中间层任务（既有父级又有子任务）要回退到它的根项目，
+        // 否则用户点「项目图」会落到第一个项目上。
+        const rootId = rootTaskOf(this.tree, blockId)?.blockId;
+        const project = projects.find((candidate) => candidate.blockId === blockId)
+            ?? (rootId ? projects.find((candidate) => candidate.blockId === rootId) : undefined);
+        if (!project) {
+            if (hasLoadedItems) {
+                this.pendingProjectFocus = undefined;
+            }
+            return;
+        }
+        this.mapState.selectedProjectId = project.blockId;
+        this.mapState.needFit = true;
+        this.pendingProjectFocus = undefined;
+    }
+
     private render(state: TaskCenterState): void {
         const { translate } = this.options;
         const statistics = countTaskCenterItems(state.items);
         const today = getLocalDate();
+        this.tree = buildTaskTree(state.items);
+        this.applyPendingProjectFocus(state.items.length > 0);
         const activeProgressedToday = state.items.filter((item) => (
             !TASK_STATUS_CONFIG[item.status].terminal
             && isProgressedToday(item.lastProgressedDate, today)
@@ -304,9 +403,23 @@ export class TaskCenterView {
             button.classList.toggle("ticktick-task-center__filter--active", filter === state.filter);
             button.setAttribute("aria-pressed", String(filter === state.filter));
         }
+        const listModeLabels: Record<TaskListViewMode, string> = {
+            today: translate("taskCenterView.listModeToday"),
+            project: translate("taskCenterView.listModeProject"),
+        };
+        for (const [mode, button] of this.listModeButtons) {
+            button.textContent = listModeLabels[mode];
+            button.classList.toggle(
+                "ticktick-task-center__list-mode-button--active",
+                mode === this.listMode,
+            );
+            button.setAttribute("aria-pressed", String(mode === this.listMode));
+        }
+        this.listModeControl.classList.toggle("fn__none", this.taskViewMode !== "list");
         const viewLabels: Record<TaskViewMode, string> = {
             list: translate("taskCenterView.viewList"),
             calendar: translate("taskCenterView.viewCalendar"),
+            map: translate("taskCenterView.viewMap"),
         };
         for (const [mode, button] of this.viewButtons) {
             button.textContent = viewLabels[mode];
@@ -316,7 +429,7 @@ export class TaskCenterView {
             );
             button.setAttribute("aria-pressed", String(mode === this.taskViewMode));
         }
-        this.controls.classList.toggle("fn__none", this.taskViewMode === "calendar");
+        this.controls.classList.toggle("fn__none", this.taskViewMode !== "list");
 
         const notices: HTMLElement[] = [];
         if (state.incompleteCount > 0) {
@@ -329,6 +442,18 @@ export class TaskCenterView {
             notices.push(createNotice(
                 translate("taskCenterView.invalidSkipped")
                     .replace("${count}", String(state.invalidCount)),
+            ));
+        }
+        if (this.tree.orphans.size > 0) {
+            notices.push(createNotice(
+                translate("taskCenterView.orphanNotice")
+                    .replace("${count}", String(this.tree.orphans.size)),
+            ));
+        }
+        if (this.tree.cycles.size > 0) {
+            notices.push(createNotice(
+                translate("taskCenterView.cycleNotice")
+                    .replace("${count}", String(this.tree.cycles.size)),
             ));
         }
         if (notices.length > 0) {
@@ -365,7 +490,16 @@ export class TaskCenterView {
             this.list.replaceChildren(this.createActivityCalendar(state.items, today));
             return;
         }
+        if (this.taskViewMode === "map") {
+            this.list.removeAttribute("role");
+            this.renderProjectMap(today);
+            return;
+        }
         this.list.setAttribute("role", "list");
+        if (this.listMode === "project") {
+            this.renderProjectHierarchy(state, today);
+            return;
+        }
 
         const visibleItems = filterTaskCenterItems(
             state.items,
@@ -422,6 +556,416 @@ export class TaskCenterView {
             const key = getEmptyStateKey(state);
             this.feedback.append(createFeedback(translate(key), "empty"));
         }
+    }
+
+    private renderProjectMap(today: string): void {
+        const tree = this.tree ?? buildTaskTree(this.options.controller.getState().items);
+        renderTaskMap(this.list, {
+            translate: this.options.translate,
+            locale: () => this.getLocale() ?? "zh-CN",
+            today,
+            tree,
+            projects: tree.roots
+                .filter((node) => node.children.length > 0)
+                .map((node) => node.item),
+            collapsed: this.collapsed,
+            positions: this.mapPositions,
+            state: this.mapState,
+            onSelectProject: (projectId) => {
+                this.mapState.selectedProjectId = projectId;
+                this.mapState.needFit = true;
+                this.render(this.options.controller.getState());
+            },
+            onToggleCollapse: (blockId) => this.toggleTaskCollapse(blockId),
+            onPositionsChange: (positions) => {
+                this.mapPositions = positions;
+                this.persistViewState();
+                this.render(this.options.controller.getState());
+            },
+            onHideCompletedChange: (value) => {
+                this.mapState.hideCompleted = value;
+                this.render(this.options.controller.getState());
+            },
+            onEditTask: (blockId, focus) => this.options.onEditTask(blockId, focus),
+            onLocateTask: (item) => this.locateTask(item),
+            onAddSubtask: (item) => this.requestAddSubtask(item),
+            onOpenTaskMenu: (event, item) => this.openTaskMenu(event, item),
+            onShowTaskList: () => {
+                this.taskViewMode = "list";
+                this.render(this.options.controller.getState());
+            },
+        });
+    }
+
+    private renderProjectHierarchy(state: TaskCenterState, today: string): void {
+        const tree = this.tree ?? buildTaskTree(state.items);
+        const visibleItems = filterTaskCenterItems(
+            state.items,
+            state.filter,
+            state.search,
+            this.options.translate,
+        );
+        const visibleIds = new Set(visibleItems.map((item) => item.blockId));
+        const isSearching = state.search.trim() !== "";
+        const visibleRoots = tree.roots.filter((node) => (
+            visibleIds.has(node.item.blockId) || this.hasVisibleDescendant(node, visibleIds)
+        ));
+
+        if (visibleRoots.length === 0) {
+            this.list.replaceChildren();
+            this.feedback.append(createFeedback(
+                this.options.translate(getEmptyStateKey(state)),
+                "empty",
+            ));
+            return;
+        }
+
+        const elements = visibleRoots.map((root) => {
+            const children = root.children.filter((child) => this.childVisibleInHierarchy(child, visibleIds, isSearching));
+            const terminal = TASK_STATUS_CONFIG[root.item.status].terminal;
+            const card = this.createTaskItem(
+                root.item,
+                terminal ? false : "toggle",
+                today,
+            );
+            if (children.length === 0) {
+                return card;
+            }
+            const section = document.createElement("section");
+            section.className = "ticktick-task-center__hierarchy";
+            const head = document.createElement("div");
+            head.className = "ticktick-task-center__hierarchy-head";
+            const collapsed = !isSearching && this.collapsed.has(root.item.blockId);
+            head.append(this.createHierarchyToggle(root.item.blockId, collapsed), card);
+            section.append(head);
+            if (!collapsed) {
+                const childContainer = this.createHierarchyChildren(
+                    root,
+                    1,
+                    visibleIds,
+                    isSearching,
+                    today,
+                );
+                if (childContainer) {
+                    section.append(childContainer);
+                }
+            }
+            return section;
+        });
+        this.list.replaceChildren(...elements);
+    }
+
+    private hasVisibleDescendant(
+        node: TaskTreeNode,
+        visibleIds: ReadonlySet<string>,
+    ): boolean {
+        return node.children.some((child) => (
+            visibleIds.has(child.item.blockId) || this.hasVisibleDescendant(child, visibleIds)
+        ));
+    }
+
+    private childVisibleInHierarchy(
+        node: TaskTreeNode,
+        visibleIds: ReadonlySet<string>,
+        isSearching: boolean,
+    ): boolean {
+        if (!isSearching) {
+            return true;
+        }
+        return visibleIds.has(node.item.blockId) || this.hasVisibleDescendant(node, visibleIds);
+    }
+
+    private createHierarchyToggle(blockId: string, collapsed: boolean): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ticktick-task-center__hierarchy-toggle";
+        button.setAttribute("aria-expanded", String(!collapsed));
+        button.title = this.options.translate(
+            collapsed ? "taskCenterView.expandSubtasks" : "taskCenterView.collapseSubtasks",
+        );
+        button.textContent = collapsed ? "▸" : "▾";
+        button.addEventListener("click", () => this.toggleTaskCollapse(blockId));
+        return button;
+    }
+
+    private createHierarchyChildren(
+        parent: TaskTreeNode,
+        depth: number,
+        visibleIds: ReadonlySet<string>,
+        isSearching: boolean,
+        today: string,
+    ): HTMLElement | undefined {
+        const children = parent.children.filter((node) => (
+            this.childVisibleInHierarchy(node, visibleIds, isSearching)
+        ));
+        if (children.length === 0) {
+            return undefined;
+        }
+        const container = document.createElement("div");
+        container.className = "ticktick-task-center__hierarchy-children"
+            + (depth > 1 ? " ticktick-task-center__hierarchy-children--nested" : "");
+        for (const child of children) {
+            const group = document.createElement("div");
+            group.className = "ticktick-task-center__hierarchy-child-group";
+            const collapsed = !isSearching && this.collapsed.has(child.item.blockId);
+            group.append(this.createHierarchyChild(child.item, collapsed, today));
+            if (!collapsed && child.children.length > 0) {
+                const nested = this.createHierarchyChildren(
+                    child,
+                    depth + 1,
+                    visibleIds,
+                    isSearching,
+                    today,
+                );
+                if (nested) {
+                    group.append(nested);
+                }
+            }
+            container.append(group);
+        }
+        return container;
+    }
+
+    private createHierarchyChild(
+        item: TaskCenterItem,
+        collapsed: boolean,
+        today: string,
+    ): HTMLElement {
+        const { translate } = this.options;
+        const status = TASK_STATUS_CONFIG[item.status];
+        const row = document.createElement("div");
+        row.className = "ticktick-task-center__hierarchy-child";
+        row.dataset.statusTone = status.tone;
+        row.dataset.terminal = String(status.terminal);
+
+        if ((this.tree?.byId.get(item.blockId)?.children.length ?? 0) > 0) {
+            row.append(this.createHierarchyToggle(item.blockId, collapsed));
+        } else {
+            const spacer = document.createElement("span");
+            spacer.className = "ticktick-task-center__hierarchy-child-spacer";
+            row.append(spacer);
+        }
+
+        const flags = document.createElement("span");
+        flags.className = "ticktick-task-center__hierarchy-child-flags";
+        if (item.priority === "high" || item.priority === "low") {
+            const flag = document.createElement("span");
+            flag.className = "ticktick-task-center__hierarchy-child-flag";
+            flag.textContent = TASK_PRIORITY_CONFIG[item.priority].icon;
+            flag.title = translate(TASK_PRIORITY_CONFIG[item.priority].labelKey);
+            flags.append(flag);
+        }
+        if (isQuickFocusDateSelected(item.focusPlan, today, today)) {
+            const flag = document.createElement("span");
+            flag.className = "ticktick-task-center__hierarchy-child-flag";
+            flag.textContent = "⭐";
+            flag.title = translate("taskCenterView.focusStateToday");
+            flags.append(flag);
+        }
+        if (isProgressedToday(item.lastProgressedDate, today)) {
+            const flag = document.createElement("span");
+            flag.className = "ticktick-task-center__hierarchy-child-flag";
+            flag.textContent = "✨";
+            flag.title = translate("taskCenterView.dailyProgressDone");
+            flags.append(flag);
+        }
+
+        const statusButton = document.createElement("button");
+        statusButton.type = "button";
+        statusButton.className = "ticktick-task-center__hierarchy-child-status";
+        statusButton.textContent = `${status.icon} ${translate(status.labelKey)}`;
+        statusButton.addEventListener("click", () => this.options.onEditTask(item.blockId, "status"));
+
+        const title = document.createElement("button");
+        title.type = "button";
+        title.className = "ticktick-task-center__hierarchy-child-title";
+        title.textContent = item.title;
+        title.title = translate("taskCenterView.locate");
+        title.addEventListener("click", () => this.locateTask(item));
+
+        const meta = document.createElement("span");
+        meta.className = "ticktick-task-center__hierarchy-child-meta";
+        meta.textContent = `${this.getWorkModeLabel(item)} · ${this.getDeadlineSummary(item, today)}`;
+
+        row.append(statusButton, flags, title, meta);
+
+        const progress = this.tree ? getTaskProgress(this.tree, item.blockId) : undefined;
+        if (progress && progress.total > 0) {
+            const rollup = document.createElement("span");
+            rollup.className = "ticktick-task-center__hierarchy-child-rollup";
+            rollup.textContent = `${progress.done}/${progress.total}`;
+            row.append(rollup);
+        }
+
+        const locate = document.createElement("button");
+        locate.type = "button";
+        locate.className = "ticktick-task-center__hierarchy-child-locate";
+        locate.textContent = translate("taskCenterView.locate");
+        locate.addEventListener("click", () => this.locateTask(item));
+
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "ticktick-task-center__hierarchy-child-more";
+        more.textContent = "⋯";
+        more.title = translate("taskCenterView.moreActions");
+        more.setAttribute("aria-label", translate("taskCenterView.moreActions"));
+        more.addEventListener("click", (event) => this.openTaskMenu(event, item));
+
+        row.append(locate, more);
+        return row;
+    }
+
+    private createAddSubtaskButton(item: TaskCenterItem): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "b3-button b3-button--outline ticktick-task-center__add-subtask";
+        button.textContent = this.options.translate("taskCenterView.addSubtaskShort");
+        button.addEventListener("click", () => this.requestAddSubtask(item));
+        return button;
+    }
+
+    private requestAddSubtask(item: TaskCenterItem): void {
+        if (this.collapsed.delete(item.blockId)) {
+            this.persistViewState();
+            this.render(this.options.controller.getState());
+        }
+        this.options.onAddSubtask?.(item);
+    }
+
+    private locateTask(item: TaskCenterItem): void {
+        this.options.onLocateTask(item.blockId, item.rootId, item.notebookId);
+    }
+
+    private getWorkModeLabel(item: TaskCenterItem): string {
+        return item.workMode
+            ? `${TASK_WORK_MODE_CONFIG[item.workMode].icon} ${this.options.translate(TASK_WORK_MODE_CONFIG[item.workMode].labelKey)}`
+            : this.options.translate("workMode.unclassified");
+    }
+
+    private getDeadlineSummary(item: TaskCenterItem, today: string): string {
+        const { translate } = this.options;
+        const state = getDeadlineState(item.deadline, today, {
+            closed: TASK_STATUS_CONFIG[item.status].terminal,
+        });
+        if (state.kind === "unset") {
+            return translate("deadline.none");
+        }
+        if (state.kind === "closed") {
+            return translate("deadline.closed");
+        }
+        if (state.kind === "today") {
+            return translate("deadline.dueToday");
+        }
+        if (state.kind === "overdue") {
+            const count = Math.abs(state.daysRemaining ?? 0);
+            return translate(count === 1 ? "deadline.overdueDay" : "deadline.overdueDays")
+                .replace("${count}", String(count));
+        }
+        const count = state.daysRemaining ?? 0;
+        return translate(count === 1 ? "deadline.remainingDay" : "deadline.remainingDays")
+            .replace("${count}", String(count));
+    }
+
+    private openTaskMenu(event: MouseEvent, item: TaskCenterItem): void {
+        event.preventDefault();
+        event.stopPropagation();
+        const { translate } = this.options;
+        const today = getLocalDate();
+        const tomorrow = addLocalCalendarDays(today, 1) ?? today;
+        const menu = new Menu("ticktick-task-hierarchy-menu");
+        menu.addItem({ label: item.title, type: "readonly" });
+        menu.addSeparator();
+        menu.addItem({
+            label: translate("taskActions.edit"),
+            click: () => this.options.onEditTask(item.blockId, "status"),
+        });
+        if (!TASK_STATUS_CONFIG[item.status].terminal) {
+            menu.addItem({
+                label: translate("taskCenterView.focusToday"),
+                current: isQuickFocusDateSelected(item.focusPlan, today, today),
+                click: () => void this.toggleFocusPlan(item, today, today, "quick"),
+            });
+            menu.addItem({
+                label: translate("taskCenterView.focusTomorrow"),
+                current: isQuickFocusDateSelected(item.focusPlan, tomorrow, today),
+                click: () => void this.toggleFocusPlan(item, tomorrow, today, "quick"),
+            });
+            menu.addItem({
+                label: isProgressedToday(item.lastProgressedDate, today)
+                    ? translate("taskCenterView.dailyProgressDone")
+                    : translate("taskCenterView.dailyProgressAction"),
+                current: isProgressedToday(item.lastProgressedDate, today),
+                click: () => void this.toggleDailyProgress(item, today),
+            });
+        }
+        if (item.url.trim() !== "") {
+            const target = parseTaskTarget(item.url);
+            if (target.valid) {
+                menu.addItem({
+                    label: translate(TASK_TARGET_OPEN_LABEL_KEYS[target.target.kind]),
+                    click: () => {
+                        if (target.target.kind === "siyuan-block") {
+                            this.options.onOpenSiYuanTarget?.(target.target.blockId);
+                        } else {
+                            const anchor = document.createElement("a");
+                            anchor.href = target.target.url;
+                            anchor.target = "_blank";
+                            anchor.rel = "noopener noreferrer";
+                            anchor.click();
+                        }
+                    },
+                });
+            }
+        }
+        menu.addItem({
+            label: translate("taskCenterView.locate"),
+            click: () => this.locateTask(item),
+        });
+        menu.addSeparator();
+        if (this.options.onAddSubtask) {
+            menu.addItem({
+                label: translate("taskCenterView.addSubtask"),
+                click: () => this.requestAddSubtask(item),
+            });
+        }
+        if (this.tree && (this.tree.byId.get(item.blockId)?.children.length ?? 0) > 0) {
+            const root = this.tree ? rootTaskOf(this.tree, item.blockId) : undefined;
+            menu.addItem({
+                label: translate("taskCenterView.openMap"),
+                click: () => {
+                    if (root) {
+                        this.openProjectMap(root.blockId);
+                    }
+                },
+            });
+        }
+        if (item.parentBlockId && this.options.onDetachTask) {
+            menu.addItem({
+                label: translate("taskCenterView.detachTask"),
+                click: () => {
+                    void this.detachTask(item);
+                },
+            });
+        }
+        menu.addSeparator();
+        menu.addItem({
+            label: translate("taskActions.delete"),
+            warning: true,
+            click: () => void this.deleteTask(item),
+        });
+
+        const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget : undefined;
+        const rect = anchor?.getBoundingClientRect();
+        menu.open({
+            x: event.clientX || rect?.left || 8,
+            y: event.clientY || rect?.bottom || 8,
+        });
+    }
+
+    private async detachTask(item: TaskCenterItem): Promise<void> {
+        // 写回与刷新由插件侧完成（它还要做确认和错误提示）；
+        // 这里只负责把动作转交出去。
+        await this.options.onDetachTask?.(item);
     }
 
     private createFocusGroup(
@@ -505,7 +1049,85 @@ export class TaskCenterView {
         if (mode === "calendar") {
             this.activityMonthKey = getLocalDate().slice(0, 7);
         }
+        if (mode === "map") {
+            const projects = this.getMapProjects();
+            if (!projects.some((item) => item.blockId === this.mapState.selectedProjectId)) {
+                this.mapState.selectedProjectId = projects[0]?.blockId;
+            }
+            this.mapState.needFit = true;
+        }
         this.render(this.options.controller.getState());
+    }
+
+    private setListMode(mode: TaskListViewMode): void {
+        if (this.listMode === mode) {
+            return;
+        }
+        this.listMode = mode;
+        this.persistViewState();
+        this.render(this.options.controller.getState());
+    }
+
+    private toggleTaskCollapse(blockId: string): void {
+        if (this.collapsed.has(blockId)) {
+            this.collapsed.delete(blockId);
+        } else {
+            this.collapsed.add(blockId);
+        }
+        this.persistViewState();
+        this.render(this.options.controller.getState());
+    }
+
+    private openProjectMap(projectId: string): void {
+        this.taskViewMode = "map";
+        this.mapState.selectedProjectId = projectId;
+        this.mapState.needFit = true;
+        this.render(this.options.controller.getState());
+    }
+
+    private getMapProjects(): TaskCenterItem[] {
+        const tree = this.tree ?? buildTaskTree(this.options.controller.getState().items);
+        return tree.roots
+            .filter((node) => node.children.length > 0)
+            .map((node) => node.item);
+    }
+
+    private async loadViewState(): Promise<void> {
+        const store = this.options.viewState;
+        if (!store) {
+            return;
+        }
+        try {
+            const state = await store.load();
+            if (this.destroyed) {
+                return;
+            }
+            if (!this.viewStateTouched) {
+                this.listMode = state.listMode;
+                this.collapsed = new Set(state.collapsed);
+                this.mapPositions = new Map(Object.entries(state.positions));
+            }
+            this.render(this.options.controller.getState());
+        } catch (error) {
+            this.options.onViewStateError?.(error);
+        }
+    }
+
+    private persistViewState(): void {
+        this.viewStateTouched = true;
+        const store = this.options.viewState;
+        if (!store) {
+            return;
+        }
+        const state: TaskCenterViewState = {
+            version: TASK_CENTER_VIEW_STATE_VERSION,
+            listMode: this.listMode,
+            collapsed: [...this.collapsed],
+            positions: Object.fromEntries(this.mapPositions),
+        };
+        void store.save(state).catch((error: unknown) => {
+            this.options.onViewStateError?.(error);
+        });
     }
 
     private createActivityCalendar(
@@ -772,6 +1394,32 @@ export class TaskCenterView {
         updated.className = "ticktick-task-center__updated";
         updated.append(`${translate("taskCenterView.updated")}: `, createTime(item.updatedAt, this.getLocale()));
         content.append(title);
+
+        const effectiveParentId = this.tree?.parentOf.get(item.blockId);
+        const parent = effectiveParentId
+            ? this.tree?.byId.get(effectiveParentId)?.item
+            : undefined;
+        if (parent) {
+            const root = this.tree ? rootTaskOf(this.tree, item.blockId) : undefined;
+            const parentLink = document.createElement("button");
+            parentLink.type = "button";
+            parentLink.className = "ticktick-task-center__parent-link";
+            parentLink.textContent = `↳ ${translate("taskCenterView.parentOf").replace("${parent}", parent.title)}`;
+            parentLink.title = translate("taskCenterView.openMap");
+            parentLink.addEventListener("click", () => {
+                if (root) {
+                    this.openProjectMap(root.blockId);
+                }
+            });
+            content.append(parentLink);
+        }
+        if (this.tree?.orphans.has(item.blockId)) {
+            const orphan = document.createElement("div");
+            orphan.className = "ticktick-task-center__orphan-warning";
+            orphan.textContent = `⚠️ ${translate("taskCenterView.orphanTask")}`;
+            content.append(orphan);
+        }
+
         const focusDisposition = status.terminal
             ? undefined
             : getFocusDisposition(item.focusPlan, today, item.deadline);
@@ -781,6 +1429,10 @@ export class TaskCenterView {
             focusState.textContent = this.getFocusStateLabel(focusDisposition.kind, focusDisposition.entry.date);
             content.append(focusState);
             article.dataset.focusKind = focusDisposition.kind;
+        }
+        const rollup = this.createCardRollup(item);
+        if (rollup) {
+            content.append(rollup);
         }
         content.append(source, path, updated);
 
@@ -797,6 +1449,9 @@ export class TaskCenterView {
         if (focusPosition) {
             // 今日重点独有：手动排序箭头，放在计划按钮左侧。
             planActions.append(...this.createFocusOrderButtons(item, today, focusPosition));
+        }
+        if (this.options.onAddSubtask) {
+            planActions.append(this.createAddSubtaskButton(item));
         }
         if (!status.terminal) {
             planActions.append(this.createCalendarToggleButton(item, today));
@@ -1141,8 +1796,49 @@ export class TaskCenterView {
         return button;
     }
 
+    private createCardRollup(item: TaskCenterItem): HTMLElement | undefined {
+        if (!this.tree) {
+            return undefined;
+        }
+        const progress = getTaskProgress(this.tree, item.blockId);
+        if (progress.total === 0) {
+            return undefined;
+        }
+        const { translate } = this.options;
+        const rollup = document.createElement("div");
+        rollup.className = "ticktick-task-center__rollup";
+        const count = document.createElement("span");
+        count.className = "ticktick-task-center__rollup-count";
+        count.textContent = translate("taskCenterView.subtaskCount")
+            .replace("${done}", String(progress.done))
+            .replace("${total}", String(progress.total));
+        const bar = document.createElement("span");
+        bar.className = "ticktick-task-center__rollup-bar";
+        const fill = document.createElement("i");
+        fill.style.width = `${progress.percent}%`;
+        bar.append(fill);
+        const percent = document.createElement("span");
+        percent.className = "ticktick-task-center__rollup-percent";
+        percent.textContent = `${progress.percent}%`;
+        const map = document.createElement("button");
+        map.type = "button";
+        map.className = "ticktick-task-center__rollup-map";
+        map.textContent = translate("taskCenterView.openMap");
+        map.addEventListener("click", () => {
+            const root = this.tree ? rootTaskOf(this.tree, item.blockId) : undefined;
+            if (root) {
+                this.openProjectMap(root.blockId);
+            }
+        });
+        rollup.append(count, bar, percent, map);
+        return rollup;
+    }
+
     private async deleteTask(item: TaskCenterItem): Promise<void> {
-        const deleted = await this.options.onDeleteTask(item.blockId, item.title);
+        const childCount = this.tree ? descendantsOf(this.tree, item.blockId).length : 0;
+        const deleted = childCount > 0
+            ? await this.options.onDeleteTask(item.blockId, item.title, childCount)
+            : await this.options.onDeleteTask(item.blockId, item.title);
         if (deleted) {
             this.options.controller.applyDeletedTask(item.blockId);
         }

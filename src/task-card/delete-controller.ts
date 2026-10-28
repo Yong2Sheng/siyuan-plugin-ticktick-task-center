@@ -14,13 +14,13 @@ export class TaskDeleteController {
 
     constructor(private readonly options: TaskDeleteControllerOptions) {}
 
-    request(blockId: string, taskTitle: string): Promise<boolean> {
+    request(blockId: string, taskTitle: string, childCount = 0): Promise<boolean> {
         const existing = this.pending.get(blockId);
         if (existing) {
             return existing;
         }
 
-        const operation = this.run(blockId, taskTitle);
+        const operation = this.run(blockId, taskTitle, childCount);
         this.pending.set(blockId, operation);
         const cleanup = () => {
             if (this.pending.get(blockId) === operation) {
@@ -31,11 +31,14 @@ export class TaskDeleteController {
         return operation;
     }
 
-    private async run(blockId: string, taskTitle: string): Promise<boolean> {
+    private async run(blockId: string, taskTitle: string, childCount: number): Promise<boolean> {
         const confirmed = await this.options.confirm(
             this.options.translate("taskActions.deleteConfirmTitle"),
-            this.options.translate("taskActions.deleteConfirmMessage")
-                .replace("${title}", escapeHtml(taskTitle)),
+            this.options.translate(childCount > 0
+                ? "taskActions.deleteConfirmWithChildren"
+                : "taskActions.deleteConfirmMessage")
+                .replace("${title}", escapeHtml(taskTitle))
+                .replace("${count}", String(childCount)),
         );
         if (!confirmed) {
             return false;

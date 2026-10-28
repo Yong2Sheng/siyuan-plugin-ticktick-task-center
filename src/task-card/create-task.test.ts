@@ -18,6 +18,7 @@ const REQUEST = {
 function createApi(): TaskCreationApi {
     return {
         prependMarkdownBlock: vi.fn().mockResolvedValue("20260712120100-hijklmn"),
+        insertMarkdownBlockAfter: vi.fn().mockResolvedValue("20260712120100-hijklmn"),
         setBlockAttributes: vi.fn().mockResolvedValue(undefined),
         deleteBlock: vi.fn().mockResolvedValue(undefined),
     };
@@ -55,6 +56,40 @@ describe("createTaskBlock", () => {
         expect(attributes[TASK_BLOCK_ATTRIBUTES.updatedAt])
             .toBe(attributes[TASK_BLOCK_ATTRIBUTES.createdAt]);
         expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.workMode]).toBe("explore");
+    });
+
+    it("inserts a subtask after its parent and stores the parent attribute", async () => {
+        const api = createApi();
+        const parentBlockId = "20260712120000-abcdefg";
+        await createTaskBlock(api, { ...REQUEST, parentBlockId });
+
+        expect(api.insertMarkdownBlockAfter).toHaveBeenCalledWith(
+            parentBlockId,
+            "TickTick task：[Task](https://ticktick.com/t/1)",
+        );
+        expect(api.prependMarkdownBlock).not.toHaveBeenCalled();
+        const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
+        expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.parent]).toBe(parentBlockId);
+    });
+
+    it("can place a subtask at the top of its own child document", async () => {
+        const api = createApi();
+        const parentBlockId = "20260712120000-abcdefg";
+        const childDocumentId = "20260712121000-zyxwvut";
+        await createTaskBlock(api, {
+            ...REQUEST,
+            rootDocumentId: childDocumentId,
+            parentBlockId,
+            placement: "document-top",
+        });
+
+        expect(api.prependMarkdownBlock).toHaveBeenCalledWith(
+            childDocumentId,
+            "TickTick task：[Task](https://ticktick.com/t/1)",
+        );
+        expect(api.insertMarkdownBlockAfter).not.toHaveBeenCalled();
+        const attributes = vi.mocked(api.setBlockAttributes).mock.calls[0][1];
+        expect(attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.parent]).toBe(parentBlockId);
     });
 
     it("creates attributes that remain a valid task through the task-center SQL row shape", async () => {

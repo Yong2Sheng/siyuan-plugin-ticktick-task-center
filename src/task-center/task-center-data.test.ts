@@ -117,6 +117,20 @@ describe("aggregateTaskCenterRows", () => {
         expect(withoutWorkMode.incompleteBlocks).toEqual([]);
     });
 
+    it("reads a valid parent block id and ignores a malformed one without hiding the task", () => {
+        const parentId = "20260713120001-bcdefgh";
+        const withParent = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.parent]: parentId,
+        }));
+        const malformed = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
+            [TASK_BLOCK_OPTIONAL_ATTRIBUTES.parent]: "not-a-block-id",
+        }));
+
+        expect(withParent.items[0]?.parentBlockId).toBe(parentId);
+        expect(malformed.items).toHaveLength(1);
+        expect(malformed.items[0]?.parentBlockId).toBeUndefined();
+    });
+
     it("ignores a malformed optional progress date without hiding the task", () => {
         const result = aggregateTaskCenterRows(rowsFor(BLOCK_ID, {
             [TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate]: "2026-02-31",

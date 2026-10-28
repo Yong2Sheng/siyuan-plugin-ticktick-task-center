@@ -2,6 +2,29 @@ English | [简体中文](CHANGELOG.md)
 
 # Changelog
 
+## 0.9.0 - 2026-10-28
+
+### Task hierarchy and subtasks
+
+- Add the optional `custom-ticktick-parent` attribute for the parent block ID. Parent tasks show completed / total and a percentage; child cards show "↑ Parent task".
+- The task list adds By day and By project layouts and remembers the choice. By project indents subtasks under their parent with collapsing, "2 / 10 tasks · 20%", and a project-map entry.
+- By day subtask cards add "↳ Under project", which opens the project map.
+- Add a Project map view that lays out the whole task tree: draggable nodes, pan and zoom, collapsible branches, hide completed, reset auto layout, and node context actions for edit, focus plan, today's progress, open link, locate, new subtask, project map, detach, and delete.
+- New subtask creates a child document under the parent's document, puts the task block at its top, and writes the parent attribute, so each subproject can have its own body.
+- Deleting a parent with children explains that children are kept and become top-level tasks; Detach subtask only clears the parent attribute.
+- Missing parents and parent cycles fall back to top-level tasks with a notice; attributes are never rewritten automatically.
+- View state (list layout, collapsed branches, map positions) is stored in `task-center-view.json`, not in task blocks, and is not exported with a single document.
+
+### Document cards: parent task and sub-projects
+
+- Child cards show "↑ Parent task" and open the parent's location.
+- Tasks with children show a "Sub-projects N" chip: a single subproject opens directly; several open a popover with status and days left, and a row opens that subproject document. The header's Project map opens the Task Center on that project, and more than five children get a View all entry.
+- The count refreshes when the card loads; a failed query only hides the chip and never affects the card or its other buttons.
+
+### Verification
+
+- The suite grows from 607 to 675 tests (68 added); the type check reports 0 errors and 0 warnings; the production build and `package.zip` validation succeed.
+
 ## 0.8.0 - 2026-10-21
 
 ### Knowledge document organizing marks

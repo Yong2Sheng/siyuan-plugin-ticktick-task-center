@@ -13,6 +13,7 @@ import {
 import {
     deleteBlock,
     getBlockAttributes,
+    getChildBlocks,
     getRootDocumentInfo,
     prependMarkdownBlock,
     setBlockAttributes,
@@ -23,9 +24,11 @@ import {
     createDocument,
     listChildDocuments,
     listNotebooks,
+    removeDocument,
     searchDocuments,
 } from "./siyuan/documents";
 import { insertMarkdownBlockAfter } from "./siyuan/blocks";
+import { TASK_BLOCK_OPTIONAL_ATTRIBUTES } from "./domain/task";
 import {
     InboxController,
     type InboxActionFailure,
@@ -60,7 +63,12 @@ import {
     type TaskCenterTabInstance,
 } from "./task-center/task-center-tab";
 import { TaskCenterView } from "./task-center/task-center-view";
+import { TaskCenterViewStateStore } from "./task-center/task-center-view-state";
+import { createSubtaskDocument } from "./task-center/subtask-document";
+import type { TaskCenterItem } from "./task-center/task-center-data";
 import { createTaskBlock } from "./task-card/create-task";
+import { loadSubprojects } from "./task-card/subprojects";
+import { closeSubprojectPopover } from "./task-card/subproject-popover";
 import { getEditableRootDocumentId } from "./task-card/context";
 import { TaskEditController } from "./task-card/edit-controller";
 import { TaskCardLifecycle } from "./task-card/lifecycle";
@@ -128,6 +136,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         this.taskCardLifecycle = new TaskCardLifecycle(this.eventBus, {
             translate,
             loadAttributes: getBlockAttributes,
+            loadSubprojects: (blockId) => loadSubprojects(blockId),
             repairMarkdown: updateMarkdownBlock,
             actions: {
                 onEditTask: (blockId, { focus }) => {
@@ -141,6 +150,15 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 },
                 onOpenSiYuanTarget: (blockId) => {
                     void this.openSiYuanTarget(blockId, translate);
+                },
+                onOpenParentTask: (blockId) => {
+                    void this.openParentTask(blockId, translate);
+                },
+                onOpenSubproject: (subproject) => {
+                    void this.openSubproject(subproject.blockId, translate);
+                },
+                onOpenProjectMap: (blockId) => {
+                    void this.taskCenterTab?.open({ projectId: blockId });
                 },
                 onToggleDailyProgress: async (blockId, date) => {
                     await saveDailyProgress(
@@ -211,6 +229,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
     }
 
     onunload(): void {
+        closeSubprojectPopover();
         this.quickCaptureButton?.remove();
         this.quickCaptureButton = undefined;
         this.quickCaptureDialog?.destroy();
@@ -276,7 +295,12 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 const noteBody = note ? splitInboxNoteText(note.text).body : "";
                 const { blockId } = await promoteToTaskListOrThrow({
                     createTaskBlock: (request) => createTaskBlock(
-                        { prependMarkdownBlock, setBlockAttributes, deleteBlock },
+                        {
+                            prependMarkdownBlock,
+                            insertMarkdownBlockAfter,
+                            setBlockAttributes,
+                            deleteBlock,
+                        },
                         request,
                     ),
                     insertNoteBody: async (blockId, markdown) => {
@@ -299,6 +323,85 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             },
         });
         this.activeDialogs.add(dialog);
+    }
+
+    /**
+     * 从任务中心新建子任务：复用现有任务表单，在父任务所在文档下新建子文档，
+     * 把任务块放到子文档里，并写入 custom-ticktick-parent。
+     */
+    private openCreateSubtaskDialog(
+        parent: TaskCenterItem,
+        translate: Translate,
+        controller: TaskCenterController,
+    ): void {
+        let dialog: Dialog;
+        dialog = showCreateTaskDialog({
+            translate,
+            initialTitle: "",
+            dialogTitle: translate("taskCenterView.addSubtaskDialogTitle"),
+            contextNote: translate("taskCenterView.addSubtaskDialogHint")
+                .replace("${parent}", parent.title)
+                .replace("${document}", parent.documentTitle),
+            onCreate: async (task) => {
+                await createSubtaskDocument(
+                    {
+                        createDocument,
+                        removeDocument,
+                        listChildDocuments,
+                        getChildBlocks,
+                        deleteBlock,
+                        createTaskBlock: (request) => createTaskBlock(
+                            {
+                                prependMarkdownBlock,
+                                insertMarkdownBlockAfter,
+                                setBlockAttributes,
+                                deleteBlock,
+                            },
+                            request,
+                        ),
+                    },
+                    parent,
+                    task,
+                    translate("taskCard"),
+                );
+                await controller.refresh();
+            },
+            onDestroy: () => {
+                this.activeDialogs.delete(dialog);
+            },
+        });
+        this.activeDialogs.add(dialog);
+    }
+
+    private async detachSubtask(
+        item: TaskCenterItem,
+        translate: Translate,
+        controller: TaskCenterController,
+    ): Promise<boolean> {
+        const confirmed = await new Promise<boolean>((resolve) => {
+            confirm(
+                translate("taskCenterView.detachConfirmTitle"),
+                translate("taskCenterView.detachConfirmMessage")
+                    .replace("${title}", escapeHtml(item.title)),
+                () => resolve(true),
+                () => resolve(false),
+            );
+        });
+        if (!confirmed) {
+            return false;
+        }
+        try {
+            await setBlockAttributes(item.blockId, {
+                [TASK_BLOCK_OPTIONAL_ATTRIBUTES.parent]: "",
+            });
+            await controller.refresh();
+            showMessage(translate("taskCenterView.detached"), 3000, "info");
+            return true;
+        } catch (error) {
+            console.error("Failed to detach a TickTick subtask", error);
+            showMessage(translate("taskCenterView.detachFailed"), 6000, "error");
+            return false;
+        }
     }
 
     private createTaskCenterInstance(
@@ -361,6 +464,17 @@ export default class TickTickTaskCenterPlugin extends Plugin {
             onError: (error) => console.error("Failed to update the knowledge document index", error),
         });
         const inboxController = this.requireInboxController();
+        const viewStateStore = new TaskCenterViewStateStore(
+            {
+                loadData: (file) => this.loadData(file),
+                saveData: (file, value) => this.saveData(file, value),
+            },
+            {
+                onError: (error) => {
+                    console.warn("Failed to read or write the Task Center view state", error);
+                },
+            },
+        );
         const view = new TaskCenterView(target, {
             controller,
             inboxController,
@@ -381,8 +495,17 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 translate,
             ),
             onOpenSiYuanTarget: (blockId) => void this.openSiYuanTarget(blockId, translate),
-            onDeleteTask: (blockId, title) => this.taskDeleteController?.request(blockId, title)
-                ?? Promise.resolve(false),
+            onDeleteTask: (blockId, title, childCount) => this.taskDeleteController?.request(
+                blockId,
+                title,
+                childCount,
+            ) ?? Promise.resolve(false),
+            onAddSubtask: (item) => this.openCreateSubtaskDialog(item, translate, controller),
+            onDetachTask: (item) => this.detachSubtask(item, translate, controller),
+            viewState: viewStateStore,
+            onViewStateError: (error) => {
+                console.warn("Failed to save the Task Center view state", error);
+            },
             onSaveDailyProgress: (blockId, date) => saveDailyProgress(
                 { loadAttributes: getBlockAttributes, setBlockAttributes },
                 blockId,
@@ -448,6 +571,7 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 controller.destroy();
             },
             refreshLanguage: () => view.refreshLanguage(),
+            focusProject: (blockId: string) => view.focusProject(blockId),
         };
     }
 
@@ -536,7 +660,12 @@ export default class TickTickTaskCenterPlugin extends Plugin {
                 const noteBody = splitInboxNoteText(note.text).body;
                 const result = await promoteToTaskList({
                     createTaskBlock: (request) => createTaskBlock(
-                        { prependMarkdownBlock, setBlockAttributes, deleteBlock },
+                        {
+                            prependMarkdownBlock,
+                            insertMarkdownBlockAfter,
+                            setBlockAttributes,
+                            deleteBlock,
+                        },
                         request,
                     ),
                     insertNoteBody: async (blockId, markdown) => {
@@ -571,6 +700,24 @@ export default class TickTickTaskCenterPlugin extends Plugin {
         } catch (error) {
             console.error(`Failed to locate TickTick task block ${location.blockId}`, error);
             showMessage(translate("taskCenterView.locateFailed"), 5000, "error");
+        }
+    }
+
+    private async openParentTask(blockId: string, translate: Translate): Promise<void> {
+        try {
+            await openSiYuanBlock(this.app, blockId);
+        } catch (error) {
+            console.error(`Failed to open parent TickTick task ${blockId}`, error);
+            showMessage(translate("taskCenterView.parentOpenFailed"), 5000, "error");
+        }
+    }
+
+    private async openSubproject(blockId: string, translate: Translate): Promise<void> {
+        try {
+            await openSiYuanBlock(this.app, blockId);
+        } catch (error) {
+            console.error(`Failed to open subproject task ${blockId}`, error);
+            showMessage(translate("taskCardView.subprojectsOpenFailed"), 5000, "error");
         }
     }
 

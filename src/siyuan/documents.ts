@@ -162,6 +162,13 @@ export async function createDocument(
     return response;
 }
 
+/** 把文档移到思源回收站（可恢复），用于创建子任务失败时回滚空文档。 */
+export async function removeDocument(documentId: string): Promise<void> {
+    await requestSiYuan<unknown>("/api/filetree/removeDocByID", {
+        id: documentId,
+    });
+}
+
 function documentIdFromPath(filePath: string): string {
     const name = filePath.split("/").filter(Boolean).at(-1) ?? "";
     const id = name.endsWith(".sy") ? name.slice(0, -3) : name;

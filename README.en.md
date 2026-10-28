@@ -43,6 +43,12 @@ The current version does not call any target-service API, handle OAuth, or perfo
 - Add a Quick capture button to the SiYuan top bar that opens a small dialog from anywhere; Save and continue is meant for capturing several notes in a row.
 - Inbox data lives in a plugin data file with three rotating backups and a field-by-field read-back after every write. Nothing appears in the document tree.
 - Open a singleton Task Center tab from the SiYuan top bar and dynamically aggregate valid tasks across the workspace.
+- Tasks can be nested: the parent block ID lives in the optional `custom-ticktick-parent` attribute. Parent tasks show completed / total progress, and child cards show "↑ Parent task".
+- The task list offers By day and By project layouts, and remembers the choice. By project indents subtasks under their parent with collapsing, project progress, and a project-map entry; By day adds "↳ Under project" to subtask cards.
+- A new Project map view lays out a project's whole task tree, with draggable nodes, pan and zoom, collapsible branches, hide completed, reset auto layout, and in-place status, deadline, and context-menu actions.
+- New subtask creates a child document under the parent's document, puts the task block at its top, and writes the parent attribute, so each subproject can have its own body.
+- In documents, child cards show "↑ Parent task"; tasks with children show a "Sub-projects N" chip that lists them, opens a subproject document, and links to the project map.
+- Deleting a parent task explains that children are kept and become top-level tasks; Detach subtask only clears the parent attribute.
 - Add a Knowledge documents section to the Task Center. A manual scan discovers child documents under task documents and writes and verifies `custom-task-center-knowledge = true` only for newly discovered documents.
 - Load the Knowledge section from a rebuildable cache without scanning, polling, or live listening. The document tree is read only when the user selects Initialize knowledge index or Scan knowledge documents.
 - Mark knowledge documents as Not organized or Organized with one click and undo; the organizing time lives in the document's block attributes, and legacy review data is not migrated.
@@ -105,7 +111,14 @@ The work category describes how a task is approached and remains independent of 
 ## Development status and changelog
 
 > [!NOTE]
-> `v0.8.0` was published on 2026-10-21. The project is not yet listed in the SiYuan Marketplace.
+> `v0.9.0` was released on 2026-10-28. The project is not yet listed in the SiYuan Marketplace.
+
+### 0.9.0 (2026-10-28)
+
+- Tasks support parent/child hierarchy via `custom-ticktick-parent`; parent tasks show subtask progress, and child cards show "↑ Parent task".
+- The Task Center adds By day / By project list layouts and a Project map with indentation, collapsing, dragging, zooming, and layout reset.
+- New subtask creates a child document under the parent's document; deleting a parent keeps children as top-level tasks, and Detach subtask is available.
+- Document cards add a "Sub-projects N" chip: one child opens directly, several open a popover, and the header opens the project map.
 
 ### 0.8.0 (2026-10-21)
 
@@ -320,6 +333,16 @@ Make sure `plugin.json` is directly inside that directory, then fully restart Si
 5. The updated state is based on document timestamps from the last scan. After editing a knowledge document, select **Scan knowledge documents** to refresh it; the plugin does not scan automatically or poll.
 6. Marking writes only attributes on that document and the rebuildable index cache; it never moves, rewrites, or copies knowledge content.
 
+### 13. Break work into subtasks and open the project map
+
+1. Open the Task Center, switch to the task list, and choose By project, or open Project map directly.
+2. On a parent task select "＋ Subtask", or choose New subtask from its context menu. After you enter a title, the plugin creates a child document under the parent's document and puts the task block inside.
+3. The child block stores `custom-ticktick-parent`. The parent row shows "2 / 10 tasks · 20%"; child rows are indented and collapsible.
+4. In a document, a child card shows "↑ Parent task". A task with children shows "Sub-projects N": open it to list the children, pick one to open its document, or select Project map for the whole tree.
+5. In the project map, dragging a node only changes the layout; positions are stored in plugin data. Ctrl / ⌘ + wheel zooms, dragging blank space pans, and Reset auto layout restores the default arrangement.
+6. Right-click a node to edit, plan focus, mark today's progress, open the link, locate the block, create a subtask, open the project map, detach from the parent, or delete. Deleting a parent keeps its children.
+7. If a parent disappears or becomes unavailable, its children are shown as top-level tasks with a notice, and their attributes are not rewritten.
+
 ## Refresh and synchronization behavior
 
 > [!WARNING]
@@ -353,6 +376,9 @@ If Refresh is selected immediately after an edit or daily-progress update inside
 - One ordinary SiYuan block corresponds to one local task card and its target link.
 - The original SiYuan task block is the only persistent source of task data.
 - The Task Center is a dynamic view and does not persist a second task list.
+- Parent links live only in the optional task attribute `custom-ticktick-parent`, which stores the parent block ID. Missing or empty means a top-level task; existing data needs no migration.
+- View state (list layout, collapsed branches, project-map positions) is stored in the plugin data file `task-center-view.json`, not in task blocks, and is not exported with a single document.
+- Subtasks created through the UI live in their own child document under the parent's document, so the file tree also shows the project → subproject structure.
 - Ordinary Markdown keeps the task title and link as fallback content while the plugin is disabled or unavailable.
 - The plugin does not require a target-service login, use OAuth, or call a target-service API.
 - It does not upload or synchronize task data to linked services in the background. A target opens only when selected by the user.
@@ -438,6 +464,10 @@ The query is still subject to SiYuan's global SQL result-count limit, and pagina
 - No target-service API, OAuth, or two-way synchronization.
 - No batch operations or batch status changes.
 - No pagination or virtual scrolling; the Task Center is subject to SiYuan's SQL result-count limit.
+- Copying or moving a document changes block IDs, so copied tasks do not inherit parent links automatically; attach them again if needed.
+- The By project list and the project map only list top-level projects that have children; opening the map from a middle-layer task focuses its root project.
+- The Sub-projects chip on a document card refreshes when the card loads; after creating or deleting a subtask elsewhere, an already-open parent card updates only when the document reloads or the task is edited.
+- Project-map positions and collapsed branches are stored per workspace in plugin data, not per document.
 - No settings page.
 - The Inbox holds at most 5000 notes, and a single note is limited to 2000 characters.
 - The Inbox shows today's completed records only and prunes them after 7 days; there is no full-text search across notes.

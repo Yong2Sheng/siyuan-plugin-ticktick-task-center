@@ -22,6 +22,8 @@ export type TaskCenterItem = {
     title: string;
     url: string;
     status: TickTickTaskStatus;
+    /** 父任务块 id；缺失、空串或非法 id 都按顶层任务处理。 */
+    parentBlockId?: string;
     workMode?: TickTickTaskWorkMode;
     /** 未设置表示「正常推进」，排序时按正常档处理。 */
     priority?: TickTickTaskPriority;
@@ -162,6 +164,13 @@ export function aggregateTaskCenterRows(
         const progressLog = parseProgressLogAttribute(
             aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.progressLog],
         );
+        // 父级按「块 id」解释；非法值不把整条任务判无效，只是不参与层级，
+        // 否则一个手改坏的属性会让任务从任务中心整条消失。
+        const rawParentBlockId = aggregate.attrs[TASK_BLOCK_OPTIONAL_ATTRIBUTES.parent];
+        const parentBlockId = typeof rawParentBlockId === "string"
+            && isSiYuanId(rawParentBlockId)
+            ? rawParentBlockId
+            : undefined;
         items.push({
             blockId,
             rootId,
@@ -172,6 +181,7 @@ export function aggregateTaskCenterRows(
             title: parsed.data.title,
             url: parsed.data.url,
             status: parsed.data.status,
+            ...(parentBlockId ? { parentBlockId } : {}),
             ...(parsed.data.workMode ? { workMode: parsed.data.workMode } : {}),
             ...(priority ? { priority } : {}),
             createdAt: parsed.data.createdAt,

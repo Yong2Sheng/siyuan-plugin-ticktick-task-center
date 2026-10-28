@@ -10,7 +10,7 @@ import {
     type TaskDataCandidate,
     type TaskValidationError,
 } from "../domain/validation";
-import type { Translate } from "../i18n";
+import { escapeHtml, type Translate } from "../i18n";
 import { splitInboxNoteText, type InboxNote } from "../inbox/inbox-note";
 import { PromoteTaskError } from "../inbox/promote";
 import { TaskCreationError } from "./create-task";
@@ -25,6 +25,10 @@ type FormOutcome =
 export type CreateTaskDialogOptions = {
     translate: Translate;
     initialTitle: string;
+    /** 新建子任务时把弹窗标题换成「新建子任务」。 */
+    dialogTitle?: string;
+    /** 弹窗顶部的一行上下文说明（例如「新任务会插在……后面」）。 */
+    contextNote?: string;
     /**
      * 收件箱里的正式任务。有值时弹窗顶部出现「从收件箱带入」，
      * 选中一条会把它的文字填进标题，并在创建成功后把那张便条从收件箱删掉。
@@ -64,12 +68,16 @@ export function showCreateTaskDialog(options: CreateTaskDialogOptions): Dialog {
         }
     });
 
+    const contextHtml = options.contextNote
+        ? `<p class="ticktick-task-form__context">${escapeHtml(options.contextNote)}</p>`
+        : "";
     const dialog = new Dialog({
-        title: translate("taskCreate.dialogTitle"),
+        title: options.dialogTitle ?? translate("taskCreate.dialogTitle"),
         width: "520px",
         disableClose: true,
         hideCloseIcon: true,
         content: `<form class="ticktick-task-form">
+            ${contextHtml}
             <details class="ticktick-task-form__inbox fn__none" data-field="inbox">
                 <summary data-field="inbox-summary"></summary>
                 <div class="ticktick-task-form__inbox-list" data-field="inbox-list" role="listbox"></div>

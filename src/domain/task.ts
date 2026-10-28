@@ -25,6 +25,11 @@ export const TASK_BLOCK_OPTIONAL_ATTRIBUTES = {
      * 因此加入该属性之前的旧任务无需迁移。
      */
     priority: "custom-ticktick-priority",
+    /**
+     * 父任务块 id，用于子任务层级。未设置即顶层任务；加入该属性之前的旧任务
+     * 天然满足「未设置」，不需要迁移。空字符串同样表示顶层。
+     */
+    parent: "custom-ticktick-parent",
 } as const;
 
 /**

@@ -18,12 +18,19 @@ import {
     type TaskCardActions,
 } from "./renderer";
 import { inspectTaskCardPollution } from "./persistence";
+import type { SubprojectSummary } from "./subprojects";
 import { parseTaskBlockAttributes, type TaskBlockParseFailure } from "./task-data";
 
 const TASK_CANDIDATE_SELECTOR = `[data-node-id][${TASK_BLOCK_ATTRIBUTES.card}="true"]`;
 
 type TaskDataLoadResult =
-    | { kind: "valid"; data: PersistedTickTickTaskData; lastProgressedDate?: string }
+    | {
+          kind: "valid";
+          data: PersistedTickTickTaskData;
+          lastProgressedDate?: string;
+          parentBlockId?: string;
+          subprojects: readonly SubprojectSummary[];
+      }
     | { kind: "invalid"; reason: TaskBlockParseFailure }
     | { kind: "error"; error: unknown };
 
@@ -36,6 +43,8 @@ type TaskDataFlight = {
 export type TaskCardEnhancerOptions = {
     translate: Translate;
     loadAttributes(blockId: string): Promise<Record<string, unknown>>;
+    /** 子项目（子任务）摘要；缺省或失败时卡片不渲染子项目胶囊。 */
+    loadSubprojects?(blockId: string): Promise<readonly SubprojectSummary[]>;
     repairMarkdown?(blockId: string, markdown: string): Promise<void>;
     actions?: TaskCardActions;
     warn?: (message: string, detail?: unknown) => void;
@@ -192,6 +201,8 @@ export class TaskCardEnhancer {
             createTaskCardViewModel(loaded.data, this.options.translate, {
                 ...(loaded.lastProgressedDate ? { lastProgressedDate: loaded.lastProgressedDate } : {}),
                 today: getLocalDate(),
+                ...(loaded.parentBlockId ? { parentBlockId: loaded.parentBlockId } : {}),
+                subprojects: loaded.subprojects,
             }),
             this.options.actions,
         );
@@ -224,6 +235,8 @@ export class TaskCardEnhancer {
     }
 
     private async performTaskDataLoad(blockId: string): Promise<TaskDataLoadResult> {
+        // 子项目查询与属性读取并行；查询失败只影响胶囊，不影响卡片本身。
+        const subprojectsPromise = this.loadSubprojects(blockId);
         let attributes: Record<string, unknown>;
         try {
             attributes = await this.options.loadAttributes(blockId);
@@ -240,11 +253,31 @@ export class TaskCardEnhancer {
         const lastProgressedDate = readLocalDate(
             attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.lastProgressedDate],
         );
+        const rawParent = attributes[TASK_BLOCK_OPTIONAL_ATTRIBUTES.parent];
+        const parentBlockId = typeof rawParent === "string" && isSiYuanId(rawParent)
+            ? rawParent
+            : undefined;
+        const subprojects = await subprojectsPromise;
         return {
             kind: "valid",
             data: parsed.data,
             ...(lastProgressedDate ? { lastProgressedDate } : {}),
+            ...(parentBlockId ? { parentBlockId } : {}),
+            subprojects,
         };
+    }
+
+    private async loadSubprojects(blockId: string): Promise<readonly SubprojectSummary[]> {
+        const load = this.options.loadSubprojects;
+        if (!load) {
+            return [];
+        }
+        try {
+            return await load(blockId);
+        } catch (error) {
+            this.warn(`TickTick subprojects could not be loaded for ${blockId}`, error);
+            return [];
+        }
     }
 
     private async repairPollution(blockId: string, markdown: string): Promise<boolean> {

@@ -27,6 +27,32 @@ const dictionary: Record<string, string> = {
     "taskCenterView.filterAll": "All tasks",
     "taskCenterView.viewList": "Task list",
     "taskCenterView.viewCalendar": "Calendar",
+    "taskCenterView.viewMap": "Project map",
+    "taskCenterView.listModeToday": "By today",
+    "taskCenterView.listModeProject": "By project",
+    "taskCenterView.parentOf": "Under ${parent}",
+    "taskCenterView.orphanTask": "Parent deleted",
+    "taskCenterView.orphanNotice": "${count} orphaned",
+    "taskCenterView.cycleNotice": "${count} cyclic",
+    "taskCenterView.subtaskCount": "${done} / ${total} subtasks",
+    "taskCenterView.openMap": "Project map",
+    "taskCenterView.addSubtask": "Add subtask",
+    "taskCenterView.addSubtaskShort": "＋ Subtask",
+    "taskCenterView.moreActions": "More actions",
+    "taskCenterView.expandSubtasks": "Expand subtasks",
+    "taskCenterView.collapseSubtasks": "Collapse subtasks",
+    "taskCenterView.detachTask": "Detach from parent",
+    "taskCenterView.mapHint": "Drag to arrange",
+    "taskCenterView.mapCounts": "${done} of ${total} · ${percent}%",
+    "taskCenterView.mapFit": "Fit",
+    "taskCenterView.mapHideCompleted": "Hide completed",
+    "taskCenterView.mapResetLayout": "Reset layout",
+    "taskCenterView.projectLabel": "Project",
+    "taskCenterView.mapNodeHint": "Click a title to locate",
+    "taskCenterView.openTaskDocument": "Open task document",
+    "taskCenterView.mapEmptyTitle": "No project",
+    "taskCenterView.mapEmptyDescription": "Add a subtask first",
+    "taskCenterView.mapEmptyAction": "Go to task list",
     "taskCenterView.activityCalendarLabel": "Activity calendar",
     "taskCenterView.calendarToday": "This month",
     "taskCenterView.calendarPlanned": "Planned",
@@ -1076,6 +1102,188 @@ describe("TaskCenterView action alignment", () => {
         expect(rowChildren(rows[1])).toEqual(["target", "progress", "locate"]);
     });
 
+
+    it("groups subtasks under their parent in project mode with a progress rollup", async () => {
+        const parent = item("in-progress", "Parent", "20260713120010-aaaaaaa");
+        const childA = {
+            ...item("completed", "Child A", "20260713120011-bbbbbbb"),
+            parentBlockId: parent.blockId,
+        };
+        const childB = {
+            ...item("in-progress", "Child B", "20260713120012-ccccccc"),
+            parentBlockId: parent.blockId,
+        };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [parent, childA, childB],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        target.querySelector<HTMLButtonElement>(".ticktick-task-center__list-mode-button:not(.ticktick-task-center__list-mode-button--active)")?.click();
+
+        expect(target.querySelectorAll(".ticktick-task-center__hierarchy")).toHaveLength(1);
+        expect(target.querySelectorAll(".ticktick-task-center__hierarchy-child")).toHaveLength(2);
+        expect(target.querySelector(".ticktick-task-center__rollup-count")?.textContent)
+            .toBe("1 / 2 subtasks");
+        expect(target.querySelector(".ticktick-task-center__rollup-map")?.textContent)
+            .toBe("Project map");
+
+        const rootToggle = target.querySelector<HTMLButtonElement>(".ticktick-task-center__hierarchy-toggle")!;
+        rootToggle.click();
+        expect(target.querySelectorAll(".ticktick-task-center__hierarchy-child")).toHaveLength(0);
+        target.querySelector<HTMLButtonElement>(".ticktick-task-center__hierarchy-toggle")?.click();
+        expect(target.querySelectorAll(".ticktick-task-center__hierarchy-child")).toHaveLength(2);
+    });
+
+    it("auto-expands matching branches in project mode search", async () => {
+        const parent = item("in-progress", "Parent", "20260713120010-aaaaaaa");
+        const childA = {
+            ...item("in-progress", "Child A", "20260713120011-bbbbbbb"),
+            parentBlockId: parent.blockId,
+        };
+        const childB = {
+            ...item("in-progress", "Child B", "20260713120012-ccccccc"),
+            parentBlockId: parent.blockId,
+        };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [parent, childA, childB],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        target.querySelector<HTMLButtonElement>(".ticktick-task-center__list-mode-button:not(.ticktick-task-center__list-mode-button--active)")?.click();
+        target.querySelector<HTMLButtonElement>(".ticktick-task-center__hierarchy-toggle")?.click();
+
+        const search = target.querySelector<HTMLInputElement>(".ticktick-task-center__search")!;
+        search.value = "Child B";
+        search.dispatchEvent(new Event("input", { bubbles: true }));
+
+        expect(target.querySelectorAll(".ticktick-task-center__hierarchy-child")).toHaveLength(1);
+        expect(target.querySelector(".ticktick-task-center__hierarchy-child-title")?.textContent)
+            .toBe("Child B");
+    });
+
+    it("renders the project map with one node per task", async () => {
+        const parent = item("in-progress", "Parent", "20260713120010-aaaaaaa");
+        const child = {
+            ...item("in-progress", "Child", "20260713120011-bbbbbbb"),
+            parentBlockId: parent.blockId,
+        };
+        const { target } = await createView(vi.fn().mockResolvedValue({
+            items: [parent, child],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        Array.from(target.querySelectorAll<HTMLButtonElement>(".ticktick-task-center__view-button"))
+            .find((button) => button.textContent === "Project map")?.click();
+
+        expect(target.querySelector(".ticktick-project-map__canvas")).not.toBeNull();
+        expect(target.querySelectorAll(".ticktick-project-map__node")).toHaveLength(2);
+        expect(target.querySelector<HTMLSelectElement>("[data-map-project]")?.value)
+            .toBe(parent.blockId);
+        expect(target.querySelector(".ticktick-project-map__hint")?.textContent)
+            .toBe("Drag to arrange");
+    });
+
+    it("focuses the project map on the root project from a card", async () => {
+        const root = item("in-progress", "Root", "20260713120020-aaaaaaa");
+        const middle = {
+            ...item("in-progress", "Middle", "20260713120021-bbbbbbb"),
+            parentBlockId: root.blockId,
+        };
+        const leaf = {
+            ...item("in-progress", "Leaf", "20260713120022-ccccccc"),
+            parentBlockId: middle.blockId,
+        };
+        const { target, view } = await createView(vi.fn().mockResolvedValue({
+            items: [root, middle, leaf],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        view.focusProject(middle.blockId);
+
+        expect(target.querySelector(".ticktick-project-map__canvas")).not.toBeNull();
+        expect(target.querySelector<HTMLSelectElement>("[data-map-project]")?.value)
+            .toBe(root.blockId);
+        expect(target.querySelectorAll(".ticktick-project-map__node")).toHaveLength(3);
+    });
+
+    it("opens the task document when a map node title is clicked", async () => {
+        const parent = item("in-progress", "Parent", "20260713120010-aaaaaaa");
+        const child = {
+            ...item("in-progress", "Child", "20260713120011-bbbbbbb"),
+            parentBlockId: parent.blockId,
+        };
+        const { target, onLocateTask } = await createView(vi.fn().mockResolvedValue({
+            items: [parent, child],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+
+        Array.from(target.querySelectorAll<HTMLButtonElement>(".ticktick-task-center__view-button"))
+            .find((button) => button.textContent === "Project map")?.click();
+
+        const title = Array.from(target.querySelectorAll<HTMLButtonElement>(
+            ".ticktick-project-map__node-title",
+        )).find((button) => button.textContent === "Child");
+        expect(title).not.toBeUndefined();
+        expect(title?.tagName).toBe("BUTTON");
+        expect(title?.title).toBe("Open task document");
+        title!.click();
+
+        expect(onLocateTask).toHaveBeenCalledWith(child.blockId, child.rootId, undefined);
+    });
+
+    it("loads and saves the list mode through the injected view state store", async () => {
+        const load = vi.fn().mockResolvedValue({
+            version: 1,
+            listMode: "today",
+            collapsed: [],
+            positions: {},
+        });
+        const save = vi.fn().mockResolvedValue(undefined);
+        const { target } = await createView(undefined, {
+            viewState: { load, save },
+        });
+        await vi.waitFor(() => expect(load).toHaveBeenCalled());
+
+        target.querySelector<HTMLButtonElement>(".ticktick-task-center__list-mode-button:not(.ticktick-task-center__list-mode-button--active)")?.click();
+
+        await vi.waitFor(() => expect(save).toHaveBeenCalled());
+        expect(save.mock.calls.at(-1)?.[0]).toMatchObject({
+            listMode: "project",
+            collapsed: [],
+            positions: {},
+        });
+    });
+
+    it("passes the descendant count when deleting a parent task", async () => {
+        const parent = item("in-progress", "Parent", "20260713120010-aaaaaaa");
+        const child = {
+            ...item("in-progress", "Child", "20260713120011-bbbbbbb"),
+            parentBlockId: parent.blockId,
+        };
+        const { target, onDeleteTask } = await createView(vi.fn().mockResolvedValue({
+            items: [parent, child],
+            invalidBlocks: [],
+            incompleteBlocks: [],
+        }));
+        const card = Array.from(target.querySelectorAll<HTMLElement>(".ticktick-task-center__item"))
+            .find((element) => element.querySelector(".ticktick-task-center__title")?.textContent === "Parent")!;
+        card.dispatchEvent(new MouseEvent("contextmenu", {
+            bubbles: true,
+            cancelable: true,
+            clientX: 40,
+            clientY: 30,
+        }));
+        const deleteItem = Array.from(document.querySelectorAll<HTMLButtonElement>(".b3-menu__item"))
+            .find((element) => element.textContent === "Delete task card");
+        deleteItem?.click();
+
+        await vi.waitFor(() => expect(onDeleteTask).toHaveBeenCalled());
+        expect(onDeleteTask).toHaveBeenCalledWith(parent.blockId, "Parent", 1);
+    });
     it("prepends the sort arrows without moving the planning buttons", async () => {
         const focused = {
             ...ACTIVE,

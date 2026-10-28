@@ -1,6 +1,11 @@
 import type { TaskCardViewModel } from "./card-view-model";
 import { getDeadlineState } from "../domain/deadline";
 import { getLocalDate } from "../domain/local-date";
+import {
+    closeSubprojectPopoverIfDetached,
+    toggleSubprojectPopover,
+} from "./subproject-popover";
+import type { SubprojectSummary } from "./subprojects";
 import { createDeadlineButton } from "./deadline-button";
 import { openTaskActionsMenu } from "./task-actions-menu";
 import { openTaskPriorityMenu } from "./priority-menu";
@@ -18,6 +23,12 @@ export type TaskCardActions = {
     onDeleteTask?(blockId: string, title: string): void;
     onOpenTaskCenter?(): void;
     onOpenSiYuanTarget?(blockId: string): void;
+    /** 子任务卡片上的「上级任务」跳转；只在父级属性存在且回调可用时渲染。 */
+    onOpenParentTask?(blockId: string): void;
+    /** 打开一个子项目（子任务块所在的文档）；卡片上只有一个胶囊，列表在浮层里。 */
+    onOpenSubproject?(item: SubprojectSummary): void;
+    /** 从子项目浮层进入项目图；没有回调时浮层不显示入口。 */
+    onOpenProjectMap?(blockId: string): void;
     /** 标记/撤销今天已推进。写的是任务中心同一组属性。 */
     onToggleDailyProgress?(blockId: string, date: string | undefined): Promise<void>;
     onDailyProgressError?(error: unknown): void;
@@ -102,6 +113,13 @@ export function enhanceTaskBlock(
     main.className = "ticktick-task-card__main";
 
     main.append(createTargetControl(viewModel, actions));
+    if (viewModel.parentBlockId && actions?.onOpenParentTask) {
+        main.append(createParentTaskButton(viewModel.parentBlockId, viewModel, actions));
+    }
+    const subprojects = viewModel.subprojects ?? [];
+    if (subprojects.length > 0 && actions?.onOpenSubproject) {
+        main.append(createSubprojectsButton(blockId, viewModel, subprojects, actions));
+    }
 
     const deadline = createDeadlineButton({
         className: "ticktick-task-card__deadline",
@@ -179,6 +197,75 @@ export function enhanceTaskBlock(
     card.append(identity, main, classification, deadlineColumn);
     blockElement.before(card);
     return true;
+}
+
+function createParentTaskButton(
+    parentBlockId: string,
+    viewModel: TaskCardViewModel,
+    actions: TaskCardActions,
+): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ticktick-task-card__parent";
+    button.textContent = viewModel.translate("taskCardView.parentTask");
+    button.title = viewModel.translate("taskCardView.parentTaskTooltip");
+    button.setAttribute("aria-label", button.title);
+    button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        actions.onOpenParentTask?.(parentBlockId);
+    });
+    return button;
+}
+
+function createSubprojectsButton(
+    blockId: string,
+    viewModel: TaskCardViewModel,
+    subprojects: readonly SubprojectSummary[],
+    actions: TaskCardActions,
+): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ticktick-task-card__subprojects";
+    button.title = subprojects.length === 1
+        ? viewModel.translate("taskCardView.subprojectsOpenOne")
+            .replace("${title}", subprojects[0].title)
+        : viewModel.translate("taskCardView.subprojectsTooltip")
+            .replace("${count}", String(subprojects.length));
+    button.setAttribute("aria-label", button.title);
+    if (subprojects.length > 1) {
+        button.setAttribute("aria-haspopup", "dialog");
+    }
+
+    const label = document.createElement("span");
+    label.className = "ticktick-task-card__subprojects-label";
+    label.textContent = viewModel.translate("taskCardView.subprojects");
+    const count = document.createElement("span");
+    count.className = "ticktick-task-card__subprojects-count";
+    count.textContent = String(subprojects.length);
+    const chevron = document.createElement("span");
+    chevron.className = "ticktick-task-card__subprojects-chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.textContent = "›";
+    button.append(label, count, chevron);
+
+    button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        // 只有一个子项目时没有列表可看，直接进入，省掉一次点击。
+        if (subprojects.length === 1) {
+            actions.onOpenSubproject?.(subprojects[0]);
+            return;
+        }
+        toggleSubprojectPopover(button, {
+            translate: viewModel.translate,
+            today: getLocalDate(),
+            items: subprojects,
+            onOpen: (item) => actions.onOpenSubproject?.(item),
+            onOpenMap: () => actions.onOpenProjectMap?.(blockId),
+        });
+    });
+    return button;
 }
 
 function createProgressButton(
@@ -267,6 +354,7 @@ export function restoreTaskBlock(blockElement: HTMLElement): void {
     for (const card of findTaskCardDecorations(blockElement)) {
         card.remove();
     }
+    closeSubprojectPopoverIfDetached();
 }
 
 export function restoreTaskBlocks(root: ParentNode): void {
@@ -275,6 +363,7 @@ export function restoreTaskBlocks(root: ParentNode): void {
     )) {
         card.remove();
     }
+    closeSubprojectPopoverIfDetached();
 }
 
 export function isTaskBlockEnhanced(blockElement: HTMLElement): boolean {

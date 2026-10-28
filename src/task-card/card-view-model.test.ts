@@ -67,6 +67,32 @@ describe("createTaskCardViewModel", () => {
         expect(viewModel.deadline).toBe("2026-08-31");
     });
 
+    it("carries the parent block id for the document card link", () => {
+        const viewModel = createTaskCardViewModel({
+            version: 1,
+            title: "Get Expectation Density",
+            url: "",
+            status: "in-progress",
+            createdAt: "2026-07-12T08:30:00.000Z",
+            updatedAt: "2026-07-12T08:30:00.000Z",
+        }, translate, { parentBlockId: "20260712130000-bcdefgh" });
+
+        expect(viewModel.parentBlockId).toBe("20260712130000-bcdefgh");
+    });
+
+    it("omits the parent block id for a top-level task", () => {
+        const viewModel = createTaskCardViewModel({
+            version: 1,
+            title: "Top-level task",
+            url: "",
+            status: "todo",
+            createdAt: "2026-07-12T08:30:00.000Z",
+            updatedAt: "2026-07-12T08:30:00.000Z",
+        }, translate);
+
+        expect(viewModel.parentBlockId).toBeUndefined();
+    });
+
     it("keeps a task without any target link renderable", () => {
         const viewModel = createTaskCardViewModel({
             version: 1,
@@ -91,6 +117,30 @@ describe("createTaskCardViewModel", () => {
             createdAt: "2026-07-12T08:30:00.000Z",
             updatedAt: "2026-07-12T08:30:00.000Z",
         }, translate)).toThrow(/invalid task target/);
+    });
+
+    it("carries subprojects into the view model only when there are any", () => {
+        const task = {
+            version: 1 as const,
+            title: "Unbinned TS Map - Restart",
+            url: "https://dida365.com/webapp/#p/1/tasks/2",
+            status: "in-progress" as const,
+            createdAt: "2026-07-12T08:30:00.000Z",
+            updatedAt: "2026-07-12T08:30:00.000Z",
+        };
+        const subprojects = [{
+            blockId: "20260712130000-bcdefgh",
+            title: "Get Expectation Density",
+            status: "in-progress" as const,
+            documentTitle: "Get Expectation Density",
+            documentPath: "/Projects/Get Expectation Density",
+        }];
+
+        expect(createTaskCardViewModel(task, translate, { subprojects }).subprojects)
+            .toEqual(subprojects);
+        expect(createTaskCardViewModel(task, translate, { subprojects: [] }).subprojects)
+            .toBeUndefined();
+        expect(createTaskCardViewModel(task, translate).subprojects).toBeUndefined();
     });
 
     it("uses a target-specific label for SiYuan links", () => {

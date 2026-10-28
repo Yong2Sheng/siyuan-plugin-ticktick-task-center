@@ -96,6 +96,32 @@ export async function insertMarkdownBlockAfter(
     return blockId;
 }
 
+export type ChildBlock = {
+    id: string;
+    type: string;
+    content: string;
+};
+
+/** 直接读取一个块的子块，用于清理新建子文档时产生的空段落。 */
+export async function getChildBlocks(blockId: string): Promise<ChildBlock[]> {
+    const response = await requestSiYuan<unknown>("/api/block/getChildBlocks", {
+        id: blockId,
+    });
+    if (!Array.isArray(response)) {
+        throw new Error("SiYuan getChildBlocks response was not an array");
+    }
+    return response.flatMap((value) => {
+        if (!isRecord(value) || !isSiYuanId(value.id)) {
+            return [];
+        }
+        return [{
+            id: value.id,
+            type: typeof value.type === "string" ? value.type : "",
+            content: typeof value.content === "string" ? value.content : "",
+        }];
+    });
+}
+
 export async function setBlockAttributes(blockId: string, attrs: BlockAttributes): Promise<void> {
     await requestSiYuan<null>("/api/attr/setBlockAttrs", {
         id: blockId,
